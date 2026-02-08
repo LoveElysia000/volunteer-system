@@ -1,0 +1,86 @@
+﻿# Volunteer System Configuration
+# Update values for your environment before deployment.
+
+app:
+  name: "Volunteer System"
+  env: "development"  # development, staging, production
+  host: "0.0.0.0"
+  port: 1109
+  timezone: "Asia/Shanghai"
+  secret_key: "change-me"
+
+# MySQL configuration
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "030507"
+  database: "volunteer_system"
+  charset: "utf8mb4"
+  timezone: "+08:00"
+  pool:
+    min: 2
+    max: 10
+    acquire_ms: 30000
+    idle_ms: 10000
+
+# Redis configuration
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""  # leave empty if no auth
+  db: 0
+  key_prefix: "volunteer:"
+  connect_timeout_ms: 10000
+  cache_ttl_seconds: 3600
+
+# Email (optional)
+email:
+  enabled: false
+  smtp:
+    host: "smtp.example.com"
+    port: 587
+    secure: false
+    user: "noreply@example.com"
+    pass: "change-me"
+  from:
+    name: "Volunteer System"
+    address: "noreply@example.com"
+
+# File uploads
+upload:
+  dir: "./uploads"
+  max_file_size_mb: 10
+  allowed_extensions:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".gif"
+    - ".pdf"
+    - ".doc"
+    - ".docx"
+
+# Logging
+logging:
+  level: "info"  # error, warn, info, debug
+  console: true
+  file: "./logs/app.log"
+  rotation:
+    enabled: true
+    max_size_mb: 10
+    max_files: 5
+
+# Auth / JWT
+auth:
+  jwt:
+    secret: "linlinlinyx"
+    access_expiry_minutes: 30
+    refresh_expiry_days: 7
+    issuer: "volunteer-system"
+    max_concurrent_tokens: 5
+    token_rotation_enabled: true
+    anomaly_detection:
+      enabled: true
+      suspicious_login_threshold: 3
+      refresh_rate_limit: 5
+      refresh_window_minutes: 5

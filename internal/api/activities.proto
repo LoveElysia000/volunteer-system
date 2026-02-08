@@ -1,0 +1,337 @@
+syntax = "proto3";
+
+package activity;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 活动管理服务端接口
+service ActivityService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 获取活动列表
+  rpc ActivityList(ActivityListRequest) returns (ActivityListResponse) {
+    option (google.api.http) = {
+      post: "/api/activities"
+    };
+  }
+
+  // 活动报名
+  rpc ActivitySignup(ActivitySignupRequest) returns (ActivitySignupResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/signup"
+      body: "*"
+    };
+  }
+
+  // 取消报名
+  rpc ActivityCancel(ActivityCancelRequest) returns (ActivityCancelResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/cancel"
+      body: "*"
+    };
+  }
+
+  // 获取活动详情
+  rpc ActivityDetail(ActivityDetailRequest) returns (ActivityDetailResponse) {
+    option (google.api.http) = {
+      get: "/api/activities/:id"
+    };
+  }
+
+  // 获取我的活动列表
+  rpc MyActivities(MyActivitiesRequest) returns (MyActivitiesResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/my"
+    };
+  }
+
+  // ========== 组织端活动管理 ==========
+
+  // 创建活动
+  rpc CreateActivity(CreateActivityRequest) returns (CreateActivityResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/create"
+      body: "*"
+    };
+  }
+
+  // 更新活动
+  rpc UpdateActivity(UpdateActivityRequest) returns (UpdateActivityResponse) {
+    option (google.api.http) = {
+      put: "/api/activities/:id"
+      body: "*"
+    };
+  }
+
+  // 删除活动
+  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse) {
+    option (google.api.http) = {
+      delete: "/api/activities/{id}"
+    };
+  }
+
+  // 取消活动
+  rpc CancelActivity(CancelActivityRequest) returns (CancelActivityResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/{id}/cancel"
+      body: "*"
+    };
+  }
+}
+
+// ========== 活动列表 ==========
+
+message ActivityListRequest {
+  // 页码 可选 @gotags: query:"page"
+  int32 page = 1;
+  // 页大小 可选 @gotags: query:"pageSize"
+  int32 pageSize = 2;
+  // 状态筛选 可选 @gotags: query:"status"
+  int32 status = 3;
+}
+
+message ActivityListResponse {
+  int32 total = 1;
+  repeated ActivityItem list = 2;
+}
+
+message ActivityItem {
+  int64 id = 1;
+  // 活动标题
+  string title = 2;
+  // 活动描述
+  string description = 3;
+  // 封面图URL
+  string coverUrl = 4;
+  // 开始时间
+  string startTime = 5;
+  // 结束时间
+  string endTime = 6;
+  // 地点名称
+  string location = 7;
+  // 预估工时
+  double duration = 8;
+  // 最大招募人数
+  int32 maxPeople = 9;
+  // 当前已报名人数
+  int32 currentPeople = 10;
+  // 状态: 1-报名中, 2-已结束, 3-已取消
+  int32 status = 11;
+  // 是否已报名 (当前用户)
+  bool isRegistered = 12;
+  // 是否已满员
+  bool isFull = 13;
+}
+
+// ========== 活动报名 ==========
+
+message ActivitySignupRequest {
+  // 活动ID 必填 @gotags: json:"activityId,required"
+  int64 activityId = 1;
+}
+
+message ActivitySignupResponse {
+  // 报名成功
+  bool success = 1;
+}
+
+// ========== 取消报名 ==========
+
+message ActivityCancelRequest {
+  // 活动ID 必填 @gotags: json:"activityId,required"
+  int64 activityId = 1;
+}
+
+message ActivityCancelResponse {
+  // 取消成功
+  bool success = 1;
+}
+
+// ========== 活动详情 ==========
+
+message ActivityDetailRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+}
+
+message ActivityDetailResponse {
+  ActivityInfo activity = 1;
+}
+
+message ActivityInfo {
+  int64 id = 1;
+  // 组织ID
+  int64 orgId = 2;
+  // 组织名称
+  string orgName = 3;
+  // 活动标题
+  string title = 4;
+  // 活动描述
+  string description = 5;
+  // 封面图URL
+  string coverUrl = 6;
+  // 开始时间
+  string startTime = 7;
+  // 结束时间
+  string endTime = 8;
+  // 地点名称
+  string location = 9;
+  // 详细地址
+  string address = 10;
+  // 预估工时
+  double duration = 11;
+  // 最大招募人数
+  int32 maxPeople = 12;
+  // 当前已报名人数
+  int32 currentPeople = 13;
+  // 状态: 1-报名中, 2-已结束, 3-已取消
+  int32 status = 14;
+  // 是否已报名 (当前用户)
+  bool isRegistered = 15;
+  // 创建时间
+  string createdAt = 16;
+}
+
+// ========== 我的活动 ==========
+
+message MyActivitiesRequest {
+  // 页码 可选 @gotags: query:"page"
+  int32 page = 1;
+  // 页大小 可选 @gotags: query:"pageSize"
+  int32 pageSize = 2;
+  // 状态筛选 可选 @gotags: query:"status"
+  // 1-报名中, 2-已结束, 3-已取消
+  int32 status = 3;
+}
+
+message MyActivitiesResponse {
+  int32 total = 1;
+  repeated MyActivityItem list = 2;
+}
+
+message MyActivityItem {
+  int64 id = 1;
+  // 组织ID
+  int64 orgId = 2;
+  // 组织名称
+  string orgName = 3;
+  // 活动标题
+  string title = 4;
+  // 活动描述
+  string description = 5;
+  // 封面图URL
+  string coverUrl = 6;
+  // 开始时间
+  string startTime = 7;
+  // 结束时间
+  string endTime = 8;
+  // 地点名称
+  string location = 9;
+  // 预估工时
+  double duration = 10;
+  // 最大招募人数
+  int32 maxPeople = 11;
+  // 当前已报名人数
+  int32 currentPeople = 12;
+  // 状态: 1-报名中, 2-已结束, 3-已取消
+  int32 status = 13;
+  // 报名时间
+  string signupTime = 14;
+  // 签到状态: 0-未签到, 1-已签到
+  int32 checkInStatus = 15;
+  // 签到时间
+  string checkInTime = 16;
+}
+
+// ========== 组织端活动管理 ==========
+
+// CreateActivityRequest 创建活动请求
+message CreateActivityRequest {
+  // 组织ID 必填 @gotags: json:"orgId,required"
+  int64 orgId = 1;
+  // 活动标题 必填 @gotags: json:"title,required"
+  string title = 2;
+  // 活动描述 可选 @gotags: json:"description"
+  string description = 3;
+  // 封面图URL 可选 @gotags: json:"coverUrl"
+  string coverUrl = 4;
+  // 开始时间 必填 @gotags: json:"startTime,required"
+  string startTime = 5;
+  // 结束时间 必填 @gotags: json:"endTime,required"
+  string endTime = 6;
+  // 地点名称 必填 @gotags: json:"location,required"
+  string location = 7;
+  // 详细地址 可选 @gotags: json:"address"
+  string address = 8;
+  // 预估工时（小时） 必填 @gotags: json:"duration,required"
+  double duration = 9;
+  // 最大招募人数（0表示不限） 必填 @gotags: json:"maxPeople,required"
+  int32 maxPeople = 10;
+}
+
+// CreateActivityResponse 创建活动响应
+message CreateActivityResponse {
+  // 活动ID
+  int64 id = 1;
+  // 消息
+  string message = 2;
+}
+
+// UpdateActivityRequest 更新活动请求
+message UpdateActivityRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+  // 活动标题 可选 @gotags: json:"title"
+  string title = 2;
+  // 活动描述 可选 @gotags: json:"description"
+  string description = 3;
+  // 封面图URL 可选 @gotags: json:"coverUrl"
+  string coverUrl = 4;
+  // 开始时间 可选 @gotags: json:"startTime"
+  string startTime = 5;
+  // 结束时间 可选 @gotags: json:"endTime"
+  string endTime = 6;
+  // 地点名称 可选 @gotags: json:"location"
+  string location = 7;
+  // 详细地址 可选 @gotags: json:"address"
+  string address = 8;
+  // 预估工时（小时） 可选 @gotags: json:"duration"
+  double duration = 9;
+  // 最大招募人数（0表示不限） 可选 @gotags: json:"maxPeople"
+  int32 maxPeople = 10;
+}
+
+// UpdateActivityResponse 更新活动响应
+message UpdateActivityResponse {
+  // 消息
+  string message = 1;
+}
+
+// DeleteActivityRequest 删除活动请求
+message DeleteActivityRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+}
+
+// DeleteActivityResponse 删除活动响应
+message DeleteActivityResponse {
+  // 消息
+  string message = 1;
+}
+
+// CancelActivityRequest 取消活动请求
+message CancelActivityRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+  // 取消原因 可选 @gotags: json:"reason"
+  string reason = 2;
+}
+
+// CancelActivityResponse 取消活动响应
+message CancelActivityResponse {
+  // 消息
+  string message = 1;
+}

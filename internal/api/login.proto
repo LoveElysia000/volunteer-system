@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+
+    // 登录服务定义
+service AuthService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+    // 用户登录
+    rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/api/login"
+      body: "*"
+    };
+    }
+
+      // 用户登出
+    rpc Logout(LogoutRequest) returns (LogoutResponse) {
+        option (google.api.http) = {
+        post: "/api/logout"
+        body: "*"
+        };
+    }
+
+      // 刷新令牌
+    rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+        option (google.api.http) = {
+        post: "/api/refresh"
+        body: "*"
+    };
+  }
+}
+// LoginRequest 登录请求
+message LoginRequest {
+  // 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
+  string loginType = 1;
+  
+  // 登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"
+  string identifier = 2;
+
+  // 密码 必填 @gotags: json:"password,required"
+  string password = 3;
+  
+  // 身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: json:"identity,required"
+  string identity = 4;
+}
+
+// LoginResponse 登录响应
+message LoginResponse {
+  // 登录是否成功
+  bool success = 1;
+  // 响应消息
+  string message = 2;
+  // 认证令牌
+  string accessToken = 3;
+  // 刷新令牌
+  string refreshToken = 4;
+  // 令牌过期时间（Unix时间戳）
+  int64 expiresAt = 5;
+  // 用户信息
+  UserInfo userInfo = 6;
+}
+
+// UserInfo 用户信息
+message UserInfo {
+  // 用户ID
+  string userId = 1;
+  // 用户名
+  string username = 2;
+  // 邮箱
+  string email = 3;
+  // 手机号
+  string phone = 4;
+  // 显示名称
+  string displayName = 5;
+  // 头像URL
+  string avatarUrl = 6;
+  // 身份类型
+  string identity = 7;
+  // 创建时间
+  int64 createdAt = 8;
+  // 更新时间
+  int64 updatedAt = 9;
+}
+
+// LogoutRequest 登出请求
+message LogoutRequest {
+  // 要注销的令牌 必填 @gotags: json:"token,required"
+  string token = 1;
+}
+
+// LogoutResponse 登出响应
+message LogoutResponse {
+  // 登出是否成功
+  bool success = 1;
+  // 响应消息
+  string message = 2;
+}
+
+// RefreshTokenRequest 刷新令牌请求
+message RefreshTokenRequest {
+  // 刷新令牌 必填 @gotags: json:"refreshToken,required"
+  string refreshToken = 1;
+}
+
+// RefreshTokenResponse 刷新令牌响应
+message RefreshTokenResponse {
+  // 刷新是否成功
+  bool success = 1;
+  // 响应消息
+  string message = 2;
+  // 新的访问令牌
+  string token = 3;
+  // 新的刷新令牌
+  string refreshToken = 4;
+  // 令牌过期时间（Unix时间戳）
+  int64 expiresAt = 5;
+  // 用户信息
+  UserInfo userInfo = 6;
+}

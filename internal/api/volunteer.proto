@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+package volunteer;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 志愿者管理服务端接口
+service VolunteerService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 志愿者列表（管理员端）
+  rpc VolunteerList(VolunteerListRequest) returns (VolunteerListResponse) {
+    option (google.api.http) = {
+      post: "/api/volunteers/list"
+    };
+  }
+
+  // 志愿者详情（管理员端）
+  rpc VolunteerDetail(VolunteerDetailRequest) returns (VolunteerDetailResponse) {
+    option (google.api.http) = {
+      get: "/api/volunteers/detail/:id"
+    };
+  }
+
+  // 我的个人信息（志愿者端）
+  rpc MyProfile(MyProfileRequest) returns (MyProfileResponse) {
+    option (google.api.http) = {
+      get: "/api/volunteers/my/profile"
+    };
+  }
+
+  // 更新志愿者信息（志愿者端）
+  rpc VolunteerUpdate(VolunteerUpdateRequest) returns (VolunteerUpdateResponse) {
+    option (google.api.http) = {
+      put: "/api/volunteers/:id"
+      body: "*"
+    };
+  }
+}
+
+// VolunteerListRequest 志愿者列表请求（管理员端）
+message VolunteerListRequest {
+  // 搜索关键字 可选 @gotags: query:"keyword"
+  string keyword = 1;
+  // 筛选条件 1-活跃 2-非活跃 3-暂停 可选 @gotags: query:"filterBy"
+  int32 filterBy = 2;
+  // 页码 必填 @gotags: query:"page,required"
+  int32 page = 3;
+  // 页大小 必填 @gotags: query:"pageSize,required"
+  int32 pageSize = 4;
+}
+
+// VolunteerListResponse 志愿者列表响应
+message VolunteerListResponse {
+  int32 total = 1;
+  repeated VolunteerListItem list = 2;
+}
+
+// VolunteerListItem 志愿者列表项
+message VolunteerListItem {
+  int64 id = 1;
+  // 账户ID
+  int64 accountId = 2;
+  // 真实姓名
+  string realName = 3;
+  // 性别: 0-未知, 1-男, 2-女
+  int32 gender = 4;
+  // 头像URL
+  string avatarUrl = 5;
+  // 累计服务时长(小时)
+  double totalHours = 6;
+  // 累计服务次数
+  int32 serviceCount = 7;
+  // 信用分
+  int32 creditScore = 8;
+  // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+  int32 auditStatus = 9;
+  // 创建时间
+  string createdAt = 10;
+  // 更新时间
+  string updatedAt = 11;
+}
+
+// VolunteerDetailRequest 志愿者详情请求
+message VolunteerDetailRequest {
+  // 志愿者ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+}
+
+// VolunteerDetailResponse 志愿者详情响应（管理员端）
+message VolunteerDetailResponse {
+  // 志愿者信息
+  VolunteerInfo volunteer = 1;
+}
+
+// MyProfileRequest 我的个人信息请求（志愿者端）
+message MyProfileRequest {
+  // 志愿者ID 必填 @gotags: query:"id,required"
+  int64 id = 1;
+}
+
+// MyProfileResponse 我的个人信息响应（志愿者端）
+message MyProfileResponse {
+  // 志愿者信息
+  VolunteerInfo volunteer = 1;
+}
+
+// VolunteerInfo 志愿者信息
+message VolunteerInfo {
+  int64 id = 1;
+  // 账户ID
+  int64 accountId = 2;
+  // 真实姓名
+  string realName = 3;
+  // 性别: 0-未知, 1-男, 2-女
+  int32 gender = 4;
+  // 出生日期
+  string birthday = 5;
+  // 身份证号
+  string idCard = 6;
+  // 头像URL
+  string avatarUrl = 7;
+  // 个人简介
+  string introduction = 8;
+  // 累计服务时长(小时)
+  double totalHours = 9;
+  // 累计服务次数
+  int32 serviceCount = 10;
+  // 信用分
+  int32 creditScore = 11;
+  // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+  int32 auditStatus = 12;
+  // 创建时间
+  string createdAt = 13;
+  // 更新时间
+  string updatedAt = 14;
+}
+
+
+// VolunteerUpdateRequest 更新志愿者请求
+message VolunteerUpdateRequest {
+  // 志愿者ID @gotags: path:"volunteerId,required"
+  int64 volunteerId = 1;
+  // 真实姓名 可选 @gotags: json:"realName"
+  string realName = 2;
+  // 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
+  int32 gender = 3;
+  // 出生日期 可选 @gotags: json:"birthday"
+  string birthday = 4;
+  // 头像URL 可选 @gotags: json:"avatarUrl"
+  string avatarUrl = 5;
+  // 个人简介 可选 @gotags: json:"introduction"
+  string introduction = 6;
+}
+
+// VolunteerUpdateResponse 更新志愿者响应
+message VolunteerUpdateResponse {}
+
+
+
+// BaseVolunteer 基础志愿者信息（用于其他服务引用）
+message BaseVolunteer {
+  // 志愿者姓名
+  string name = 1;
+  // 志愿者编号
+  string volunteerCode = 2;
+  // 手机号
+  string phone = 3;
+  // 邮箱
+  string email = 4;
+  // 性别
+  string gender = 5;
+  // 志愿者状态
+  string status = 6;
+  // 状态名称
+  string statusName = 7;
+  // 创建时间
+  string joinDate = 8;
+  // 退出时间
+  string leaveDate = 9;
+}

@@ -1,0 +1,87 @@
+# Volunteer System Configuration Template
+# Copy this file to config.yaml and update values for your environment
+# Use environment variables for sensitive information
+
+app:
+  name: "Volunteer System"
+  env: "development"  # development, staging, production
+  host: "0.0.0.0"
+  port: 1109
+  timezone: "Asia/Shanghai"
+  secret_key: "${APP_SECRET_KEY:change-me}"  # Use environment variable for production
+
+# MySQL configuration - REQUIRED
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "${MYSQL_PASSWORD}"  # Use environment variable
+  database: "volunteer_system"
+  charset: "utf8mb4"
+  timezone: "+08:00"
+  pool:
+    min: 2
+    max: 10
+    acquire_ms: 30000
+    idle_ms: 10000
+
+# Redis configuration - OPTIONAL
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: "${REDIS_PASSWORD:}"  # Use environment variable if needed
+  db: 0
+  key_prefix: "volunteer:"
+  connect_timeout_ms: 10000
+  cache_ttl_seconds: 3600
+
+# Email (optional)
+email:
+  enabled: false
+  smtp:
+    host: "smtp.example.com"
+    port: 587
+    secure: false
+    user: "noreply@example.com"
+    pass: "${EMAIL_PASSWORD:change-me}"  # Use environment variable
+  from:
+    name: "Volunteer System"
+    address: "noreply@example.com"
+
+# File uploads
+upload:
+  dir: "./uploads"
+  max_file_size_mb: 10
+  allowed_extensions:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".gif"
+    - ".pdf"
+    - ".doc"
+    - ".docx"
+
+# Logging
+logging:
+  level: "info"  # error, warn, info, debug
+  console: true
+  file: "./logs/app.log"
+  rotation:
+    enabled: true
+    max_size_mb: 10
+    max_files: 5
+
+# Auth / JWT
+auth:
+  jwt:
+    secret: "${JWT_SECRET:linlinlinyx}"  # Use environment variable for production
+    access_expiry_minutes: 30
+    refresh_expiry_days: 7
+    issuer: "volunteer-system"
+    max_concurrent_tokens: 5
+    token_rotation_enabled: true
+    anomaly_detection:
+      enabled: true
+      suspicious_login_threshold: 3
+      refresh_rate_limit: 5
+      refresh_window_minutes: 5

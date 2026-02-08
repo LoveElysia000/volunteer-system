@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package audit;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 审核服务：提供待审核列表、执行审核、审核记录查询等接口
+service AuditService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 获取志愿者加入组织待审核列表（支持关键词和分页筛选）
+  rpc PendingVolunteerJoinOrgAuditList(PendingVolunteerJoinOrgAuditListRequest) returns (PendingVolunteerJoinOrgAuditListResponse) {
+    option (google.api.http) = {
+      post: "/api/audits/volunteer-join-org/pending"
+    };
+  }
+
+  // 执行审核通过动作
+  rpc AuditApproval(AuditApprovalRequest) returns (AuditApprovalResponse) {
+    option (google.api.http) = {
+      post: "/api/audits/approval"
+      body: "*"
+    };
+  }
+
+  // 执行审核驳回动作
+  rpc AuditRejection(AuditRejectionRequest) returns (AuditRejectionResponse) {
+    option (google.api.http) = {
+      post: "/api/audits/rejection"
+      body: "*"
+    };
+  }
+
+  // 获取单条审核记录详情
+  rpc AuditRecordDetail(AuditRecordDetailRequest) returns (AuditRecordDetailResponse) {
+    option (google.api.http) = {
+      get: "/api/audits/records/:id"
+    };
+  }
+}
+
+// 志愿者加入组织待审核列表查询参数
+message PendingVolunteerJoinOrgAuditListRequest {
+  // 标题/副标题关键词 @gotags: query:"keyword"
+  string keyword = 1;
+  // 页码（从 1 开始） @gotags: query:"page"
+  int32 page = 2;
+  // 每页条数 @gotags: query:"pageSize"
+  int32 pageSize = 3;
+  // 审核状态 @gotags: query:"status"
+  repeated int32 status = 4;
+}
+
+// 志愿者加入组织待审核列表查询结果
+message PendingVolunteerJoinOrgAuditListResponse {
+  // 总记录数
+  int32 total = 1;
+  // 当前页数据
+  repeated PendingVolunteerJoinOrgAuditItem list = 2;
+}
+
+// 志愿者加入组织待审核对象摘要信息
+message PendingVolunteerJoinOrgAuditItem {
+  // 审核目标 ID（org_members.id）
+  int64 targetId = 1;
+  // 当前审核状态（业务侧约定枚举值）
+  int32 status = 2;
+  // 主标题
+  string title = 3;
+  // 副标题
+  string subTitle = 4;
+  // 创建时间（字符串时间格式由服务端统一约定）
+  string createdAt = 5;
+}
+
+// 执行审核请求参数
+message AuditApprovalRequest {
+  // 审核记录id @gotags: json:"id,required"
+  int64 id = 1;
+  // 原因 @gotags: json:"reason"
+  string reason = 2;
+}
+
+// 执行审核返回结果
+message AuditApprovalResponse {
+}
+
+// 执行审核驳回请求参数
+message AuditRejectionRequest {
+  // 审核记录id @gotags: json:"id,required"
+  int64 id = 1;
+  // 原因 @gotags: json:"reason"
+  string reason = 2;
+}
+
+// 执行审核驳回返回结果
+message AuditRejectionResponse {
+}
+
+// 审核记录详情查询参数
+message AuditRecordDetailRequest {
+  // 审核记录 ID @gotags: path:"id,required"
+  int64 id = 1;
+}
+
+// 审核记录详情查询结果
+message AuditRecordDetailResponse {
+  // 审核记录详情
+  AuditRecordDetail record = 1;
+}
+
+// 审核记录详情
+message AuditRecordDetail {
+  // 审核记录 ID
+  int64 id = 1;
+  // 审核目标类型
+  int32 targetType = 2;
+  // 审核目标 ID
+  int64 targetId = 3;
+  // 审核人 ID
+  int64 auditorId = 4;
+  // 审核前状态
+  int32 oldStatus = 5;
+  // 审核后状态
+  int32 newStatus = 6;
+  // 审核前内容快照
+  string oldContent = 7;
+  // 审核后内容快照
+  string newContent = 8;
+  // 审核结果
+  int32 auditResult = 9;
+  // 驳回原因
+  string rejectReason = 10;
+  // 审核时间
+  string auditTime = 11;
+  // 记录创建时间
+  string createdAt = 12;
+}

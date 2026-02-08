@@ -1,0 +1,235 @@
+syntax = "proto3";
+
+package membership;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 志愿者-组织关联关系管理服务端接口
+service MembershipService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  
+  // 志愿者加入组织
+  rpc VolunteerJoinOrganization(VolunteerJoinRequest) returns (VolunteerJoinResponse) {
+    option (google.api.http) = {
+      post: "/api/memberships/join"
+      body: "*"
+    };
+  }
+
+  // 志愿者退出组织
+  rpc VolunteerLeaveOrganization(VolunteerLeaveRequest) returns (VolunteerLeaveResponse) {
+    option (google.api.http) = {
+      post: "/api/memberships/leave"
+      body: "*"
+    };
+  }
+
+  // 获取组织成员列表
+  rpc GetOrganizationMembers(OrganizationMembersRequest) returns (OrganizationMembersResponse) {
+    option (google.api.http) = {
+      get: "/api/organizations/{organizationId}/members"
+    };
+  }
+
+  // 查询志愿者加入的组织
+  rpc GetVolunteerOrganizations(VolunteerOrganizationsRequest) returns (VolunteerOrganizationsResponse) {
+    option (google.api.http) = {
+      get: "/api/volunteers/{volunteerId}/organizations"
+    };
+  }
+
+  // 更新成员状态（审核通过/拒绝等）
+  rpc UpdateMemberStatus(MemberStatusUpdateRequest) returns (MemberStatusUpdateResponse) {
+    option (google.api.http) = {
+      post: "/api/memberships/{membershipId}/status"
+      body: "*"
+    };
+  }
+
+  // 成员统计信息
+  rpc MembershipStats(MembershipStatsRequest) returns (MembershipStatsResponse) {
+    option (google.api.http) = {
+      get: "/api/memberships/stats"
+    };
+  }
+}
+
+// VolunteerJoinRequest 志愿者加入组织请求
+message VolunteerJoinRequest {
+  // 志愿者ID 必填 @gotags: json:"volunteerId,required"
+  int64 volunteerId = 1;
+  // 组织ID 必填 @gotags: json:"organizationId,required"
+  int64 organizationId = 2;
+}
+
+// VolunteerJoinResponse 志愿者加入组织响应
+message VolunteerJoinResponse {
+  // 成员关系ID
+  int64 membershipId = 1;
+  // 状态
+  int32 status = 2;
+  // 消息
+  string message = 3;
+}
+
+// VolunteerLeaveRequest 志愿者退出组织请求
+message VolunteerLeaveRequest {
+  // 成员关系ID 必填 @gotags: json:"membershipId,required"
+  int64 membershipId = 1;
+  // 退出原因 可选 @gotags: json:"reason"
+  string reason = 2;
+}
+
+// VolunteerLeaveResponse 志愿者退出组织响应
+message VolunteerLeaveResponse {
+  // 消息
+  string message = 1;
+}
+
+// OrganizationMembersRequest 获取组织成员请求
+message OrganizationMembersRequest {
+  // 组织ID 必填 @gotags: path:"organizationId,required"
+  int64 organizationId = 1;
+  // 状态筛选 可选 @gotags: query:"status"
+  int32 status = 2;
+  // 角色筛选 可选 @gotags: query:"role"
+  int32 role = 3;
+  // 搜索关键字 可选 @gotags: query:"keyword"
+  string keyword = 4;
+  // 页码 必填 @gotags: query:"page,required"
+  int32 page = 5;
+  // 页大小 必填 @gotags: query:"pageSize,required"
+  int32 pageSize = 6;
+}
+
+// OrganizationMembersResponse 获取组织成员响应
+message OrganizationMembersResponse {
+  int32 total = 1;
+  repeated MemberInfo list = 2;
+}
+
+// VolunteerOrganizationsRequest 查询志愿者加入的组织请求
+message VolunteerOrganizationsRequest {
+  // 志愿者ID 必填 @gotags: path:"volunteerId,required"
+  int64 volunteerId = 1;
+  // 状态筛选 可选 @gotags: query:"status"
+  int32 status = 2;
+  // 页码 必填 @gotags: query:"page,required"
+  int32 page = 3;
+  // 页大小 必填 @gotags: query:"pageSize,required"
+  int32 pageSize = 4;
+}
+
+// VolunteerOrganizationsResponse 查询志愿者加入的组织响应
+message VolunteerOrganizationsResponse {
+  int32 total = 1;
+  repeated OrganizationMemberInfo list = 2;
+}
+
+// MemberStatusUpdateRequest 更新成员状态请求
+message MemberStatusUpdateRequest {
+  // 成员关系ID 必填 @gotags: path:"membershipId,required"
+  int64 membershipId = 1;
+  // 成员状态 必填 @gotags: json:"status,required"
+  int32 status = 2;
+  // 审核意见 可选 @gotags: json:"reviewComment"
+  string reviewComment = 3;
+}
+
+// MemberStatusUpdateResponse 更新成员状态响应
+message MemberStatusUpdateResponse {
+  // 消息
+  string message = 1;
+}
+
+// MembershipStatsRequest 成员统计请求
+message MembershipStatsRequest {
+  // 组织ID 可选 @gotags: query:"organizationId"
+  int64 organizationId = 1;
+}
+
+// MembershipStatsResponse 成员统计响应
+message MembershipStatsResponse {
+  // 待审核成员数量
+  int32 pendingCount = 1;
+  // 活跃成员数量
+  int32 activeCount = 2;
+  // 非活跃成员数量
+  int32 inactiveCount = 3;
+  // 暂停成员数量
+  int32 suspendedCount = 4;
+  // 总成员数量
+  int32 totalCount = 5;
+}
+
+// MemberInfo 成员信息
+message MemberInfo {
+  // 成员关系ID
+  int64 membershipId = 1;
+  // 志愿者ID
+  int64 volunteerId = 2;
+  // 志愿者姓名
+  string volunteerName = 3;
+  // 志愿者编号
+  string volunteerCode = 4;
+  // 组织ID
+  int64 organizationId = 5;
+  // 组织名称
+  string organizationName = 6;
+  // 成员状态
+  int32 status = 7;
+  // 成员角色
+  int32 role = 8;
+  // 申请职位
+  string position = 9;
+  // 申请动机
+  string motivation = 10;
+  // 期望工作时间
+  string expectedHours = 11;
+  // 加入时间
+  string joinDate = 12;
+  // 审核时间
+  string reviewDate = 13;
+  // 审核意见
+  string reviewComment = 14;
+  // 离开时间
+  string leaveDate = 15;
+  // 离开原因
+  string leaveReason = 16;
+  // 创建时间
+  string createdAt = 17;
+  // 更新时间
+  string updatedAt = 18;
+}
+
+// OrganizationMemberInfo 组织成员信息（用于志愿者视角）
+message OrganizationMemberInfo {
+  // 成员关系ID
+  int64 membershipId = 1;
+  // 组织ID
+  int64 organizationId = 2;
+  // 组织名称
+  string organizationName = 3;
+  // 组织代码
+  string organizationCode = 4;
+  // 成员状态
+  int32 status = 5;
+  // 成员角色
+  int32 role = 6;
+  // 申请职位
+  string position = 7;
+  // 加入时间
+  string joinDate = 8;
+  // 审核时间
+  string reviewDate = 9;
+  // 审核意见
+  string reviewComment = 10;
+  // 创建时间
+  string createdAt = 11;
+  // 更新时间
+  string updatedAt = 12;
+}

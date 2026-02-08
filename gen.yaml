@@ -1,0 +1,30 @@
+version: "0.1"
+database:
+  # 数据库连接字符串，请根据实际情况修改
+  dsn: "root:030507@tcp(127.0.0.1:3306)/volunteer_system?charset=utf8mb4&parseTime=true&loc=Local"
+  # 数据库类型：mysql、postgres、sqlite、sqlserver
+  db: "mysql"
+  # 需要生成代码的数据表，可以根据实际表名修改
+  tables:
+  # 系统账号表
+   #  - "sys_accounts"
+  # 志愿者相关表
+  #   - "volunteers"
+  #   - "organizations"
+  # 活动相关表
+  # - "org_members"
+   - "audit_records"
+  # 输出目录
+  outPath: "./internal/dao"
+  # 查询代码文件名，默认: gen.go
+  outFile: ""
+  # 是否为查询代码生成单元测试
+  withUnitTest: false
+  # 生成的model代码包名
+  modelPkgName: "model"
+  # 当字段可为空时生成指针类型
+  fieldNullable: true
+  # 生成带有gorm索引标签的字段
+  fieldWithIndexTag: false
+  # 生成带有gorm列类型标签的字段
+  fieldWithTypeTag: false

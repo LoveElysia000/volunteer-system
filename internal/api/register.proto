@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package register;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 注册服务端接口
+service RegisterService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 统一注册接口
+  rpc Register(RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = {
+      post: "/api/register"
+      body: "*"
+    };
+  }
+}
+
+// RegisterRequest 统一注册请求
+message RegisterRequest {
+  // 注册身份类型 volunteer-志愿者 organization-组织 必填 @gotags: json:"registerType,required"
+  string registerType = 1;
+
+  // 通用字段
+  // 名称 必填 @gotags: json:"name,required"
+  string name = 2;
+  // 手机号 必填 @gotags: json:"phone,required"
+  string phone = 3;
+  // 邮箱 必填 @gotags: json:"email,required"
+  string email = 4;
+
+  // 密码 必填 @gotags: json:"password,required"
+  string password = 5;
+
+  // 志愿者特有字段
+  // 年龄 @gotags: json:"age"
+  int32 age = 6;
+  // 性别 @gotags: json:"gender"
+  string gender = 7;
+
+  // 组织特有字段
+  // 组织名称 @gotags: json:"organizationName"
+  string organizationName = 8;
+  // 用户名 @gotags: json:"username,required"
+  string userName = 9;
+}
+
+// RegisterResponse 统一注册响应
+message RegisterResponse {
+}

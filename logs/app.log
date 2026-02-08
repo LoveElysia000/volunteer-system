@@ -1,0 +1,349 @@
+2026-01-29 22:30:33 [INFO] 应用启动: Volunteer System (环境: development)
+2026-01-29 22:30:33 [INFO] MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-29 22:30:33 [INFO] MySQL数据库初始化成功
+2026-01-29 22:30:33 [WARN] Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-29 22:30:33 [INFO] Hertz服务器启动在 0.0.0.0:1109
+2026-01-29 22:31:00 [INFO] 数据库连接已关闭
+2026-01-29 22:36:31 [INFO] 应用启动: Volunteer System (环境: development)
+2026-01-29 22:36:31 [INFO] MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-29 22:36:31 [INFO] MySQL数据库初始化成功
+2026-01-29 22:36:31 [WARN] Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-29 22:36:31 [INFO] Hertz服务器启动在 0.0.0.0:1109
+2026-01-29 22:36:47 [INFO] 数据库连接已关闭
+2026-01-31 11:29:36 [INFO] 应用启动: Volunteer System (环境: development)
+2026-01-31 11:29:36 [INFO] MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 11:29:36 [INFO] MySQL数据库初始化成功
+2026-01-31 11:29:36 [WARN] Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 11:29:36 [INFO] Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 11:39:40 [INFO] 数据库连接已关闭
+2026-01-31 11:46:12 [INFO] 应用启动: Volunteer System (环境: development)
+2026-01-31 11:46:12 [INFO] MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 11:46:12 [INFO] MySQL数据库初始化成功
+2026-01-31 11:46:12 [WARN] Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 11:46:12 [INFO] Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 12:19:50 [INFO] 数据库连接已关闭
+2026-01-31 12:38:27 [INFO] 应用启动: Volunteer System (环境: development)
+2026-01-31 12:38:27 [INFO] MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 12:38:27 [INFO] MySQL数据库初始化成功
+2026-01-31 12:38:27 [WARN] Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 12:38:27 [INFO] Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 12:39:05 [INFO] [failWithCode] error is 用户不存在
+2026-01-31 12:40:31 [INFO] [failWithCode] error is 用户不存在
+2026-01-31 12:40:59 [INFO] [failWithCode] error is 用户不存在
+2026-01-31 12:41:57 [INFO] [failWithCode] error is 用户不存在
+2026-01-31 12:43:52 [INFO] [failWithCode] error is 用户不存在
+2026-01-31 12:48:04 [INFO] [failWithCode] error is 用户不存在
+2026-01-31 13:00:16 [INFO] 数据库连接已关闭
+2026-01-31 13:00:22 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 13:00:22 [INFO] volunteer-system/pkg/database/mysql/mysql.go:116 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 13:00:22 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 13:00:22 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 13:00:22 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 13:00:41 [ERROR] volunteer-system/pkg/database/mysql/mysql.go:57 [32.191ms] [rows:0] SELECT * FROM `sys_accounts` WHERE email = '123@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1 | error: record not found
+2026-01-31 13:00:41 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 用户不存在
+2026-01-31 13:02:35 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 13:02:39 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 13:02:39 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 13:02:39 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 13:02:39 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 13:02:39 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 13:02:59 [ERROR] volunteer-system/pkg/logger/gorm.go:55 [8.010ms] [rows:0] SELECT * FROM `sys_accounts` WHERE email = '123@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1 | error: record not found
+2026-01-31 13:02:59 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 用户不存在
+2026-01-31 13:03:55 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is invalid parameters: 'organizationName' field is a 'required' parameter, but the request body does not have this parameter 'organizationName'
+2026-01-31 13:05:05 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 13:07:26 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 13:07:26 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 13:07:26 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 13:07:26 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 13:07:26 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 13:09:05 [INFO] volunteer-system/pkg/logger/gorm.go:57 [10.168ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile = '+MJ5xzPOYcdspwrszhUkVMstlbKNX2Tad5ZOxrVDDFHUg39Sd4cc' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 13:09:05 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.264ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '12311@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 13:09:05 [ERROR] volunteer-system/pkg/logger/gorm.go:55 [15.602ms] [rows:0] INSERT INTO `sys_accounts` (`mobile`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('+MJ5xzPOYcdspwrszhUkVMstlbKNX2Tad5ZOxrVDDFHUg39Sd4cc','12311@qq.com','$2a$10$VV5NhDyWZaHRQBIb4JmvgOcGEp5j.j4kQY0O87/9IKm4mblutKZ.S',1,1,NULL,NULL,'2026-01-31 13:09:05.551') | error: Error 1406 (22001): Data too long for column 'mobile' at row 1
+2026-01-31 13:09:05 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is Error 1406 (22001): Data too long for column 'mobile' at row 1
+2026-01-31 13:10:50 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 13:12:08 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 13:12:08 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 13:12:08 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 13:12:08 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 13:12:08 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 13:12:11 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.596ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile = 'i2eXR3OTadllB0KwsogYf51aUIU+AnIBYmpyALxl0g1o6AlolSru' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 13:12:11 [INFO] volunteer-system/pkg/logger/gorm.go:57 [0.548ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '12311@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 13:12:12 [ERROR] volunteer-system/pkg/logger/gorm.go:55 [18.290ms] [rows:0] INSERT INTO `sys_accounts` (`mobile`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('i2eXR3OTadllB0KwsogYf51aUIU+AnIBYmpyALxl0g1o6AlolSru','12311@qq.com','$2a$10$uZYopW4segl4rFES.maiXukUyoWL1Nvvzi2DX6trPmUAL8MJCRiwm',1,1,NULL,NULL,'2026-01-31 13:12:12.016') | error: Error 1048 (23000): Column 'deleted_at' cannot be null
+2026-01-31 13:12:12 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is Error 1048 (23000): Column 'deleted_at' cannot be null
+2026-01-31 13:12:23 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 16:15:43 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 16:15:43 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 16:15:43 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 16:15:43 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 16:15:43 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 16:21:12 [INFO] volunteer-system/pkg/logger/gorm.go:57 [197.979ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile = 'R3NM93H32+od4AYTfTFnhfqFZ87eKVbmEaM3TOWL8kFWp6NDCbZK' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:21:12 [INFO] volunteer-system/pkg/logger/gorm.go:57 [2.152ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:21:12 [INFO] volunteer-system/pkg/logger/gorm.go:57 [42.395ms] [rows:1] INSERT INTO `sys_accounts` (`mobile`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('R3NM93H32+od4AYTfTFnhfqFZ87eKVbmEaM3TOWL8kFWp6NDCbZK','13@qq.com','$2a$10$tlvd8yUs7LIsWb69XyfIMOvqdlT0fwPpbz/z23MXOJNIblsAssLdS',1,1,NULL,NULL,'2026-01-31 16:21:12.761')
+2026-01-31 16:21:12 [INFO] volunteer-system/pkg/logger/gorm.go:57 [16.257ms] [rows:1] INSERT INTO `volunteers` (`account_id`,`real_name`,`gender`,`birthday`,`id_card`,`avatar_url`,`introduction`,`total_hours`,`service_count`,`credit_score`,`audit_status`,`created_at`) VALUES (1,'13313',1,NULL,'','','',0,0,100,0,'2026-01-31 16:21:12.805')
+2026-01-31 16:22:27 [ERROR] volunteer-system/pkg/logger/gorm.go:55 [11.830ms] [rows:0] SELECT * FROM `sys_accounts` WHERE mobile = 'bOyl7/+1ZWUWZ45Ze2tU9bKTT3bKf5gYOzu+1D0fjSxlRFUg6ggA' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1 | error: record not found
+2026-01-31 16:22:27 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 用户不存在
+2026-01-31 16:22:44 [INFO] volunteer-system/pkg/logger/gorm.go:57 [16.763ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 16:22:44 [ERROR] volunteer-system/internal/middleware/recovery.go:29 [PANIC] runtime error: invalid memory address or nil pointer dereference
+Time: 2026-01-31 16:22:44
+Stack: goroutine 14 [running]:
+runtime/debug.Stack()
+	D:/Go/src/runtime/debug/stack.go:26 +0x5e
+volunteer-system/internal/router.RegisterRouter.Recovery.func1.1()
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/recovery.go:22 +0x48
+panic({0xa25300?, 0x12c8920?})
+	D:/Go/src/runtime/panic.go:792 +0x132
+volunteer-system/pkg/auth.(*Manager).GenerateTokenPairWithStorage(0xc0004e3668, {0xd74e98, 0x1387d20}, {0xd90dc8, 0x1}, {0xb1763c?, 0xc0005082c4?}, {0xc0004e34a0?, 0xc0004e34e8?}, {0x0, ...})
+	C:/Users/admin/Desktop/volunteer-system/pkg/auth/jwt.go:169 +0x149
+volunteer-system/internal/service.(*LoginService).Login(0xc00039e900, 0xc000420230)
+	C:/Users/admin/Desktop/volunteer-system/internal/service/login.go:102 +0x93d
+volunteer-system/internal/handler.UserLogin({0xd74e98, 0x1387d20}, 0xc000317808)
+	C:/Users/admin/Desktop/volunteer-system/internal/handler/login.go:18 +0x69
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000317808, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+volunteer-system/internal/router.RegisterRouter.CORS.func2({0xd74e98, 0x1387d20}, 0xc000317808)
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/cors.go:24 +0x11f
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000317808, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+volunteer-system/internal/router.RegisterRouter.Recovery.func1({0xd74e98?, 0x1387d20?}, 0xa?)
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/recovery.go:43 +0x58
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000317808, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery.Recovery.func1({0xd74e98?, 0x1387d20?}, 0xc000454320?)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/middlewares/server/recovery/recovery.go:50 +0x6f
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000317808, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+github.com/cloudwego/hertz/pkg/route.(*Engine).ServeHTTP(0xc000206008, {0xd74e98, 0x1387d20}, 0xc000317808)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:804 +0x84f
+github.com/cloudwego/hertz/pkg/protocol/http1.Server.Serve({{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x400000, 0x100000, ...}, ...}, ...)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/protocol/http1/server.go:349 +0x102c
+github.com/cloudwego/hertz/pkg/route.(*Engine).Serve(0xc000206008, {0xd74e98, 0x1387d20}, {0xd7f7b0, 0xc00038c280})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:547 +0x49d
+github.com/cloudwego/hertz/pkg/route.(*Engine).onData(0xc000206008?, {0xd74e98?, 0x1387d20?}, {0xaea500?, 0xc00038c280?})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:450 +0xdd
+github.com/cloudwego/hertz/pkg/network/standard.(*transport).serve.func1({0xd74e98?, 0x1387d20?}, {0xd7f7b0?, 0xc00038c280?})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/network/standard/transport.go:108 +0x13c
+created by github.com/cloudwego/hertz/pkg/network/standard.(*transport).serve in goroutine 51
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/network/standard/transport.go:101 +0x24e
+
+2026-01-31 16:22:44 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 服务器内部错误
+2026-01-31 16:25:57 [INFO] volunteer-system/pkg/logger/gorm.go:57 [18.717ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 16:25:57 [ERROR] volunteer-system/internal/middleware/recovery.go:29 [PANIC] runtime error: invalid memory address or nil pointer dereference
+Time: 2026-01-31 16:25:57
+Stack: goroutine 67 [running]:
+runtime/debug.Stack()
+	D:/Go/src/runtime/debug/stack.go:26 +0x5e
+volunteer-system/internal/router.RegisterRouter.Recovery.func1.1()
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/recovery.go:22 +0x48
+panic({0xa25300?, 0x12c8920?})
+	D:/Go/src/runtime/panic.go:792 +0x132
+volunteer-system/pkg/auth.(*Manager).GenerateTokenPairWithStorage(0xc000053668, {0xd74e98, 0x1387d20}, {0xd90dc8, 0x1}, {0xb1763c?, 0xc000336e04?}, {0xc0000534a0?, 0xc0000534e8?}, {0x0, ...})
+	C:/Users/admin/Desktop/volunteer-system/pkg/auth/jwt.go:169 +0x149
+volunteer-system/internal/service.(*LoginService).Login(0xc0004221a0, 0xc000420230)
+	C:/Users/admin/Desktop/volunteer-system/internal/service/login.go:102 +0x93d
+volunteer-system/internal/handler.UserLogin({0xd74e98, 0x1387d20}, 0xc000010008)
+	C:/Users/admin/Desktop/volunteer-system/internal/handler/login.go:18 +0x69
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000010008, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+volunteer-system/internal/router.RegisterRouter.CORS.func2({0xd74e98, 0x1387d20}, 0xc000010008)
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/cors.go:24 +0x11f
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000010008, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+volunteer-system/internal/router.RegisterRouter.Recovery.func1({0xd74e98?, 0x1387d20?}, 0xa?)
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/recovery.go:43 +0x58
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000010008, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery.Recovery.func1({0xd74e98?, 0x1387d20?}, 0xc0004ba6d0?)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/middlewares/server/recovery/recovery.go:50 +0x6f
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000010008, {0xd74e98, 0x1387d20})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+github.com/cloudwego/hertz/pkg/route.(*Engine).ServeHTTP(0xc000206008, {0xd74e98, 0x1387d20}, 0xc000010008)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:804 +0x84f
+github.com/cloudwego/hertz/pkg/protocol/http1.Server.Serve({{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x400000, 0x100000, ...}, ...}, ...)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/protocol/http1/server.go:349 +0x102c
+github.com/cloudwego/hertz/pkg/route.(*Engine).Serve(0xc000206008, {0xd74e98, 0x1387d20}, {0xd7f7b0, 0xc0000e43c0})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:547 +0x49d
+github.com/cloudwego/hertz/pkg/route.(*Engine).onData(0xc000206008?, {0xd74e98?, 0x1387d20?}, {0xaea500?, 0xc0000e43c0?})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:450 +0xdd
+github.com/cloudwego/hertz/pkg/network/standard.(*transport).serve.func1({0xd74e98?, 0x1387d20?}, {0xd7f7b0?, 0xc0000e43c0?})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/network/standard/transport.go:108 +0x13c
+created by github.com/cloudwego/hertz/pkg/network/standard.(*transport).serve in goroutine 51
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/network/standard/transport.go:101 +0x24e
+
+2026-01-31 16:25:57 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 服务器内部错误
+2026-01-31 16:37:34 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 16:37:41 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 16:37:42 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 16:37:42 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 16:37:42 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-01-31 16:37:42 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-01-31 16:37:42 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 16:37:52 [INFO] volunteer-system/pkg/logger/gorm.go:57 [67.074ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 16:37:52 [INFO] volunteer-system/pkg/logger/gorm.go:57 [37.874ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 16:37:52.581' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:41:06 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is invalid token type
+2026-01-31 16:50:40 [INFO] volunteer-system/pkg/logger/gorm.go:57 [196.549ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 16:50:40 [INFO] volunteer-system/pkg/logger/gorm.go:57 [37.081ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 16:50:40.162' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:53:43 [INFO] volunteer-system/pkg/logger/gorm.go:57 [11.723ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 16:53:44 [INFO] volunteer-system/pkg/logger/gorm.go:57 [14.150ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 16:53:44.081' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:59:33 [INFO] volunteer-system/pkg/logger/gorm.go:57 [10.444ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile = 'I9RZQeTKzJXf757eoYTTA0w87qGyxXdvcIDhXpW0C4wXDSW1AYfE' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:59:33 [INFO] volunteer-system/pkg/logger/gorm.go:57 [2.102ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '123@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 16:59:33 [INFO] volunteer-system/pkg/logger/gorm.go:57 [16.947ms] [rows:1] INSERT INTO `sys_accounts` (`mobile`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('I9RZQeTKzJXf757eoYTTA0w87qGyxXdvcIDhXpW0C4wXDSW1AYfE','123@qq.com','$2a$10$KQpYLOxoGYxJa9Fhr/eokeGH5JXFlcC2n7Nf7JaU0Ki9wNdj4gWzm',1,1,NULL,NULL,'2026-01-31 16:59:33.609')
+2026-01-31 16:59:33 [INFO] volunteer-system/pkg/logger/gorm.go:57 [14.002ms] [rows:1] INSERT INTO `volunteers` (`account_id`,`real_name`,`gender`,`birthday`,`id_card`,`avatar_url`,`introduction`,`total_hours`,`service_count`,`credit_score`,`audit_status`,`created_at`) VALUES (2,'323',1,NULL,'','','',0,0,100,0,'2026-01-31 16:59:33.628')
+2026-01-31 17:11:24 [INFO] volunteer-system/pkg/logger/gorm.go:57 [120.233ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 17:12:02 [INFO] volunteer-system/pkg/logger/gorm.go:57 [14.114ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '13@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 18:59:15 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 19:31:42 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 19:31:42 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 19:31:42 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 19:31:42 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-01-31 19:31:42 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-01-31 19:31:42 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 19:32:20 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is invalid parameters: 'username' field is a 'required' parameter, but the request body does not have this parameter 'username'
+2026-01-31 19:35:18 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 19:45:50 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 19:45:50 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 19:45:50 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 19:45:50 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 19:45:50 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 19:46:42 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 手机号处理失败
+2026-01-31 19:48:32 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 手机号处理失败
+2026-01-31 19:48:44 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 19:48:49 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 19:48:49 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 19:48:49 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 19:48:49 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 19:48:49 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 19:48:58 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 手机号处理失败
+2026-01-31 19:49:29 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 手机号处理失败
+2026-01-31 19:51:08 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 手机号处理失败
+2026-01-31 19:51:20 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 19:51:25 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 19:51:25 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 19:51:25 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 19:51:25 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 19:51:25 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 19:51:29 [INFO] volunteer-system/pkg/logger/gorm.go:57 [39.267ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 19:51:29 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.268ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '12@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 19:51:29 [INFO] volunteer-system/pkg/logger/gorm.go:57 [36.653ms] [rows:1] INSERT INTO `sys_accounts` (`username`,`mobile`,`mobile_hash`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('123','rxstq0vi/s9H0uNp6MWSeiI0am/MIpK7J/Q25h4QNxxmw5KNsJj9','38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d','12@qq.com','$2a$10$PHwYH7WEs2aK8GnBi7COruwp7XGK5gG.sRhvEVHpqcWSulPok9t8O',1,1,NULL,NULL,'2026-01-31 19:51:29.121')
+2026-01-31 19:51:29 [ERROR] volunteer-system/pkg/logger/gorm.go:55 [15.048ms] [rows:0] INSERT INTO `volunteers` (`account_id`,`real_name`,`gender`,`birthday`,`id_card`,`avatar_url`,`introduction`,`total_hours`,`service_count`,`credit_score`,`audit_status`,`created_at`) VALUES (1,'3321',1,NULL,'','','',0,0,100,0,'2026-01-31 19:51:29.158') | error: Error 1062 (23000): Duplicate entry '1' for key 'volunteers.uk_account'
+2026-01-31 19:51:29 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is Error 1062 (23000): Duplicate entry '1' for key 'volunteers.uk_account'
+2026-01-31 19:53:38 [INFO] volunteer-system/pkg/logger/gorm.go:57 [6.317ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 19:53:38 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.179ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '12@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 19:53:38 [INFO] volunteer-system/pkg/logger/gorm.go:57 [14.495ms] [rows:1] INSERT INTO `sys_accounts` (`username`,`mobile`,`mobile_hash`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('123','XZ/3cw2bLGVmuD66P0LoQ26IIl93+kAPIiM0msHt98M+aCIyP6n5','38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d','12@qq.com','$2a$10$9lVcPf/ZIKVhY4L8p2Hy1OTfzikwQ4iO8ErUrXulX8xmCO/OnLWpS',1,1,NULL,NULL,'2026-01-31 19:53:38.691')
+2026-01-31 19:53:38 [INFO] volunteer-system/pkg/logger/gorm.go:57 [5.100ms] [rows:1] INSERT INTO `volunteers` (`account_id`,`real_name`,`gender`,`birthday`,`id_card`,`avatar_url`,`introduction`,`total_hours`,`service_count`,`credit_score`,`audit_status`,`created_at`) VALUES (2,'3321',1,NULL,'','','',0,0,100,0,'2026-01-31 19:53:38.705')
+2026-01-31 19:55:24 [INFO] volunteer-system/pkg/logger/gorm.go:57 [6.369ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE mobile_hash = 'c9648b4f1d151b93f06315967311cbf74d86339c66c0fb0bb376bfa0232aff49' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 19:55:24 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.508ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE email = '123@qq.com' AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 19:55:24 [INFO] volunteer-system/pkg/logger/gorm.go:57 [16.229ms] [rows:1] INSERT INTO `sys_accounts` (`username`,`mobile`,`mobile_hash`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('123','3sgrvwpV7gVCXdMIK5EoogUGl3QAWy3gvLu1TPDz10onV82QBC+F','c9648b4f1d151b93f06315967311cbf74d86339c66c0fb0bb376bfa0232aff49','123@qq.com','$2a$10$hOV3r8zBTF5a3LVovneQuOQGo/QXBELOw1hZl73gSdPlXjcTFmD6y',1,1,NULL,NULL,'2026-01-31 19:55:24.867')
+2026-01-31 19:55:24 [INFO] volunteer-system/pkg/logger/gorm.go:57 [7.922ms] [rows:1] INSERT INTO `volunteers` (`account_id`,`real_name`,`gender`,`birthday`,`id_card`,`avatar_url`,`introduction`,`total_hours`,`service_count`,`credit_score`,`audit_status`,`created_at`) VALUES (3,'123',1,NULL,'','','',0,0,100,0,'2026-01-31 19:55:24.883')
+2026-01-31 20:04:18 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 20:16:37 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 20:16:37 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 20:16:37 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 20:16:37 [WARN] volunteer-system/cmd/cli/server.go:58 Redis初始化失败: Redis连接测试失败: dial tcp 127.0.0.1:6379: connectex: No connection could be made because the target machine actively refused it. (应用将继续运行)
+2026-01-31 20:16:37 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 20:17:25 [INFO] volunteer-system/pkg/logger/gorm.go:57 [5.915ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE (mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND deleted_at IS NULL) AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:17:25 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.378ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE (email = '1@qq.com' AND deleted_at IS NULL) AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:17:25 [INFO] volunteer-system/pkg/logger/gorm.go:57 [6.858ms] [rows:1] INSERT INTO `sys_accounts` (`username`,`mobile`,`mobile_hash`,`email`,`password`,`identity_type`,`status`,`last_login_time`,`deleted_at`,`created_at`) VALUES ('123','BjGAuRh0V905viKTYoYh3Sv1Pd87qVC99eucgVTbLuFdsej1GiFh','38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d','1@qq.com','$2a$10$6jVTGYLcFrI8VTMLg9xq4.AtckOfm3s3/L2W2zK9ESZ.GYWP1qvZm',1,1,NULL,NULL,'2026-01-31 20:17:25.268')
+2026-01-31 20:17:25 [INFO] volunteer-system/pkg/logger/gorm.go:57 [5.323ms] [rows:1] INSERT INTO `volunteers` (`account_id`,`real_name`,`gender`,`birthday`,`id_card`,`avatar_url`,`introduction`,`total_hours`,`service_count`,`credit_score`,`audit_status`,`created_at`) VALUES (1,'3321',1,NULL,'','','',0,0,100,0,'2026-01-31 20:17:25.275')
+2026-01-31 20:18:14 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.321ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE (mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND deleted_at IS NULL) AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:18:14 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 手机号已存在
+2026-01-31 20:18:45 [INFO] volunteer-system/pkg/logger/gorm.go:57 [3.336ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE (mobile_hash = '8283a7fb6866210eec895a9168fb602408c45935438bb0b3edd89ce7921aa259' AND deleted_at IS NULL) AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:18:45 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.113ms] [rows:1] SELECT count(*) FROM `sys_accounts` WHERE (email = '1@qq.com' AND deleted_at IS NULL) AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:18:45 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 邮箱已存在
+2026-01-31 20:23:09 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.051ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '1@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:23:09 [ERROR] volunteer-system/internal/middleware/recovery.go:29 [PANIC] runtime error: invalid memory address or nil pointer dereference
+Time: 2026-01-31 20:23:09
+Stack: goroutine 48 [running]:
+runtime/debug.Stack()
+	D:/Go/src/runtime/debug/stack.go:26 +0x5e
+volunteer-system/internal/router.RegisterRouter.Recovery.func1.1()
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/recovery.go:22 +0x48
+panic({0x795320?, 0x1038960?})
+	D:/Go/src/runtime/panic.go:792 +0x132
+volunteer-system/pkg/auth.(*Manager).GenerateTokenPairWithStorage(0xc000053668, {0xae4ff8, 0x10f7d80}, {0xb00f28, 0x1}, {0x88783c?, 0xc00043ae04?}, {0xc0000534a0?, 0xc0000534e8?}, {0x0, ...})
+	C:/Users/admin/Desktop/volunteer-system/pkg/auth/jwt.go:169 +0x149
+volunteer-system/internal/service.(*LoginService).Login(0xc00057ed40, 0xc000550070)
+	C:/Users/admin/Desktop/volunteer-system/internal/service/login.go:102 +0x93d
+volunteer-system/internal/handler.UserLogin({0xae4ff8, 0x10f7d80}, 0xc000808008)
+	C:/Users/admin/Desktop/volunteer-system/internal/handler/login.go:18 +0x69
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000808008, {0xae4ff8, 0x10f7d80})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+volunteer-system/internal/router.RegisterRouter.CORS.func2({0xae4ff8, 0x10f7d80}, 0xc000808008)
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/cors.go:24 +0x11f
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000808008, {0xae4ff8, 0x10f7d80})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+volunteer-system/internal/router.RegisterRouter.Recovery.func1({0xae4ff8?, 0x10f7d80?}, 0xa?)
+	C:/Users/admin/Desktop/volunteer-system/internal/middleware/recovery.go:43 +0x58
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000808008, {0xae4ff8, 0x10f7d80})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+github.com/cloudwego/hertz/pkg/app/middlewares/server/recovery.Recovery.func1({0xae4ff8?, 0x10f7d80?}, 0xc000380630?)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/middlewares/server/recovery/recovery.go:50 +0x6f
+github.com/cloudwego/hertz/pkg/app.(*RequestContext).Next(0xc000808008, {0xae4ff8, 0x10f7d80})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/app/context.go:827 +0x4f
+github.com/cloudwego/hertz/pkg/route.(*Engine).ServeHTTP(0xc000134d88, {0xae4ff8, 0x10f7d80}, 0xc000808008)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:804 +0x84f
+github.com/cloudwego/hertz/pkg/protocol/http1.Server.Serve({{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x400000, 0x100000, ...}, ...}, ...)
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/protocol/http1/server.go:349 +0x102c
+github.com/cloudwego/hertz/pkg/route.(*Engine).Serve(0xc000134d88, {0xae4ff8, 0x10f7d80}, {0xaef910, 0xc0003565f0})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:547 +0x49d
+github.com/cloudwego/hertz/pkg/route.(*Engine).onData(0xc000134d88?, {0xae4ff8?, 0x10f7d80?}, {0x85a700?, 0xc0003565f0?})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/route/engine.go:450 +0xdd
+github.com/cloudwego/hertz/pkg/network/standard.(*transport).serve.func1({0xae4ff8?, 0x10f7d80?}, {0xaef910?, 0xc0003565f0?})
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/network/standard/transport.go:108 +0x13c
+created by github.com/cloudwego/hertz/pkg/network/standard.(*transport).serve in goroutine 43
+	D:/GoCode/pkg/mod/github.com/cloudwego/hertz@v0.10.3/pkg/network/standard/transport.go:101 +0x24e
+
+2026-01-31 20:23:09 [INFO] volunteer-system/internal/response/response.go:31 [failWithCode] error is 服务器内部错误
+2026-01-31 20:23:31 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 20:23:31 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 20:23:31 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 20:23:31 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-01-31 20:23:31 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-01-31 20:23:31 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 20:23:32 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 20:23:36 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 20:23:44 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 20:23:44 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 20:23:44 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 20:23:44 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-01-31 20:23:44 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-01-31 20:23:44 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 20:23:50 [INFO] volunteer-system/pkg/logger/gorm.go:57 [1.536ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '1@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:23:50 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.267ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 20:23:50.28' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:32:26 [INFO] volunteer-system/pkg/logger/gorm.go:57 [120.413ms] [rows:1] SELECT * FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:32:26 [INFO] volunteer-system/pkg/logger/gorm.go:57 [23.699ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 20:32:26.331' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:39:34 [INFO] volunteer-system/pkg/logger/gorm.go:57 [97.733ms] [rows:1] SELECT * FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:39:34 [INFO] volunteer-system/pkg/logger/gorm.go:57 [17.115ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 20:39:34.801' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:40:10 [INFO] volunteer-system/pkg/logger/gorm.go:57 [10.351ms] [rows:1] SELECT * FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:40:10 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.528ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 20:40:10.318' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:41:10 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.393ms] [rows:1] SELECT * FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:41:10 [INFO] volunteer-system/pkg/logger/gorm.go:57 [3.003ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 20:41:10.891' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 20:41:20 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 20:41:22 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 20:41:22 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 20:41:22 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 20:41:22 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-01-31 20:41:22 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-01-31 20:41:22 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 20:41:47 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.837ms] [rows:1] SELECT * FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 20:41:47 [INFO] volunteer-system/pkg/logger/gorm.go:57 [4.188ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 20:41:47.696' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 22:26:52 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-01-31 23:07:20 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-01-31 23:07:20 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-01-31 23:07:20 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-01-31 23:07:20 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-01-31 23:07:20 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-01-31 23:07:20 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-01-31 23:07:33 [INFO] volunteer-system/pkg/logger/gorm.go:57 [33.608ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '1@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 23:07:33 [INFO] volunteer-system/pkg/logger/gorm.go:57 [20.841ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 23:07:33.094' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 23:17:13 [INFO] volunteer-system/pkg/logger/gorm.go:57 [115.953ms] [rows:1] SELECT * FROM `sys_accounts` WHERE mobile_hash = '38918c63276fdd5f1ea9a8afe2968fa64107436534f7fee8db1453b15da3614d' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-01-31 23:17:13 [INFO] volunteer-system/pkg/logger/gorm.go:57 [28.144ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-01-31 23:17:13.123' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-01-31 23:39:55 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
+2026-02-02 21:40:32 [INFO] volunteer-system/cmd/cli/server.go:29 应用启动: Volunteer System (环境: development)
+2026-02-02 21:40:32 [INFO] volunteer-system/pkg/database/mysql/mysql.go:70 MySQL数据库连接成功: 127.0.0.1:3306/volunteer_system
+2026-02-02 21:40:32 [INFO] volunteer-system/cmd/cli/server.go:52 MySQL数据库初始化成功
+2026-02-02 21:40:32 [INFO] volunteer-system/pkg/database/redis/redis.go:47 Redis连接成功: 127.0.0.1:6379 (DB: 0)
+2026-02-02 21:40:32 [INFO] volunteer-system/cmd/cli/server.go:60 Redis初始化成功
+2026-02-02 21:40:32 [INFO] volunteer-system/cmd/cli/server.go:93 Hertz服务器启动在 0.0.0.0:1109
+2026-02-02 21:41:13 [INFO] volunteer-system/pkg/logger/gorm.go:57 [89.677ms] [rows:1] SELECT * FROM `sys_accounts` WHERE email = '1@qq.com' AND `sys_accounts`.`deleted_at` IS NULL ORDER BY `sys_accounts`.`id` LIMIT 1
+2026-02-02 21:41:13 [INFO] volunteer-system/pkg/logger/gorm.go:57 [19.523ms] [rows:1] UPDATE `sys_accounts` SET `last_login_time`=CURRENT_TIMESTAMP,`updated_at`='2026-02-02 21:41:13.952' WHERE id = 1 AND `sys_accounts`.`deleted_at` IS NULL
+2026-02-02 21:58:30 [INFO] volunteer-system/cmd/cli/server.go:79 数据库连接已关闭
