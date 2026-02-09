@@ -100,6 +100,9 @@ api-single-mac:
 build:
 	go build -o volunteer-system.exe cmd/main.go
 
+build-mac:
+	go build -o volunteer-system cmd/main.go
+
 run: build
 	volunteer-system.exe -c server
 

@@ -1,0 +1,26 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build artifacts
+volunteer-system
+volunteer-system.exe
+*.exe
+*.exe~
+*.out
+*.test
+coverage.out
+
+# Logs
+logs/
+*.log
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
