@@ -21,6 +21,11 @@ func StartServer() {
 
 	// 初始化日志
 	if cfg.Logging != nil {
+		logger.SetRotationConfig(
+			cfg.Logging.Rotation.Enabled,
+			cfg.Logging.Rotation.MaxSizeMB,
+			cfg.Logging.Rotation.MaxFiles,
+		)
 		if err := logger.Init(cfg.Logging.Level, cfg.Logging.Console, cfg.Logging.File); err != nil {
 			log.Fatalf("日志器初始化失败: %v", err)
 		}

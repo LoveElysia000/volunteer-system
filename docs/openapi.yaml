@@ -135,13 +135,9 @@ components:
                 auditorId:
                     type: string
                     description: 审核人 ID
-                oldStatus:
+                status:
                     type: integer
-                    description: 审核前状态
-                    format: int32
-                newStatus:
-                    type: integer
-                    description: 审核后状态
+                    description: 审核状态
                     format: int32
                 oldContent:
                     type: string

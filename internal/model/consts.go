@@ -7,17 +7,7 @@ const (
 
 	// 注册类型数字映射
 	RegisterTypeVolunteerCode    = 1 // 志愿者注册
-	RegisterTypeOrganizationCode = 2 // 组织注册
-
-	// 审核状态
-	ApprovalStatusPending  = "pending"  // 待审核
-	ApprovalStatusApproved = "approved" // 审核通过
-	ApprovalStatusRejected = "rejected" // 审核拒绝
-
-	// 审核状态数字映射
-	ApprovalStatusPendingCode  = 0 // 待审核
-	ApprovalStatusApprovedCode = 1 // 审核通过
-	ApprovalStatusRejectedCode = 2 // 审核拒绝
+	RegisterTypeOrganizationCode = 2 // 组织管理者注册
 
 	// 审核目标类型（对应 audit_records.target_type）
 	AuditTargetVolunteer int32 = 1 // 志愿者实名审核
@@ -25,14 +15,14 @@ const (
 	AuditTargetMember    int32 = 3 // 志愿者加入组织审核
 	AuditTargetSignup    int32 = 4 // 活动报名审核
 
-	// 审核结果（对应 audit_records.audit_result）
-	AuditResultPass   int32 = 1 // 通过
-	AuditResultReject int32 = 2 // 驳回
-
 	// 审核通用状态（用于当前审核目标）
 	AuditStatusPending  int32 = 1 // 待审核
 	AuditStatusApproved int32 = 2 // 审核通过
 	AuditStatusRejected int32 = 3 // 审核拒绝
+
+	// 审核结果编码（对应 audit_records.audit_result，由审核状态推导）
+	auditResultPassCode   int32 = 1 // 通过
+	auditResultRejectCode int32 = 2 // 驳回
 
 	// 审核类型（当前仅支持志愿者加入组织审核）
 	AuditTypeVolunteerJoinOrganization int32 = AuditTargetMember // 志愿者加入组织
@@ -53,6 +43,9 @@ const (
 	OperationTypeUpdate int32 = 2 // 更新
 	OperationTypeDelete int32 = 3 // 删除
 
+	// 组织状态
+	OrganizationDisabled int32 = 0 // 停用
+	OrganizationNormal   int32 = 1 // 正常
 )
 
 // GetRegisterTypeCode 根据注册类型字符串返回对应的数字代码
@@ -64,46 +57,6 @@ func GetRegisterTypeCode(registerType string) int {
 		return RegisterTypeOrganizationCode
 	default:
 		return 0 // 未知类型返回0
-	}
-}
-
-// GetRegisterTypeString 根据注册类型数字代码返回对应的字符串
-func GetRegisterTypeString(registerTypeCode int) string {
-	switch registerTypeCode {
-	case RegisterTypeVolunteerCode:
-		return RegisterTypeVolunteer
-	case RegisterTypeOrganizationCode:
-		return RegisterTypeOrganization
-	default:
-		return "" // 未知代码返回空字符串
-	}
-}
-
-// GetApprovalStatusCode 根据审核状态字符串返回对应的数字代码
-func GetApprovalStatusCode(approvalStatus string) int {
-	switch approvalStatus {
-	case ApprovalStatusPending:
-		return ApprovalStatusPendingCode
-	case ApprovalStatusApproved:
-		return ApprovalStatusApprovedCode
-	case ApprovalStatusRejected:
-		return ApprovalStatusRejectedCode
-	default:
-		return -1 // 未知状态返回-1
-	}
-}
-
-// GetApprovalStatusString 根据审核状态数字代码返回对应的字符串
-func GetApprovalStatusString(approvalStatusCode int) string {
-	switch approvalStatusCode {
-	case ApprovalStatusPendingCode:
-		return ApprovalStatusPending
-	case ApprovalStatusApprovedCode:
-		return ApprovalStatusApproved
-	case ApprovalStatusRejectedCode:
-		return ApprovalStatusRejected
-	default:
-		return "" // 未知代码返回空字符串
 	}
 }
 
@@ -119,13 +72,17 @@ func IsValidAuditTargetType(targetType int32) bool {
 
 // IsValidAuditResult 返回审核结果是否合法
 func IsValidAuditResult(auditResult int32) bool {
-	return auditResult == AuditResultPass || auditResult == AuditResultReject
+	return auditResult == auditResultPassCode || auditResult == auditResultRejectCode
 }
 
-// ResolveAuditStatus 根据审核结果计算目标状态
-func ResolveAuditStatus(auditResult int32) int32 {
-	if auditResult == AuditResultPass {
-		return AuditStatusApproved
+// ResolveAuditResult 根据审核状态计算审核结果
+func ResolveAuditResult(auditStatus int32) int32 {
+	switch auditStatus {
+	case AuditStatusApproved:
+		return auditResultPassCode
+	case AuditStatusRejected:
+		return auditResultRejectCode
+	default:
+		return 0
 	}
-	return AuditStatusRejected
 }

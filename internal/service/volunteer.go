@@ -38,15 +38,12 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		req.PageSize = 20
 	}
 
-	// 获取db
-	db := s.repo.DB
-
 	// 构建查询参数map
 	queryMap := make(map[string]any)
 
 	// 如果有关键字，先通过模糊查询获取志愿者ID列表
 	if req.Keyword != "" {
-		ids, err := s.repo.FindVolunteerIDsByKeyword(db, req.Keyword)
+		ids, err := s.repo.FindVolunteerIDsByKeyword(s.repo.DB, req.Keyword)
 		if err != nil {
 			log.Error("关键字查询志愿者ID失败: %v", err)
 			return nil, err
@@ -58,25 +55,25 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 				List:  []*api.VolunteerListItem{},
 			}, nil
 		}
-		queryMap["ids in (?)"] = ids
+		queryMap["v.id IN ?"] = ids
 	}
 
 	// 添加筛选条件
 	if req.FilterBy > 0 {
 		switch req.FilterBy {
 		case 1: // 活跃
-			queryMap["sys_accounts.status = ?"] = 1
+			queryMap["sys.status = ?"] = 1
 		case 2: // 非活跃
-			queryMap["sys_accounts.status = ?"] = 0
+			queryMap["sys.status = ?"] = 0
 		case 3: // 暂停
-			queryMap["sys_accounts.status = ?"] = 0
+			queryMap["sys.status = ?"] = 0
 		}
 	}
 
 	// 根据查询参数查询志愿者列表
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
-	volunteers, total, err := s.repo.GetVolunteerList(db, queryMap, pageSize, offset)
+	volunteers, total, err := s.repo.GetVolunteerList(s.repo.DB, queryMap, pageSize, offset)
 	if err != nil {
 		log.Error("查询志愿者列表失败: %v", err)
 		return nil, err
@@ -110,11 +107,8 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 }
 
 func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*api.VolunteerDetailResponse, error) {
-	// 获取db
-	db := s.repo.DB
-
 	// 查询志愿者信息
-	volunteer, err := s.repo.FindVolunteerByID(db, req.Id)
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.Id)
 	if err != nil {
 		log.Error("查询志愿者信息失败: %v, ID=%d", err, req.Id)
 		return nil, err
@@ -164,11 +158,8 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 		return nil, err
 	}
 
-	// 获取db
-	db := s.repo.DB
-
 	// 查询志愿者信息
-	volunteer, err := s.repo.FindVolunteerByID(db, req.Id)
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.Id)
 	if err != nil {
 		log.Error("查询志愿者信息失败: %v, ID=%d", err, req.Id)
 		return nil, err
@@ -216,9 +207,6 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 }
 
 func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*api.VolunteerUpdateResponse, error) {
-	// 获取db
-	db := s.repo.DB
-
 	// 参数校验 + 构建更新查询
 	if req.VolunteerId <= 0 {
 		return nil, errors.New("志愿者ID无效")
@@ -274,7 +262,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	}
 
 	// 检查志愿者是否存在
-	volunteer, err := s.repo.FindVolunteerByID(db, req.VolunteerId)
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.VolunteerId)
 	if err != nil {
 		log.Error("查询志愿者信息失败: %v, ID=%d", err, req.VolunteerId)
 		return nil, errors.New("查询志愿者信息失败")
@@ -285,7 +273,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	}
 
 	// 调用 repository 层更新
-	err = s.repo.UpdateVolunteer(db, req.VolunteerId, updateQuery)
+	err = s.repo.UpdateVolunteer(s.repo.DB, req.VolunteerId, updateQuery)
 	if err != nil {
 		log.Error("更新志愿者信息失败: %v, ID=%d", err, req.VolunteerId)
 		return nil, errors.New("更新志愿者信息失败")

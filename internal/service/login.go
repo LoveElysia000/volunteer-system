@@ -39,9 +39,6 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 	// 记录登录请求
 	log.Info("用户登录请求: 登录类型=%s, 标识=%s, 身份类型=%s", req.LoginType, maskIdentifier(req.Identifier), req.Identity)
 
-	// 获取db
-	db := s.repo.DB
-
 	// 1. 验证请求参数
 	if err := s.validateLoginRequest(req); err != nil {
 		log.Warn("登录请求验证失败: %v, 登录类型=%s, 标识=%s", err, req.LoginType, req.Identifier)
@@ -52,7 +49,7 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 
 	// 2. 根据登录类型查找用户
 	log.Debug("开始查找用户: 登录类型=%s", req.LoginType)
-	user, err := s.findUserByIdentifier(db, req)
+	user, err := s.findUserByIdentifier(s.repo.DB, req)
 	if err != nil {
 		log.Error("查找用户失败: %v, 登录类型=%s, 标识=%s", err, req.LoginType, req.Identifier)
 		resp.Success = false
@@ -113,7 +110,7 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 	log.Debug("令牌生成成功: 用户ID=%d", user.ID)
 
 	// 7. 更新最后登录时间
-	if err := s.repo.UpdateLastLoginTime(db, user.ID); err != nil {
+	if err := s.repo.UpdateLastLoginTime(s.repo.DB, user.ID); err != nil {
 		log.Error("更新最后登录时间失败: %v, 用户ID=%d", err, user.ID)
 	}
 
@@ -206,7 +203,7 @@ func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, erro
 		log.Warn("登出失败: 令牌不能为空")
 		resp.Success = false
 		resp.Message = "令牌不能为空"
-		return &resp, errors.New("token is required")
+		return &resp, errors.New("令牌不能为空")
 	}
 
 	// 2. 验证 Refresh Token 并获取用户信息
@@ -245,15 +242,12 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 
 	log.Info("刷新令牌请求")
 
-	// 获取db
-	db := s.repo.DB
-
 	// 1. 验证请求参数
 	if req.RefreshToken == "" {
 		log.Warn("刷新令牌失败: 刷新令牌不能为空")
 		resp.Success = false
 		resp.Message = "刷新令牌不能为空"
-		return &resp, errors.New("refresh token is required")
+		return &resp, errors.New("刷新令牌不能为空")
 	}
 
 	log.Debug("开始刷新令牌")
@@ -297,7 +291,7 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 	// 5. 获取用户信息（如果用户ID有效）
 	if userID != 0 {
 		log.Debug("开始获取用户信息: 用户ID=%d", userID)
-		user, err := s.repo.FindByID(db, userID)
+		user, err := s.repo.FindByID(s.repo.DB, userID)
 		if err == nil && user != nil {
 			resp.UserInfo = util.ConvertSysAccountToUserInfo(user)
 			log.Debug("用户信息获取成功: 用户ID=%d, 邮箱=%s", user.ID, user.Email)

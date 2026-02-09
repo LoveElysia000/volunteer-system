@@ -33,9 +33,6 @@ func NewRegisterService(ctx context.Context, c *app.RequestContext) *RegisterSer
 
 // RegisterVolunteer 志愿者注册
 func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.RegisterResponse, error) {
-	// 获取db
-	db := s.repo.DB
-
 	// 验证必填字段
 	if err := s.validateVolunteerRequest(req); err != nil {
 		log.Warn("志愿者注册验证失败: %v", err)
@@ -50,7 +47,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 	}
 
 	// 检查手机号是否已存在（通过哈希值）
-	exists, err := s.repo.CheckMobileExists(db, mobilePair.Hash)
+	exists, err := s.repo.CheckMobileExists(s.repo.DB, mobilePair.Hash)
 	if err != nil {
 		log.Error("志愿者注册 - 检查手机号是否存在失败: %v", err)
 		return nil, errors.New("检查手机号失败")
@@ -61,7 +58,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 	}
 
 	// 检查邮箱是否已存在
-	exists, err = s.repo.CheckEmailExists(db, req.Email)
+	exists, err = s.repo.CheckEmailExists(s.repo.DB, req.Email)
 	if err != nil {
 		log.Error("志愿者注册 - 检查邮箱是否存在失败: %v", err)
 		return nil, errors.New("检查邮箱失败")
@@ -85,7 +82,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 	}
 
 	var account *model.SysAccount
-	err = db.Transaction(func(tx *gorm.DB) error {
+	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建系统账户
 		account = &model.SysAccount{
 			Username:     req.UserName,
@@ -108,7 +105,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 			AccountID:   account.ID,
 			RealName:    req.Name,
 			Gender:      genderCode,
-			AuditStatus: model.ApprovalStatusPendingCode, // 未认证
+			AuditStatus: 0, // 未认证
 			CreatedAt:   time.Now(),
 		}
 		err = s.repo.CreateVolunteer(tx, volunteer)
@@ -129,9 +126,6 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 
 // RegisterOrganization 组织注册
 func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.RegisterResponse, error) {
-	// 获取db
-	db := s.repo.DB
-
 	// 验证必填字段
 	if err := s.validateOrganizationRequest(req); err != nil {
 		log.Warn("组织注册验证失败: %v", err)
@@ -146,7 +140,7 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 	}
 
 	// 检查手机号是否已存在（通过哈希值）
-	exists, err := s.repo.CheckMobileExists(db, mobilePair.Hash)
+	exists, err := s.repo.CheckMobileExists(s.repo.DB, mobilePair.Hash)
 	if err != nil {
 		log.Error("组织注册 - 检查手机号是否存在失败: %v", err)
 		return nil, errors.New("检查手机号失败")
@@ -157,7 +151,7 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 	}
 
 	// 检查邮箱是否已存在
-	exists, err = s.repo.CheckEmailExists(db, req.Email)
+	exists, err = s.repo.CheckEmailExists(s.repo.DB, req.Email)
 	if err != nil {
 		log.Error("组织注册 - 检查邮箱是否存在失败: %v", err)
 		return nil, errors.New("检查邮箱失败")
@@ -175,7 +169,7 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 	}
 
 	var account *model.SysAccount
-	err = db.Transaction(func(tx *gorm.DB) error {
+	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建系统账户
 		account = &model.SysAccount{
 			Username:     req.OrganizationName,
@@ -199,9 +193,10 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 			AccountID:     account.ID,
 			OrgName:       req.OrganizationName,
 			ContactPerson: req.Name,
-			ContactPhone:  mobilePair.Encrypted,            // 组织联系手机号也使用加密存储
-			AuditStatus:   model.ApprovalStatusPendingCode, // 待审核状态
-			CreatedAt:     time.Now(),
+			ContactPhone:  mobilePair.Encrypted, // 组织联系手机号也使用加密存储
+			// TODO(audit-status-removal): organizations 表移除 audit_status 后，删除该字段初始化。
+			AuditStatus: 0, // 未提交
+			CreatedAt:   time.Now(),
 		}
 		err = s.repo.CreateOrganization(tx, org)
 		if err != nil {

@@ -1,15 +1,18 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // LogLevel 日志级别类型
@@ -24,149 +27,233 @@ const (
 
 // Logger 日志结构体
 type Logger struct {
-	mu      sync.Mutex
-	logger  *log.Logger
-	level   LogLevel
-	console bool
+	mu    sync.RWMutex
+	inner *slog.Logger
+	level *slog.LevelVar
+}
+
+type rotationConfig struct {
+	enabled   bool
+	maxSizeMB int
+	maxFiles  int
+	maxAgeDay int
+	compress  bool
 }
 
 var (
-	instance *Logger
+	instance = newDefaultLogger()
 	once     sync.Once
+	initErr  error
+
+	rotationMu  sync.RWMutex
+	rotationCfg = rotationConfig{
+		enabled:   false,
+		maxSizeMB: 100,
+		maxFiles:  3,
+		maxAgeDay: 28,
+		compress:  true,
+	}
 )
 
 // Init 初始化日志器
 func Init(levelStr string, console bool, filePath string) error {
-	var err error
 	once.Do(func() {
-		instance, err = newLogger(levelStr, console, filePath)
+		initErr = instance.reconfigure(levelStr, console, filePath)
 	})
-	return err
+	return initErr
 }
 
-// GetLogger 获取日志器实例，如果未初始化则返回默认logger
-func GetLogger() *Logger {
-	if instance == nil {
-		// 返回一个默认的logger，输出到控制台
-		return &Logger{
-			logger:  log.New(os.Stdout, "", 0),
-			level:   INFO,
-			console: true,
-		}
+// SetRotationConfig 设置日志切割配置（在 Init 前调用）
+func SetRotationConfig(enabled bool, maxSizeMB, maxFiles int) {
+	rotationMu.Lock()
+	defer rotationMu.Unlock()
+
+	rotationCfg.enabled = enabled
+	if maxSizeMB > 0 {
+		rotationCfg.maxSizeMB = maxSizeMB
 	}
+	if maxFiles > 0 {
+		rotationCfg.maxFiles = maxFiles
+	}
+}
+
+// GetLogger 获取日志器实例
+func GetLogger() *Logger {
 	return instance
 }
 
-// newLogger 创建新的日志器
-func newLogger(levelStr string, console bool, filePath string) (*Logger, error) {
-	// 解析日志级别
-	level := parseLevel(levelStr)
-
-	// 确保日志目录存在
-	logDir := filepath.Dir(filePath)
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return nil, fmt.Errorf("创建日志目录失败: %w", err)
-	}
-
-	// 打开日志文件
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("打开日志文件失败: %w", err)
-	}
-
-	// 创建多写入器
-	var writers []io.Writer
-	writers = append(writers, file)
-	if console {
-		writers = append(writers, os.Stdout)
-	}
+func newDefaultLogger() *Logger {
+	lv := &slog.LevelVar{}
+	lv.Set(slog.LevelInfo)
 
 	return &Logger{
-		logger:  log.New(io.MultiWriter(writers...), "", 0),
-		level:   level,
-		console: console,
-	}, nil
-}
-
-// parseLevel 解析日志级别字符串
-func parseLevel(levelStr string) LogLevel {
-	switch levelStr {
-	case "debug":
-		return DEBUG
-	case "info":
-		return INFO
-	case "warn":
-		return WARN
-	case "error":
-		return ERROR
-	default:
-		return INFO
+		inner: slog.New(newHandler(os.Stdout, lv)),
+		level: lv,
 	}
 }
 
-// formatLevel 格式化日志级别
-func (l *Logger) formatLevel(level LogLevel) string {
-	switch level {
-	case DEBUG:
-		return "[DEBUG]"
-	case INFO:
-		return "[INFO]"
-	case WARN:
-		return "[WARN]"
-	case ERROR:
-		return "[ERROR]"
-	default:
-		return "[INFO]"
-	}
-}
+func (l *Logger) reconfigure(levelStr string, console bool, filePath string) error {
+	lv := &slog.LevelVar{}
+	lv.Set(parseSlogLevel(levelStr))
 
-// log 内部日志方法
-func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
-	if level < l.level {
-		return
+	writer, err := buildWriter(console, filePath)
+	if err != nil {
+		return err
 	}
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	// 获取调用者信息
-	_, file, line, ok := runtime.Caller(2) // skip 2 frames: log() -> Info/Warn/Error...
-	var caller string
-	if ok {
-		// 简化文件路径，只保留相对于项目根目录的路径
-		if idx := strings.Index(file, "volunteer-system"); idx >= 0 {
-			file = file[idx:]
+	l.inner = slog.New(newHandler(writer, lv))
+	l.level = lv
+	return nil
+}
+
+func buildWriter(console bool, filePath string) (io.Writer, error) {
+	writers := make([]io.Writer, 0, 2)
+
+	if strings.TrimSpace(filePath) != "" {
+		logDir := filepath.Dir(filePath)
+		if err := os.MkdirAll(logDir, 0o755); err != nil {
+			return nil, fmt.Errorf("创建日志目录失败: %w", err)
 		}
-		caller = fmt.Sprintf("%s:%d", file, line)
-	} else {
-		caller = "unknown:0"
+
+		fileWriter, err := newFileWriter(filePath)
+		if err != nil {
+			return nil, err
+		}
+		writers = append(writers, fileWriter)
 	}
 
-	// 格式化日志消息
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	message := fmt.Sprintf(format, args...)
-	logLine := fmt.Sprintf("%s %s %s %s\n", timestamp, l.formatLevel(level), caller, message)
+	if console || len(writers) == 0 {
+		writers = append(writers, os.Stdout)
+	}
 
-	// 写入日志
-	l.logger.Print(logLine)
+	return io.MultiWriter(writers...), nil
+}
+
+func newFileWriter(filePath string) (io.Writer, error) {
+	cfg := getRotationConfig()
+
+	if cfg.enabled {
+		return &lumberjack.Logger{
+			Filename:   filePath,
+			MaxSize:    cfg.maxSizeMB,
+			MaxBackups: cfg.maxFiles,
+			MaxAge:     cfg.maxAgeDay,
+			Compress:   cfg.compress,
+		}, nil
+	}
+
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return nil, fmt.Errorf("打开日志文件失败: %w", err)
+	}
+	return file, nil
+}
+
+func getRotationConfig() rotationConfig {
+	rotationMu.RLock()
+	defer rotationMu.RUnlock()
+	return rotationCfg
+}
+
+func newHandler(writer io.Writer, leveler slog.Leveler) slog.Handler {
+	return slog.NewTextHandler(writer, &slog.HandlerOptions{
+		AddSource:   true,
+		Level:       leveler,
+		ReplaceAttr: replaceAttrs,
+	})
+}
+
+func replaceAttrs(_ []string, attr slog.Attr) slog.Attr {
+	switch attr.Key {
+	case slog.TimeKey:
+		t := attr.Value.Time()
+		if !t.IsZero() {
+			return slog.String(slog.TimeKey, t.Format("2006-01-02 15:04:05"))
+		}
+	case slog.LevelKey:
+		if lv, ok := attr.Value.Any().(slog.Level); ok {
+			return slog.String(slog.LevelKey, formatSlogLevel(lv))
+		}
+	case slog.SourceKey:
+		if src, ok := attr.Value.Any().(*slog.Source); ok && src != nil {
+			if idx := strings.Index(src.File, "volunteer-system"); idx >= 0 {
+				src.File = src.File[idx:]
+			}
+			return slog.Any(slog.SourceKey, src)
+		}
+	}
+	return attr
+}
+
+func formatSlogLevel(level slog.Level) string {
+	switch {
+	case level <= slog.LevelDebug:
+		return "[DEBUG]"
+	case level < slog.LevelWarn:
+		return "[INFO]"
+	case level < slog.LevelError:
+		return "[WARN]"
+	default:
+		return "[ERROR]"
+	}
+}
+
+func parseSlogLevel(levelStr string) slog.Level {
+	switch strings.ToLower(strings.TrimSpace(levelStr)) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+// log 内部日志方法
+func (l *Logger) log(level slog.Level, format string, args ...interface{}) {
+	l.mu.RLock()
+	inner := l.inner
+	l.mu.RUnlock()
+
+	if inner == nil {
+		return
+	}
+
+	ctx := context.Background()
+	if !inner.Enabled(ctx, level) {
+		return
+	}
+
+	msg := fmt.Sprintf(format, args...)
+
+	var pcs [1]uintptr
+	runtime.Callers(3, pcs[:])
+
+	record := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	_ = inner.Handler().Handle(ctx, record)
 }
 
 // Debug 输出调试日志
 func (l *Logger) Debug(format string, args ...interface{}) {
-	l.log(DEBUG, format, args...)
+	l.log(slog.LevelDebug, format, args...)
 }
 
 // Info 输出信息日志
 func (l *Logger) Info(format string, args ...interface{}) {
-	l.log(INFO, format, args...)
+	l.log(slog.LevelInfo, format, args...)
 }
 
 // Warn 输出警告日志
 func (l *Logger) Warn(format string, args ...interface{}) {
-	l.log(WARN, format, args...)
+	l.log(slog.LevelWarn, format, args...)
 }
 
 // Error 输出错误日志
 func (l *Logger) Error(format string, args ...interface{}) {
-	l.log(ERROR, format, args...)
+	l.log(slog.LevelError, format, args...)
 }

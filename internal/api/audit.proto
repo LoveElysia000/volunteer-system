@@ -122,20 +122,18 @@ message AuditRecordDetail {
   int64 targetId = 3;
   // 审核人 ID
   int64 auditorId = 4;
-  // 审核前状态
-  int32 oldStatus = 5;
-  // 审核后状态
-  int32 newStatus = 6;
+  // 审核状态
+  int32 status = 5;
   // 审核前内容快照
-  string oldContent = 7;
+  string oldContent = 6;
   // 审核后内容快照
-  string newContent = 8;
+  string newContent = 7;
   // 审核结果
-  int32 auditResult = 9;
+  int32 auditResult = 8;
   // 驳回原因
-  string rejectReason = 10;
+  string rejectReason = 9;
   // 审核时间
-  string auditTime = 11;
+  string auditTime = 10;
   // 记录创建时间
-  string createdAt = 12;
+  string createdAt = 11;
 }

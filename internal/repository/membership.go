@@ -35,6 +35,20 @@ func (r *Repository) GetMembershipByID(db *gorm.DB, id int64) (*model.OrgMember,
 	return &member, nil
 }
 
+// GetMembershipsByIDs returns memberships by ids.
+func (r *Repository) GetMembershipsByIDs(db *gorm.DB, ids []int64) ([]*model.OrgMember, error) {
+	members := make([]*model.OrgMember, 0)
+	if len(ids) == 0 {
+		return members, nil
+	}
+
+	if err := db.WithContext(r.ctx).Model(&model.OrgMember{}).Where("id IN ?", ids).Find(&members).Error; err != nil {
+		return nil, err
+	}
+
+	return members, nil
+}
+
 // CreateMembership creates a membership record.
 func (r *Repository) CreateMembership(db *gorm.DB, member *model.OrgMember) error {
 	return db.WithContext(r.ctx).Create(member).Error

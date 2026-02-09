@@ -64,7 +64,7 @@ endif
 # Targets
 # ==============================================================================
 
-.PHONY: all install api api-single build run clean test docker-build
+.PHONY: all install api api-single api-single-mac build run clean test docker-build
 
 all: build
 
@@ -87,6 +87,15 @@ api-single:
 	$(PROTOC_RUN) $(file)
 	$(SED_CMD)
 	$(INJECT_CMD)
+
+# 生成单个 Proto 文件 (仅 Mac)
+# 使用方法: make api-single-mac file=internal/api/volunteer.proto
+api-single-mac:
+	@if [ -z "$(file)" ]; then echo "Usage: make api-single-mac file=path/to/file.proto"; exit 1; fi
+	$(PROTOC_RUN) $(file)
+	@pb_file="$(patsubst %.proto,%.pb.go,$(file))"; \
+	sed -i '' -e "s/,omitempty//g" "$$pb_file"; \
+	protoc-go-inject-tag -input="$$pb_file"
 
 build:
 	go build -o volunteer-system.exe cmd/main.go
