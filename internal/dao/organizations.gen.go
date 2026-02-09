@@ -36,7 +36,7 @@ func newOrganization(db *gorm.DB, opts ...gen.DOOption) organization {
 	_organization.Address = field.NewString(tableName, "address")
 	_organization.LogoURL = field.NewString(tableName, "logo_url")
 	_organization.Introduction = field.NewString(tableName, "introduction")
-	_organization.AuditStatus = field.NewInt32(tableName, "audit_status")
+	_organization.Status = field.NewInt32(tableName, "status")
 	_organization.CreatedAt = field.NewTime(tableName, "created_at")
 	_organization.UpdatedAt = field.NewTime(tableName, "updated_at")
 
@@ -59,7 +59,7 @@ type organization struct {
 	Address       field.String // 办公地址
 	LogoURL       field.String // 组织Logo URL
 	Introduction  field.String // 组织介绍
-	AuditStatus   field.Int32  // 资质审核状态: 0-未提交, 1-审核中, 2-已通过, 3-已驳回
+	Status        field.Int32  // 状态: 0-停用, 1-正常
 	CreatedAt     field.Time   // 创建时间
 	UpdatedAt     field.Time   // 更新时间
 
@@ -87,7 +87,7 @@ func (o *organization) updateTableName(table string) *organization {
 	o.Address = field.NewString(table, "address")
 	o.LogoURL = field.NewString(table, "logo_url")
 	o.Introduction = field.NewString(table, "introduction")
-	o.AuditStatus = field.NewInt32(table, "audit_status")
+	o.Status = field.NewInt32(table, "status")
 	o.CreatedAt = field.NewTime(table, "created_at")
 	o.UpdatedAt = field.NewTime(table, "updated_at")
 
@@ -128,7 +128,7 @@ func (o *organization) fillFieldMap() {
 	o.fieldMap["address"] = o.Address
 	o.fieldMap["logo_url"] = o.LogoURL
 	o.fieldMap["introduction"] = o.Introduction
-	o.fieldMap["audit_status"] = o.AuditStatus
+	o.fieldMap["status"] = o.Status
 	o.fieldMap["created_at"] = o.CreatedAt
 	o.fieldMap["updated_at"] = o.UpdatedAt
 }

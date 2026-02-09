@@ -17,23 +17,23 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:          db,
-		AuditRecord: newAuditRecord(db, opts...),
+		db:           db,
+		Organization: newOrganization(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	AuditRecord auditRecord
+	Organization organization
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		AuditRecord: q.AuditRecord.clone(db),
+		db:           db,
+		Organization: q.Organization.clone(db),
 	}
 }
 
@@ -47,18 +47,18 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		AuditRecord: q.AuditRecord.replaceDB(db),
+		db:           db,
+		Organization: q.Organization.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	AuditRecord *auditRecordDo
+	Organization *organizationDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		AuditRecord: q.AuditRecord.WithContext(ctx),
+		Organization: q.Organization.WithContext(ctx),
 	}
 }
 

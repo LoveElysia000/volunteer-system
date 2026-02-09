@@ -10,6 +10,5 @@ ADD INDEX `idx_status` (`status`);
 
 -- 3. 移除组织审核状态字段（请先确认代码已不再依赖 organizations.audit_status）
 ALTER TABLE `organizations`
-DROP INDEX `idx_name_audit`,
 DROP INDEX `idx_audit_status`,
 DROP COLUMN `audit_status`;
