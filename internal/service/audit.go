@@ -256,7 +256,6 @@ func (s *AuditService) applyVolunteerAuditApproval(tx *gorm.DB, record *model.Au
 		return err
 	}
 	return s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
-		// TODO(volunteer-status-migration): 接入 volunteers.status 后，明确审核通过时 audit_status 与 status 的联动落库策略。
 		"audit_status": model.VolunteerAuditStatusApproved,
 	})
 }

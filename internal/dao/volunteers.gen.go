@@ -38,6 +38,7 @@ func newVolunteer(db *gorm.DB, opts ...gen.DOOption) volunteer {
 	_volunteer.TotalHours = field.NewFloat64(tableName, "total_hours")
 	_volunteer.ServiceCount = field.NewInt32(tableName, "service_count")
 	_volunteer.CreditScore = field.NewInt32(tableName, "credit_score")
+	_volunteer.Status = field.NewInt32(tableName, "status")
 	_volunteer.AuditStatus = field.NewInt32(tableName, "audit_status")
 	_volunteer.CreatedAt = field.NewTime(tableName, "created_at")
 	_volunteer.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -63,6 +64,7 @@ type volunteer struct {
 	TotalHours   field.Float64 // 累计服务时长(小时)
 	ServiceCount field.Int32   // 累计服务次数
 	CreditScore  field.Int32   // 信用分(默认100)
+	Status       field.Int32   // 志愿者状态: 1-活跃, 2-非活跃, 3-暂停
 	AuditStatus  field.Int32   // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-已驳回
 	CreatedAt    field.Time    // 创建时间
 	UpdatedAt    field.Time    // 更新时间
@@ -93,6 +95,7 @@ func (v *volunteer) updateTableName(table string) *volunteer {
 	v.TotalHours = field.NewFloat64(table, "total_hours")
 	v.ServiceCount = field.NewInt32(table, "service_count")
 	v.CreditScore = field.NewInt32(table, "credit_score")
+	v.Status = field.NewInt32(table, "status")
 	v.AuditStatus = field.NewInt32(table, "audit_status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
@@ -122,7 +125,7 @@ func (v *volunteer) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *volunteer) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 14)
+	v.fieldMap = make(map[string]field.Expr, 15)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["account_id"] = v.AccountID
 	v.fieldMap["real_name"] = v.RealName
@@ -134,6 +137,7 @@ func (v *volunteer) fillFieldMap() {
 	v.fieldMap["total_hours"] = v.TotalHours
 	v.fieldMap["service_count"] = v.ServiceCount
 	v.fieldMap["credit_score"] = v.CreditScore
+	v.fieldMap["status"] = v.Status
 	v.fieldMap["audit_status"] = v.AuditStatus
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt

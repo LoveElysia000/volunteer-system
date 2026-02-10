@@ -92,8 +92,8 @@ api:
 api-single:
 	@if "$(file)"=="" (echo Usage: make api-single file=path/to/file.proto && exit 1)
 	$(PROTOC_RUN) $(file)
-	$(SED_CMD)
-	$(INJECT_CMD)
+	"$(Git_Bash)" -c "sed -i 's/,omitempty//g' $(patsubst %.proto,%.pb.go,$(file))"
+	protoc-go-inject-tag -input="$(patsubst %.proto,%.pb.go,$(file))"
 
 # 生成单个 Proto 文件 (仅 Mac)
 # 使用方法: make api-single-mac file=internal/api/volunteer.proto

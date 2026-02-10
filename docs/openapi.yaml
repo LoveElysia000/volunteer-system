@@ -154,9 +154,7 @@ components:
                     format: int32
                 auditStatus:
                     type: integer
-                    description: |-
-                        TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于详情状态展示，避免与 auditStatus 语义混淆。
-                         实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
                     format: int32
                 createdAt:
                     type: string
@@ -164,6 +162,10 @@ components:
                 updatedAt:
                     type: string
                     description: 更新时间
+                status:
+                    type: integer
+                    description: 志愿者状态
+                    format: int32
             description: VolunteerInfo 志愿者信息
         volunteer.VolunteerListItem:
             type: object
@@ -197,9 +199,7 @@ components:
                     format: int32
                 auditStatus:
                     type: integer
-                    description: |-
-                        TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于列表状态展示，避免与 auditStatus 语义混淆。
-                         实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
                     format: int32
                 createdAt:
                     type: string
@@ -207,6 +207,10 @@ components:
                 updatedAt:
                     type: string
                     description: 更新时间
+                status:
+                    type: integer
+                    description: 志愿者状态
+                    format: int32
             description: VolunteerListItem 志愿者列表项
         volunteer.VolunteerListResponse:
             type: object

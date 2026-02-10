@@ -23,6 +23,7 @@ type Volunteer struct {
 	TotalHours   float64    `gorm:"column:total_hours;not null;default:0.0;comment:累计服务时长(小时)" json:"total_hours"`               // 累计服务时长(小时)
 	ServiceCount int32      `gorm:"column:service_count;not null;comment:累计服务次数" json:"service_count"`                           // 累计服务次数
 	CreditScore  int32      `gorm:"column:credit_score;not null;default:100;comment:信用分(默认100)" json:"credit_score"`             // 信用分(默认100)
+	Status       int32      `gorm:"column:status;not null;default:1;comment:志愿者状态: 1-活跃, 2-非活跃, 3-暂停" json:"status"`             // 志愿者状态: 1-活跃, 2-非活跃, 3-暂停
 	AuditStatus  int32      `gorm:"column:audit_status;not null;comment:实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-已驳回" json:"audit_status"` // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-已驳回
 	CreatedAt    time.Time  `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`         // 创建时间
 	UpdatedAt    time.Time  `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`         // 更新时间

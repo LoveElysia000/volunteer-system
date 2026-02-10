@@ -35,7 +35,7 @@ service VolunteerService {
   // 更新志愿者信息（志愿者端）
   rpc VolunteerUpdate(VolunteerUpdateRequest) returns (VolunteerUpdateResponse) {
     option (google.api.http) = {
-      put: "/api/volunteers/:id"
+      put : "/api/volunteers/:id"
       body: "*"
     };
   }
@@ -53,8 +53,8 @@ message VolunteerListRequest {
 
 // VolunteerListResponse 志愿者列表响应
 message VolunteerListResponse {
-  int32 total = 1;
-  repeated VolunteerListItem list = 2;
+  int32                      total = 1;
+  repeated VolunteerListItem list  = 2;
 }
 
 // VolunteerListItem 志愿者列表项
@@ -74,13 +74,14 @@ message VolunteerListItem {
   int32 serviceCount = 7;
   // 信用分
   int32 creditScore = 8;
-  // TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于列表状态展示，避免与 auditStatus 语义混淆。
   // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
   int32 auditStatus = 9;
   // 创建时间
   string createdAt = 10;
   // 更新时间
   string updatedAt = 11;
+  // 志愿者状态
+  int32 status = 12;
 }
 
 // VolunteerDetailRequest 志愿者详情请求
@@ -130,15 +131,15 @@ message VolunteerInfo {
   int32 serviceCount = 10;
   // 信用分
   int32 creditScore = 11;
-  // TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于详情状态展示，避免与 auditStatus 语义混淆。
   // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
   int32 auditStatus = 12;
   // 创建时间
   string createdAt = 13;
   // 更新时间
   string updatedAt = 14;
+  // 志愿者状态
+  int32 status = 15;
 }
-
 
 // VolunteerUpdateRequest 更新志愿者请求
 message VolunteerUpdateRequest {
@@ -158,8 +159,6 @@ message VolunteerUpdateRequest {
 
 // VolunteerUpdateResponse 更新志愿者响应
 message VolunteerUpdateResponse {}
-
-
 
 // BaseVolunteer 基础志愿者信息（用于其他服务引用）
 message BaseVolunteer {

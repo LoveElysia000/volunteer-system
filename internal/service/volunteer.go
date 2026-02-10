@@ -94,8 +94,9 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		Total: int32(total),
 		List:  make([]*api.VolunteerListItem, 0, len(volunteers)),
 	}
-
-	// TODO(volunteer-status-migration): 接入 volunteers.status 后，评估列表返回是否新增/替换状态字段，避免与 auditStatus 语义混淆。
+	if len(volunteers) == 0 {
+		return resp, nil
+	}
 	for _, v := range volunteers {
 		item := &api.VolunteerListItem{
 			Id:           v.ID,
@@ -107,6 +108,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 			ServiceCount: v.ServiceCount,
 			CreditScore:  v.CreditScore,
 			AuditStatus:  v.AuditStatus,
+			Status:       v.Status,
 			CreatedAt:    v.CreatedAt.Format("2006-01-02 15:04:05"),
 			UpdatedAt:    v.UpdatedAt.Format("2006-01-02 15:04:05"),
 		}
@@ -149,10 +151,10 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 			TotalHours:   volunteer.TotalHours,
 			ServiceCount: volunteer.ServiceCount,
 			CreditScore:  volunteer.CreditScore,
-			// TODO(volunteer-status-migration): 接入 volunteers.status 后，评估详情返回是否新增/替换状态字段，避免与 auditStatus 语义混淆。
-			AuditStatus: volunteer.AuditStatus,
-			CreatedAt:   volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:   volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
+			AuditStatus:  volunteer.AuditStatus,
+			Status:       volunteer.Status,
+			CreatedAt:    volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:    volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}
 
@@ -206,10 +208,10 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 			TotalHours:   volunteer.TotalHours,
 			ServiceCount: volunteer.ServiceCount,
 			CreditScore:  volunteer.CreditScore,
-			// TODO(volunteer-status-migration): 接入 volunteers.status 后，评估个人信息返回是否新增/替换状态字段，避免与 auditStatus 语义混淆。
-			AuditStatus: volunteer.AuditStatus,
-			CreatedAt:   volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:   volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
+			Status:       volunteer.Status,
+			AuditStatus:  volunteer.AuditStatus,
+			CreatedAt:    volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:    volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}
 

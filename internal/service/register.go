@@ -102,10 +102,10 @@ func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (
 
 		// 创建志愿者档案
 		volunteer := &model.Volunteer{
-			AccountID: account.ID,
-			RealName:  req.Name,
-			Gender:    genderCode,
-			// TODO(volunteer-status-migration): volunteers.status 字段尚未落库；DDL 上线后注册时同步写入 status=model.VolunteerActiveStatus，并明确其与 audit_status 的职责边界。
+			AccountID:   account.ID,
+			RealName:    req.Name,
+			Gender:      genderCode,
+			Status:      model.VolunteerActiveStatus,          // 默认启用志愿者
 			AuditStatus: model.VolunteerAuditStatusUnverified, // 未认证
 			CreatedAt:   time.Now(),
 		}
