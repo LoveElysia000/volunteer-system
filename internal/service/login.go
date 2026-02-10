@@ -36,22 +36,18 @@ func NewLoginService(ctx context.Context, c *app.RequestContext) *LoginService {
 func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) {
 	var resp api.LoginResponse
 
-	// 记录登录请求
-	log.Info("用户登录请求: 登录类型=%s, 标识=%s, 身份类型=%s", req.LoginType, maskIdentifier(req.Identifier), req.Identity)
-
 	// 1. 验证请求参数
 	if err := s.validateLoginRequest(req); err != nil {
-		log.Warn("登录请求验证失败: %v, 登录类型=%s, 标识=%s", err, req.LoginType, req.Identifier)
+		log.Warn("登录请求验证失败: %v, 登录类型=%s, 标识=%s", err, req.LoginType, maskIdentifier(req.Identifier))
 		resp.Success = false
 		resp.Message = err.Error()
 		return &resp, nil
 	}
 
 	// 2. 根据登录类型查找用户
-	log.Debug("开始查找用户: 登录类型=%s", req.LoginType)
 	user, err := s.findUserByIdentifier(s.repo.DB, req)
 	if err != nil {
-		log.Error("查找用户失败: %v, 登录类型=%s, 标识=%s", err, req.LoginType, req.Identifier)
+		log.Error("查找用户失败: %v, 登录类型=%s, 标识=%s", err, req.LoginType, maskIdentifier(req.Identifier))
 		resp.Success = false
 		resp.Message = "系统错误，请稍后重试"
 		return &resp, err
@@ -63,7 +59,6 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 		resp.Message = "用户不存在"
 		return &resp, nil
 	}
-	log.Debug("用户查询成功: 用户ID=%d, 身份类型=%d", user.ID, user.IdentityType)
 
 	// 3. 验证用户状态
 	if user.Status != 1 {
@@ -91,7 +86,6 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 	}
 
 	// 6. 生成JWT令牌
-	log.Debug("开始生成令牌: 用户ID=%d", user.ID)
 	jwtManager := util.GetJWTManager()
 	userID := fmt.Sprintf("%d", user.ID)
 
@@ -107,7 +101,6 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 		resp.Message = "令牌生成失败"
 		return &resp, err
 	}
-	log.Debug("令牌生成成功: 用户ID=%d", user.ID)
 
 	// 7. 更新最后登录时间
 	if err := s.repo.UpdateLastLoginTime(s.repo.DB, user.ID); err != nil {
@@ -129,34 +122,25 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 
 // validateLoginRequest 验证登录请求参数
 func (s *LoginService) validateLoginRequest(req *api.LoginRequest) error {
-	log.Debug("验证登录请求参数")
-
 	if req.LoginType == "" {
-		log.Debug("验证失败: 登录类型不能为空")
 		return errors.New("登录类型不能为空")
 	}
 	if !util.ValidateLoginType(req.LoginType) {
-		log.Warn("验证失败: 无效的登录类型 - %s", req.LoginType)
 		return errors.New("无效的登录类型")
 	}
 	if req.Identifier == "" {
-		log.Debug("验证失败: 登录标识不能为空")
 		return errors.New("登录标识不能为空")
 	}
 	if req.Password == "" {
-		log.Debug("验证失败: 密码不能为空")
 		return errors.New("密码不能为空")
 	}
 	if req.Identity == "" {
-		log.Debug("验证失败: 身份类型不能为空")
 		return errors.New("身份类型不能为空")
 	}
 	if !util.ValidateIdentity(req.Identity) {
-		log.Warn("验证失败: 无效的身份类型 - %s", req.Identity)
 		return errors.New("无效的身份类型")
 	}
 
-	log.Debug("登录请求参数验证通过")
 	return nil
 }
 
@@ -165,26 +149,21 @@ func (s *LoginService) findUserByIdentifier(db *gorm.DB, req *api.LoginRequest) 
 	switch req.LoginType {
 	case "phone":
 		// 手机号登录 - 生成哈希值查询
-		log.Debug("手机号登录: 生成哈希值")
 		mobileHash, err := util.HashSensitiveField(req.Identifier)
 		if err != nil {
-			log.Error("手机号哈希生成失败: %v, 手机号=%s", err, req.Identifier)
+			log.Error("手机号哈希生成失败: %v, 标识=%s", err, maskIdentifier(req.Identifier))
 			return nil, errors.New("手机号处理失败")
 		}
-		log.Debug("手机号哈希已生成，开始查询用户")
 
 		user, err := s.repo.FindByMobile(db, mobileHash)
 		if err != nil {
-			log.Debug("通过手机号查询用户失败: %v", err)
 			return nil, errors.New("用户不存在")
 		}
 		return user, nil
 	case "email":
 		// 邮箱登录
-		log.Debug("邮箱登录: 开始查询用户, 邮箱=%s", req.Identifier)
 		user, err := s.repo.FindByEmail(db, req.Identifier)
 		if err != nil {
-			log.Debug("通过邮箱查询用户失败: %v", err)
 			return nil, errors.New("用户不存在")
 		}
 		return user, nil
@@ -196,8 +175,6 @@ func (s *LoginService) findUserByIdentifier(db *gorm.DB, req *api.LoginRequest) 
 func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, error) {
 	var resp api.LogoutResponse
 
-	log.Info("用户登出请求")
-
 	// 1. 验证请求参数
 	if req.Token == "" {
 		log.Warn("登出失败: 令牌不能为空")
@@ -207,7 +184,6 @@ func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, erro
 	}
 
 	// 2. 验证 Refresh Token 并获取用户信息
-	log.Debug("开始验证令牌")
 	jwtManager := util.GetJWTManager()
 	claims, err := jwtManager.ValidateRefreshToken(req.Token)
 	if err != nil {
@@ -219,10 +195,8 @@ func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, erro
 		}
 		return &resp, err
 	}
-	log.Debug("令牌验证成功: 用户ID=%s, TokenID=%s", claims.UserID, claims.TokenID)
 
 	// 3. 撤销 token
-	log.Debug("开始撤销令牌: 用户ID=%s, TokenID=%s", claims.UserID, claims.TokenID)
 	if err := jwtManager.RevokeToken(s.ctx, claims.TokenID, claims.UserID); err != nil {
 		log.Error("撤销令牌失败: %v, 用户ID=%s, TokenID=%s", err, claims.UserID, claims.TokenID)
 		resp.Success = false
@@ -240,8 +214,6 @@ func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, erro
 func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshTokenResponse, error) {
 	var resp api.RefreshTokenResponse
 
-	log.Info("刷新令牌请求")
-
 	// 1. 验证请求参数
 	if req.RefreshToken == "" {
 		log.Warn("刷新令牌失败: 刷新令牌不能为空")
@@ -250,7 +222,6 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 		return &resp, errors.New("刷新令牌不能为空")
 	}
 
-	log.Debug("开始刷新令牌")
 	jwtManager := util.GetJWTManager()
 
 	// 2. 调用 JWT 管理器刷新令牌（内部已包含完整验证逻辑）
@@ -267,7 +238,6 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 		}
 		return &resp, err
 	}
-	log.Debug("令牌刷新成功")
 
 	// 3. 获取用户信息
 	var userID int64
@@ -278,7 +248,6 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 		if id, err := strconv.ParseInt(claims.UserID, 10, 64); err == nil {
 			userID = id
 		}
-		log.Debug("从令牌中提取用户信息: 用户ID=%d", userID)
 	}
 
 	// 4. 构建响应
@@ -290,11 +259,9 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 
 	// 5. 获取用户信息（如果用户ID有效）
 	if userID != 0 {
-		log.Debug("开始获取用户信息: 用户ID=%d", userID)
 		user, err := s.repo.FindByID(s.repo.DB, userID)
 		if err == nil && user != nil {
 			resp.UserInfo = util.ConvertSysAccountToUserInfo(user)
-			log.Debug("用户信息获取成功: 用户ID=%d, 邮箱=%s", user.ID, user.Email)
 		} else {
 			log.Warn("获取用户信息失败: %v, 用户ID=%d", err, userID)
 		}

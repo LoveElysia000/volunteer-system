@@ -3,7 +3,14 @@
 # ==============================================================================
 GOHOSTOS := $(shell go env GOHOSTOS)
 GOPATH := $(shell go env GOPATH)
-VERSION := $(shell git describe --tags --always 2>nul || echo unknown)
+
+ifeq ($(GOHOSTOS), windows)
+    NULL_DEV := NUL
+else
+    NULL_DEV := /dev/null
+endif
+
+VERSION := $(shell git describe --tags --always 2>$(NULL_DEV) || echo unknown)
 
 # 镜像与项目配置
 REGISTRY ?= volunteer-system

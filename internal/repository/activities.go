@@ -135,8 +135,12 @@ func (r *Repository) GetUserSignupMap(db *gorm.DB, volunteerID int64, activityID
 	}
 
 	var signups []*model.ActivitySignup
+	activeSignupStatuses := []int32{
+		model.ActivitySignupStatusPending,
+		model.ActivitySignupStatusSuccess,
+	}
 	err := db.WithContext(r.ctx).
-		Where("volunteer_id = ? AND activity_id IN ? AND status = 1", volunteerID, activityIDs).
+		Where("volunteer_id = ? AND activity_id IN ? AND status IN ?", volunteerID, activityIDs, activeSignupStatuses).
 		Find(&signups).Error
 	if err != nil {
 		return nil, err
@@ -155,7 +159,10 @@ func (r *Repository) CountActivitySignups(db *gorm.DB, activityID int64) (int64,
 	var count int64
 	err := db.WithContext(r.ctx).
 		Model(&model.ActivitySignup{}).
-		Where("activity_id = ? AND status = 1", activityID).
+		Where("activity_id = ? AND status IN ?", activityID, []int32{
+			model.ActivitySignupStatusPending,
+			model.ActivitySignupStatusSuccess,
+		}).
 		Count(&count).Error
 	return count, err
 }
@@ -190,8 +197,12 @@ func (r *Repository) GetMyActivities(db *gorm.DB, volunteerID int64, status int3
 	var signups []*model.ActivitySignup
 	var total int64
 
+	activeSignupStatuses := []int32{
+		model.ActivitySignupStatusPending,
+		model.ActivitySignupStatusSuccess,
+	}
 	query := db.WithContext(r.ctx).
-		Where("volunteer_id = ? AND status = 1", volunteerID)
+		Where("volunteer_id = ? AND status IN ?", volunteerID, activeSignupStatuses)
 
 	// 状态筛选（通过关联的活动状态）
 	if status > 0 {

@@ -32,6 +32,15 @@ func NewMembershipService(ctx context.Context, c *app.RequestContext) *Membershi
 	}
 }
 
+func hasOrganizationPermission(organizations []*model.Organization, organizationID int64) bool {
+	for _, org := range organizations {
+		if org != nil && org.ID == organizationID {
+			return true
+		}
+	}
+	return false
+}
+
 // VolunteerJoinOrganization submits a join request for an organization.
 func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequest) (*api.VolunteerJoinResponse, error) {
 	if req == nil {
@@ -281,13 +290,13 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 		log.Warn("查询组织成员列表失败: 获取当前用户失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, err
 	}
-	org, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil || org == nil || org.ID != req.OrganizationId {
-		if err != nil {
-			log.Error("查询组织成员列表失败: 查询组织异常: %v, organization_id=%d user_id=%d", err, req.OrganizationId, userID)
-		} else {
-			log.Warn("查询组织成员列表失败: 无权操作该组织, organization_id=%d user_id=%d", req.OrganizationId, userID)
-		}
+	organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
+	if err != nil {
+		log.Error("查询组织成员列表失败: 查询组织异常: %v, organization_id=%d user_id=%d", err, req.OrganizationId, userID)
+		return nil, err
+	}
+	if !hasOrganizationPermission(organizations, req.OrganizationId) {
+		log.Warn("查询组织成员列表失败: 无权操作该组织, organization_id=%d user_id=%d", req.OrganizationId, userID)
 		return nil, errors.New("无权操作该组织")
 	}
 
@@ -483,13 +492,13 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 		log.Warn("更新成员状态失败: 获取当前用户失败: %v, membership_id=%d", err, req.MembershipId)
 		return nil, err
 	}
-	org, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil || org == nil || org.ID != member.OrgID {
-		if err != nil {
-			log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d user_id=%d", err, req.MembershipId, userID)
-		} else {
-			log.Warn("更新成员状态失败: 无权操作该组织, membership_id=%d user_id=%d member_org_id=%d", req.MembershipId, userID, member.OrgID)
-		}
+	organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
+	if err != nil {
+		log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d user_id=%d", err, req.MembershipId, userID)
+		return nil, err
+	}
+	if !hasOrganizationPermission(organizations, member.OrgID) {
+		log.Warn("更新成员状态失败: 无权操作该组织, membership_id=%d user_id=%d member_org_id=%d", req.MembershipId, userID, member.OrgID)
 		return nil, errors.New("无权操作该组织")
 	}
 
@@ -564,29 +573,29 @@ func (s *MembershipService) MembershipStats(req *api.MembershipStatsRequest) (*a
 			log.Warn("查询成员统计失败: 获取当前用户失败: %v", err)
 			return nil, err
 		}
-		org, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-		if err != nil || org == nil {
-			if err != nil {
-				log.Error("查询成员统计失败: 查询组织异常: %v, user_id=%d", err, userID)
-			} else {
-				log.Warn("查询成员统计失败: 当前用户无组织信息, user_id=%d", userID)
-			}
+		organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
+		if err != nil {
+			log.Error("查询成员统计失败: 查询组织异常: %v, user_id=%d", err, userID)
+			return nil, err
+		}
+		if len(organizations) == 0 {
+			log.Warn("查询成员统计失败: 当前用户无组织信息, user_id=%d", userID)
 			return nil, errors.New("组织ID不能为空")
 		}
-		orgID = org.ID
+		orgID = organizations[0].ID
 	} else {
 		userID, err := middleware.GetUserIDInt(s.c)
 		if err != nil {
 			log.Warn("查询成员统计失败: 获取当前用户失败: %v, organization_id=%d", err, orgID)
 			return nil, err
 		}
-		org, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-		if err != nil || org == nil || org.ID != orgID {
-			if err != nil {
-				log.Error("查询成员统计失败: 查询组织异常: %v, organization_id=%d user_id=%d", err, orgID, userID)
-			} else {
-				log.Warn("查询成员统计失败: 无权操作该组织, organization_id=%d user_id=%d", orgID, userID)
-			}
+		organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
+		if err != nil {
+			log.Error("查询成员统计失败: 查询组织异常: %v, organization_id=%d user_id=%d", err, orgID, userID)
+			return nil, err
+		}
+		if !hasOrganizationPermission(organizations, orgID) {
+			log.Warn("查询成员统计失败: 无权操作该组织, organization_id=%d user_id=%d", orgID, userID)
 			return nil, errors.New("无权操作该组织")
 		}
 	}

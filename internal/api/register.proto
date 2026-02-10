@@ -11,42 +11,55 @@ option go_package = "volunteer-system/internal/api;api";
 service RegisterService {
   option (google.api.default_host) = "0.0.0.0:8080";
 
-  // 统一注册接口
-  rpc Register(RegisterRequest) returns (RegisterResponse) {
+  // 志愿者注册接口
+  rpc VolunteerRegister(VolunteerRegisterRequest) returns (RegisterResponse) {
     option (google.api.http) = {
-      post: "/api/register"
+      post: "/api/volunteer/register"
+      body: "*"
+    };
+  }
+
+  // 组织管理者注册接口
+  rpc OrganizationRegister(OrganizationRegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = {
+      post: "/api/organization/register"
       body: "*"
     };
   }
 }
 
-// RegisterRequest 统一注册请求
-message RegisterRequest {
-  // 注册身份类型 volunteer-志愿者 organization-组织 必填 @gotags: json:"registerType,required"
-  string registerType = 1;
-
-  // 通用字段
+// VolunteerRegisterRequest 志愿者注册请求
+message VolunteerRegisterRequest {
   // 名称 必填 @gotags: json:"name,required"
-  string name = 2;
+  string name = 1;
   // 手机号 必填 @gotags: json:"phone,required"
-  string phone = 3;
+  string phone = 2;
   // 邮箱 必填 @gotags: json:"email,required"
-  string email = 4;
-
+  string email = 3;
   // 密码 必填 @gotags: json:"password,required"
-  string password = 5;
-
-  // 志愿者特有字段
+  string password = 4;
   // 年龄 @gotags: json:"age"
-  int32 age = 6;
+  int32 age = 5;
   // 性别 @gotags: json:"gender"
-  string gender = 7;
-
-  // 组织特有字段
-  // 组织名称 @gotags: json:"organizationName"
-  string organizationName = 8;
+  string gender = 6;
   // 用户名 @gotags: json:"username,required"
-  string userName = 9;
+  string userName = 7;
+}
+
+// 组织管理者注册请求
+message OrganizationRegisterRequest {
+  // 联系人姓名 必填 @gotags: json:"name,required"
+  string name = 1;
+  // 手机号 必填 @gotags: json:"phone,required"
+  string phone = 2;
+  // 邮箱 必填 @gotags: json:"email,required"
+  string email = 3;
+  // 密码 必填 @gotags: json:"password,required"
+  string password = 4;
+  // 组织名称 @gotags: json:"organizationName,required"
+  string organizationName = 5;
+  // 统一社会信用代码/组织机构代码 @gotags: json:"code"
+  string code = 6;
 }
 
 // RegisterResponse 统一注册响应

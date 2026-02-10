@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"time"
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
@@ -59,47 +58,30 @@ func (r *Repository) UpdateVolunteer(db *gorm.DB, id int64, updates map[string]i
 	return nil
 }
 
-// UpdateVolunteerInfo 更新志愿者基本信息
-func (r *Repository) UpdateVolunteerInfo(db *gorm.DB, id int64, realName string, gender int32, birthday *time.Time, avatarURL, introduction string) error {
-	updates := make(map[string]interface{})
-	if realName != "" {
-		updates["real_name"] = realName
-	}
-	if gender >= 0 {
-		updates["gender"] = gender
-	}
-	if birthday != nil {
-		updates["birthday"] = birthday
-	}
-	if avatarURL != "" {
-		updates["avatar_url"] = avatarURL
-	}
-	if introduction != "" {
-		updates["introduction"] = introduction
-	}
-	if len(updates) == 0 {
-		return nil
-	}
-	return r.UpdateVolunteer(db, id, updates)
-}
-
-// GetVolunteerList 获取志愿者列表（管理员端）
-func (r *Repository) GetVolunteerList(db *gorm.DB, queryMap map[string]any, limit, offset int) ([]*model.Volunteer, int64, error) {
+// GetVolunteerList 获取志愿者列表（组织管理员端，仅所管理组织的正式成员）
+func (r *Repository) GetVolunteerList(db *gorm.DB, orgIDs []int64, queryMap map[string]any, limit, offset int) ([]*model.Volunteer, int64, error) {
 	var volunteers []*model.Volunteer
 	var total int64
 
-	// 创建 base session，关联 sys_accounts 表获取账号状态
+	if len(orgIDs) == 0 {
+		return volunteers, 0, nil
+	}
+
+	// 创建 base session，通过组织成员关系限制组织范围
 	baseSession := db.WithContext(r.ctx).
 		Table("volunteers as v").
-		Joins("LEFT JOIN sys_accounts as sys ON v.account_id = sys.id")
+		Joins("INNER JOIN org_members as m ON m.volunteer_id = v.id").
+		Where("m.org_id IN ?", orgIDs).
+		Where("m.status = ?", model.MemberStatusActive)
 
 	// 循环处理所有查询条件
 	for key, value := range queryMap {
+		// 状态筛选请使用 volunteers 别名，例如 "v.status = ?"
 		baseSession = baseSession.Where(key, value)
 	}
 
-	// 使用 base session 获取总数
-	err := baseSession.Count(&total).Error
+	// 使用去重后的志愿者ID获取总数，避免同一志愿者在多个组织时重复计数
+	err := baseSession.Distinct("v.id").Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -108,8 +90,8 @@ func (r *Repository) GetVolunteerList(db *gorm.DB, queryMap map[string]any, limi
 		// 如果没有数据，直接返回空结果
 		return volunteers, 0, nil
 	}
-	// 使用 base session 分页查询数据
-	querySession := baseSession.Select("v.*")
+	// 使用去重后的志愿者数据分页查询，避免同一志愿者重复出现
+	querySession := baseSession.Distinct().Select("v.*")
 	err = querySession.Offset(offset).Limit(limit).
 		Order("v.created_at DESC").
 		Find(&volunteers).Error

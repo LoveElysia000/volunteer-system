@@ -7,6 +7,8 @@ import (
 )
 
 func RegisterRegisterRouter(r *route.RouterGroup) {
-	// 注册接口
-	r.POST("/api/register", handler.UserRegister)
+	// 志愿者注册接口
+	r.POST("/volunteer/register", handler.VolunteerRegister)
+	// 组织管理者注册接口
+	r.POST("/organization/register", handler.OrganizationRegister)
 }

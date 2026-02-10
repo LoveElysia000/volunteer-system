@@ -116,7 +116,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	if signupErr != nil {
 		log.Error("活动报名前检查失败: 查询报名记录异常: %v, activity_id=%d user_id=%d", signupErr, req.ActivityId, userID)
 	}
-	if existing != nil && existing.Status == 1 {
+	if existing != nil && (existing.Status == model.ActivitySignupStatusPending || existing.Status == model.ActivitySignupStatusSuccess) {
 		log.Warn("活动报名失败: 重复报名, activity_id=%d user_id=%d", req.ActivityId, userID)
 		return nil, errors.New("请勿重复报名")
 	}
@@ -127,7 +127,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		signup := &model.ActivitySignup{
 			ActivityID:  req.ActivityId,
 			VolunteerID: userID,
-			Status:      1,
+			Status:      model.ActivitySignupStatusPending,
 		}
 		if err := s.repo.CreateSignup(tx, signup); err != nil {
 			log.Error("活动报名失败: 创建报名记录异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
@@ -151,8 +151,6 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		log.Warn("活动报名失败: 事务执行失败: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 		return nil, err
 	}
-	log.Info("活动报名成功: activity_id=%d user_id=%d", req.ActivityId, userID)
-
 	return &api.ActivitySignupResponse{Success: true}, nil
 }
 
@@ -179,7 +177,7 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 	}
 
 	// 校验报名状态
-	if signup.Status != 1 {
+	if signup.Status != model.ActivitySignupStatusPending && signup.Status != model.ActivitySignupStatusSuccess {
 		log.Warn("取消报名失败: 当前状态不允许取消, activity_id=%d user_id=%d signup_status=%d", req.ActivityId, userID, signup.Status)
 		return nil, errors.New("当前状态不允许取消")
 	}
@@ -187,7 +185,7 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 	// 事务处理
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 更新报名状态为已取消
-		signup.Status = 2
+		signup.Status = model.ActivitySignupStatusCanceled
 		if err := s.repo.UpdateSignupStatus(tx, signup); err != nil {
 			log.Error("取消报名失败: 更新报名状态异常: %v, activity_id=%d user_id=%d signup_id=%d", err, req.ActivityId, userID, signup.ID)
 			return err
@@ -206,8 +204,6 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 		log.Error("取消报名失败: 事务执行失败: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 		return nil, err
 	}
-	log.Info("取消报名成功: activity_id=%d user_id=%d", req.ActivityId, userID)
-
 	return &api.ActivityCancelResponse{Success: true}, nil
 }
 
@@ -236,7 +232,7 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	if signupErr != nil {
 		log.Warn("活动详情查询: 查询报名状态失败: %v, activity_id=%d user_id=%d", signupErr, req.Id, userID)
 	}
-	isRegistered := signup != nil && signup.Status == 1
+	isRegistered := signup != nil && (signup.Status == model.ActivitySignupStatusPending || signup.Status == model.ActivitySignupStatusSuccess)
 
 	// 组装返回数据
 	resp := &api.ActivityDetailResponse{
@@ -653,7 +649,7 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		return nil, err
 	}
 
-	log.Info("取消活动成功 activity_id=%d reason=%s org_id=%d user_id=%d", req.Id, req.Reason, org.ID, userID)
+	log.Info("取消活动成功 activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
 
 	return &api.CancelActivityResponse{
 		Message: "取消活动成功",

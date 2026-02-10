@@ -65,7 +65,6 @@ func (s *AuditService) VolunteerJoinOrgAuditList(req *api.PendingVolunteerJoinOr
 		return nil, err
 	}
 	if total == 0 {
-		log.Info("待审核列表查询完成: 无数据, page=%d, pageSize=%d, status=%v", req.Page, req.PageSize, req.Status)
 		return resp, nil
 	}
 
@@ -123,7 +122,6 @@ func (s *AuditService) VolunteerJoinOrgAuditList(req *api.PendingVolunteerJoinOr
 
 	resp.Total = int32(total)
 	resp.List = items
-	log.Info("待审核列表查询成功: total=%d returned=%d page=%d pageSize=%d status=%v", total, len(items), req.Page, req.PageSize, req.Status)
 	return resp, nil
 }
 
@@ -138,8 +136,6 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 		log.Warn("审核通过失败: 审核记录ID为空")
 		return nil, errors.New("审核记录ID不能为空")
 	}
-	log.Info("审核通过请求: record_id=%d", req.Id)
-
 	record, err := s.repo.GetAuditRecordByID(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -163,7 +159,6 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 
 	auditHandlerMap := map[int32]ApprovalHandler{
 		model.AuditTargetVolunteer: s.applyVolunteerAuditApproval,
-		model.AuditTargetOrg:       s.applyOrgAuditApproval,
 		model.AuditTargetMember:    s.applyMemberAuditApproval,
 		model.AuditTargetSignup:    s.applySignupAuditApproval,
 	}
@@ -218,8 +213,6 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 		log.Warn("审核驳回失败: 驳回原因为空, record_id=%d", req.Id)
 		return nil, errors.New("驳回原因不能为空")
 	}
-	log.Info("审核驳回请求: record_id=%d", req.Id)
-
 	record, err := s.repo.GetAuditRecordByID(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -263,18 +256,8 @@ func (s *AuditService) applyVolunteerAuditApproval(tx *gorm.DB, record *model.Au
 		return err
 	}
 	return s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
-		"audit_status": model.AuditStatusApproved,
-	})
-}
-
-func (s *AuditService) applyOrgAuditApproval(tx *gorm.DB, record *model.AuditRecord) error {
-	organization, err := s.repo.GetOrganizationByID(tx, record.TargetID)
-	if err != nil {
-		return err
-	}
-	return s.repo.UpdateOrganization(tx, organization.ID, map[string]any{
-		// TODO(audit-status-removal): organizations 表移除 audit_status 后，删除该字段更新并重构组织审核通过逻辑。
-		"audit_status": model.AuditStatusApproved,
+		// TODO(volunteer-status-migration): 接入 volunteers.status 后，明确审核通过时 audit_status 与 status 的联动落库策略。
+		"audit_status": model.VolunteerAuditStatusApproved,
 	})
 }
 
@@ -358,8 +341,7 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 	if err != nil {
 		return err
 	}
-	// activity_signups.status: 2-报名成功
-	return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, 2)
+	return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusSuccess)
 }
 
 // AuditRecordDetail returns one audit record.

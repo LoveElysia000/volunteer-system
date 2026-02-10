@@ -3,21 +3,21 @@
 
 openapi: 3.0.3
 info:
-    title: AuditService API
-    description: 审核服务：提供待审核列表、执行审核、审核记录查询等接口
+    title: VolunteerService API
+    description: 志愿者管理服务端接口
     version: 0.0.1
 paths:
-    /api/audits/approval:
-        post:
+    /api/volunteers/:id:
+        put:
             tags:
-                - AuditService
-            description: 执行审核通过动作
-            operationId: AuditService_AuditApproval
+                - VolunteerService
+            description: 更新志愿者信息（志愿者端）
+            operationId: VolunteerService_VolunteerUpdate
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/audit.AuditApprovalRequest'
+                            $ref: '#/components/schemas/volunteer.VolunteerUpdateRequest'
                 required: true
             responses:
                 "200":
@@ -25,17 +25,17 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/audit.AuditApprovalResponse'
-    /api/audits/records/:id:
+                                $ref: '#/components/schemas/volunteer.VolunteerUpdateResponse'
+    /api/volunteers/detail/:id:
         get:
             tags:
-                - AuditService
-            description: 获取单条审核记录详情
-            operationId: AuditService_AuditRecordDetail
+                - VolunteerService
+            description: 志愿者详情（管理员端）
+            operationId: VolunteerService_VolunteerDetail
             parameters:
                 - name: id
                   in: query
-                  description: '审核记录 ID @gotags: path:"id,required"'
+                  description: '志愿者ID 必填 @gotags: path:"id,required"'
                   schema:
                     type: string
             responses:
@@ -44,175 +44,207 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/audit.AuditRecordDetailResponse'
-    /api/audits/rejection:
+                                $ref: '#/components/schemas/volunteer.VolunteerDetailResponse'
+    /api/volunteers/list:
         post:
             tags:
-                - AuditService
-            description: 执行审核驳回动作
-            operationId: AuditService_AuditRejection
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/audit.AuditRejectionRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/audit.AuditRejectionResponse'
-    /api/audits/volunteer-join-org/pending:
-        post:
-            tags:
-                - AuditService
-            description: 获取志愿者加入组织待审核列表（支持关键词和分页筛选）
-            operationId: AuditService_PendingVolunteerJoinOrgAuditList
+                - VolunteerService
+            description: 志愿者列表（管理员端）
+            operationId: VolunteerService_VolunteerList
             parameters:
                 - name: keyword
                   in: query
-                  description: '标题/副标题关键词 @gotags: query:"keyword"'
+                  description: '搜索关键字 可选 @gotags: query:"keyword"'
                   schema:
                     type: string
                 - name: page
                   in: query
-                  description: '页码（从 1 开始） @gotags: query:"page"'
+                  description: '页码 必填 @gotags: query:"page,required"'
                   schema:
                     type: integer
                     format: int32
                 - name: pageSize
                   in: query
-                  description: '每页条数 @gotags: query:"pageSize"'
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
                   schema:
                     type: integer
                     format: int32
-                - name: status
-                  in: query
-                  description: '审核状态 @gotags: query:"status"'
-                  schema:
-                    type: array
-                    items:
-                        type: integer
-                        format: int32
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/audit.PendingVolunteerJoinOrgAuditListResponse'
+                                $ref: '#/components/schemas/volunteer.VolunteerListResponse'
+    /api/volunteers/my/profile:
+        get:
+            tags:
+                - VolunteerService
+            description: 我的个人信息（志愿者端）
+            operationId: VolunteerService_MyProfile
+            parameters:
+                - name: id
+                  in: query
+                  description: '志愿者ID 必填 @gotags: query:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.MyProfileResponse'
 components:
     schemas:
-        audit.AuditApprovalRequest:
+        volunteer.MyProfileResponse:
             type: object
             properties:
-                id:
-                    type: string
-                    description: '审核记录id @gotags: json:"id,required"'
-                reason:
-                    type: string
-                    description: '原因 @gotags: json:"reason"'
-            description: 执行审核请求参数
-        audit.AuditApprovalResponse:
-            type: object
-            properties: {}
-            description: 执行审核返回结果
-        audit.AuditRecordDetail:
-            type: object
-            properties:
-                id:
-                    type: string
-                    description: 审核记录 ID
-                targetType:
-                    type: integer
-                    description: 审核目标类型
-                    format: int32
-                targetId:
-                    type: string
-                    description: 审核目标 ID
-                auditorId:
-                    type: string
-                    description: 审核人 ID
-                status:
-                    type: integer
-                    description: 审核状态
-                    format: int32
-                oldContent:
-                    type: string
-                    description: 审核前内容快照
-                newContent:
-                    type: string
-                    description: 审核后内容快照
-                auditResult:
-                    type: integer
-                    description: 审核结果
-                    format: int32
-                rejectReason:
-                    type: string
-                    description: 驳回原因
-                auditTime:
-                    type: string
-                    description: 审核时间
-                createdAt:
-                    type: string
-                    description: 记录创建时间
-            description: 审核记录详情
-        audit.AuditRecordDetailResponse:
-            type: object
-            properties:
-                record:
+                volunteer:
                     allOf:
-                        - $ref: '#/components/schemas/audit.AuditRecordDetail'
-                    description: 审核记录详情
-            description: 审核记录详情查询结果
-        audit.AuditRejectionRequest:
+                        - $ref: '#/components/schemas/volunteer.VolunteerInfo'
+                    description: 志愿者信息
+            description: MyProfileResponse 我的个人信息响应（志愿者端）
+        volunteer.VolunteerDetailResponse:
+            type: object
+            properties:
+                volunteer:
+                    allOf:
+                        - $ref: '#/components/schemas/volunteer.VolunteerInfo'
+                    description: 志愿者信息
+            description: VolunteerDetailResponse 志愿者详情响应（管理员端）
+        volunteer.VolunteerInfo:
             type: object
             properties:
                 id:
                     type: string
-                    description: '审核记录id @gotags: json:"id,required"'
-                reason:
+                accountId:
                     type: string
-                    description: '原因 @gotags: json:"reason"'
-            description: 执行审核驳回请求参数
-        audit.AuditRejectionResponse:
-            type: object
-            properties: {}
-            description: 执行审核驳回返回结果
-        audit.PendingVolunteerJoinOrgAuditItem:
-            type: object
-            properties:
-                targetId:
+                    description: 账户ID
+                realName:
                     type: string
-                    description: 审核目标 ID（org_members.id）
-                status:
+                    description: 真实姓名
+                gender:
                     type: integer
-                    description: 当前审核状态（业务侧约定枚举值）
+                    description: '性别: 0-未知, 1-男, 2-女'
                     format: int32
-                title:
+                birthday:
                     type: string
-                    description: 主标题
-                subTitle:
+                    description: 出生日期
+                idCard:
                     type: string
-                    description: 副标题
+                    description: 身份证号
+                avatarUrl:
+                    type: string
+                    description: 头像URL
+                introduction:
+                    type: string
+                    description: 个人简介
+                totalHours:
+                    type: number
+                    description: 累计服务时长(小时)
+                    format: double
+                serviceCount:
+                    type: integer
+                    description: 累计服务次数
+                    format: int32
+                creditScore:
+                    type: integer
+                    description: 信用分
+                    format: int32
+                auditStatus:
+                    type: integer
+                    description: |-
+                        TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于详情状态展示，避免与 auditStatus 语义混淆。
+                         实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+                    format: int32
                 createdAt:
                     type: string
-                    description: 创建时间（字符串时间格式由服务端统一约定）
-            description: 志愿者加入组织待审核对象摘要信息
-        audit.PendingVolunteerJoinOrgAuditListResponse:
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: VolunteerInfo 志愿者信息
+        volunteer.VolunteerListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                accountId:
+                    type: string
+                    description: 账户ID
+                realName:
+                    type: string
+                    description: 真实姓名
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女'
+                    format: int32
+                avatarUrl:
+                    type: string
+                    description: 头像URL
+                totalHours:
+                    type: number
+                    description: 累计服务时长(小时)
+                    format: double
+                serviceCount:
+                    type: integer
+                    description: 累计服务次数
+                    format: int32
+                creditScore:
+                    type: integer
+                    description: 信用分
+                    format: int32
+                auditStatus:
+                    type: integer
+                    description: |-
+                        TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于列表状态展示，避免与 auditStatus 语义混淆。
+                         实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+                    format: int32
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: VolunteerListItem 志愿者列表项
+        volunteer.VolunteerListResponse:
             type: object
             properties:
                 total:
                     type: integer
-                    description: 总记录数
                     format: int32
                 list:
                     type: array
                     items:
-                        $ref: '#/components/schemas/audit.PendingVolunteerJoinOrgAuditItem'
-                    description: 当前页数据
-            description: 志愿者加入组织待审核列表查询结果
+                        $ref: '#/components/schemas/volunteer.VolunteerListItem'
+            description: VolunteerListResponse 志愿者列表响应
+        volunteer.VolunteerUpdateRequest:
+            type: object
+            properties:
+                volunteerId:
+                    type: string
+                    description: '志愿者ID @gotags: path:"volunteerId,required"'
+                realName:
+                    type: string
+                    description: '真实姓名 可选 @gotags: json:"realName"'
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"'
+                    format: int32
+                birthday:
+                    type: string
+                    description: '出生日期 可选 @gotags: json:"birthday"'
+                avatarUrl:
+                    type: string
+                    description: '头像URL 可选 @gotags: json:"avatarUrl"'
+                introduction:
+                    type: string
+                    description: '个人简介 可选 @gotags: json:"introduction"'
+            description: VolunteerUpdateRequest 更新志愿者请求
+        volunteer.VolunteerUpdateResponse:
+            type: object
+            properties: {}
+            description: VolunteerUpdateResponse 更新志愿者响应
 tags:
-    - name: AuditService
+    - name: VolunteerService

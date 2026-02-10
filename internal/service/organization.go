@@ -80,12 +80,6 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 		return nil, err
 	}
 
-	accountStatusMap, err := s.getAccountStatusMapByOrganizations(organizations)
-	if err != nil {
-		log.Error("查询组织账号状态失败: %v", err)
-		return nil, err
-	}
-
 	// 组装返回数据
 	resp := &api.OrganizationListResponse{
 		Total: int32(total),
@@ -93,8 +87,6 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 	}
 
 	for _, org := range organizations {
-		// TODO(audit-status-removal): organizations 表移除 audit_status 后，状态计算仅基于组织 status/account status。
-		status := composeOrganizationStatus(accountStatusMap[org.AccountID], org.AuditStatus)
 		item := &api.OrganizationListItem{
 			Id:               org.ID,
 			Name:             org.OrgName,
@@ -102,17 +94,14 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 			ContactPerson:    org.ContactPerson,
 			ContactPhone:     org.ContactPhone,
 			Address:          org.Address,
-			Status:           status,
+			Status:           org.Status,
 			OrganizationType: "",
 			Region:           "",
-			// TODO(audit-status-removal): organizations 表移除 audit_status 后，移除该返回字段赋值。
-			AuditStatus: org.AuditStatus,
-			CreatedAt:   org.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:        org.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		resp.List = append(resp.List, item)
 	}
 
-	log.Info("组织列表查询成功: 总数=%d, 返回=%d条", total, len(organizations))
 	return resp, nil
 }
 
@@ -129,14 +118,6 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 		return nil, errors.New("组织不存在")
 	}
 
-	account, err := s.repo.FindByID(s.repo.DB, organization.AccountID)
-	if err != nil {
-		log.Error("查询组织账号失败: %v, accountID=%d", err, organization.AccountID)
-		return nil, errors.New("查询组织账号失败")
-	}
-	// TODO(audit-status-removal): organizations 表移除 audit_status 后，状态计算仅基于组织 status/account status。
-	status := composeOrganizationStatus(account.Status, organization.AuditStatus)
-
 	// 组装返回数据
 	resp := &api.OrganizationDetailResponse{
 		Organization: &api.OrganizationInfo{
@@ -148,21 +129,18 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 			ContactPhone:     organization.ContactPhone,
 			Email:            "",
 			Address:          organization.Address,
-			Status:           status,
+			Status:           organization.Status,
 			OrganizationType: "",
 			Region:           "",
 			Description:      organization.Introduction,
 			WebsiteUrl:       "",
 			LogoUrl:          organization.LogoURL,
-			// TODO(audit-status-removal): organizations 表移除 audit_status 后，移除该返回字段赋值。
-			AuditStatus: organization.AuditStatus,
-			AuditReason: "",
-			CreatedAt:   organization.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:   organization.UpdatedAt.Format("2006-01-02 15:04:05"),
+			AuditReason:      "",
+			CreatedAt:        organization.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:        organization.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}
 
-	log.Info("组织详情查询成功: ID=%d", req.Id)
 	return resp, nil
 }
 
@@ -185,12 +163,6 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 		return nil, errors.New("联系电话不能为空")
 	}
 
-	// 检查该账户是否已创建组织
-	_, err = s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-	if err == nil {
-		return nil, errors.New("该账户已创建组织")
-	}
-
 	// 创建组织
 	org := &model.Organization{
 		AccountID:     userID,
@@ -201,8 +173,7 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 		Address:       req.Address,
 		LogoURL:       req.LogoUrl,
 		Introduction:  req.Description,
-		// TODO(audit-status-removal): organizations 表移除 audit_status 后，删除该字段初始化。
-		AuditStatus: 0, // 默认未提交审核
+		Status:        model.OrganizationNormal, // 默认启用
 	}
 
 	err = s.repo.CreateOrganization(s.repo.DB, org)
@@ -260,13 +231,6 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 	}
 	if req.LogoUrl != "" {
 		updateQuery["logo_url"] = req.LogoUrl
-	}
-	if req.Status > 0 {
-		accountStatus, err := mapOrganizationStatusToAccountStatus(req.Status)
-		if err != nil {
-			return nil, err
-		}
-		accountStatusToUpdate = &accountStatus
 	}
 
 	if len(updateQuery) == 0 && accountStatusToUpdate == nil {
@@ -329,7 +293,8 @@ func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequ
 	}, nil
 }
 
-// TODO 这里要进行修改，等新字段加入后使用新字段status表示组织状态
+// TODO(org-status-sync): organizations.status 字段已存在；停用组织时应同步更新 organizations.status，
+// 并定义其与 sys_accounts.status 的一致性策略。
 func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRequest) (*api.DisableOrganizationResponse, error) {
 	// 参数校验
 	if req.Id <= 0 {
@@ -360,7 +325,8 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 	}, nil
 }
 
-// TODO 这里要进行修改，等新字段加入后使用新字段status表示组织状态
+// TODO(org-status-sync): organizations.status 字段已存在；启用组织时应同步更新 organizations.status，
+// 并定义其与 sys_accounts.status 的一致性策略。
 func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequest) (*api.EnableOrganizationResponse, error) {
 	// 参数校验
 	if req.Id <= 0 {
@@ -426,10 +392,7 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 			return nil, err
 		}
 	}
-	if req.AuditStatus >= 0 {
-		// TODO(audit-status-removal): organizations 表移除 audit_status 后，删除该筛选条件。
-		queryMap["org.audit_status = ?"] = req.AuditStatus
-	}
+
 	if req.StartDate != "" {
 		queryMap["org.created_at >= ?"] = req.StartDate
 	}
@@ -446,12 +409,6 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 		return nil, err
 	}
 
-	accountStatusMap, err := s.getAccountStatusMapByOrganizations(organizations)
-	if err != nil {
-		log.Error("查询组织账号状态失败: %v", err)
-		return nil, err
-	}
-
 	// 组装返回数据
 	resp := &api.OrganizationSearchResponse{
 		Total: int32(total),
@@ -459,8 +416,6 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 	}
 
 	for _, org := range organizations {
-		// TODO(audit-status-removal): organizations 表移除 audit_status 后，状态计算仅基于组织 status/account status。
-		status := composeOrganizationStatus(accountStatusMap[org.AccountID], org.AuditStatus)
 		item := &api.OrganizationListItem{
 			Id:               org.ID,
 			Name:             org.OrgName,
@@ -468,17 +423,14 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 			ContactPerson:    org.ContactPerson,
 			ContactPhone:     org.ContactPhone,
 			Address:          org.Address,
-			Status:           status,
+			Status:           org.Status,
 			OrganizationType: "",
 			Region:           "",
-			// TODO(audit-status-removal): organizations 表移除 audit_status 后，移除该返回字段赋值。
-			AuditStatus: org.AuditStatus,
-			CreatedAt:   org.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:        org.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		resp.List = append(resp.List, item)
 	}
 
-	log.Info("组织搜索成功: 总数=%d, 返回=%d条", total, len(organizations))
 	return resp, nil
 }
 
@@ -536,69 +488,6 @@ func applyOrganizationStatusFilter(queryMap map[string]any, status int32) error 
 		return errors.New("状态参数无效")
 	}
 	return nil
-}
-
-func mapOrganizationStatusToAccountStatus(status int32) (int32, error) {
-	switch status {
-	case 1:
-		return 1, nil
-	case 2:
-		return 0, nil
-	default:
-		return 0, errors.New("组织状态仅支持 1-正常 或 2-停用")
-	}
-}
-
-func composeOrganizationStatus(accountStatus, auditStatus int32) int32 {
-	// TODO(audit-status-removal): organizations 表移除 audit_status 后，重写该状态映射逻辑与函数签名。
-	if accountStatus == 0 {
-		return 2
-	}
-	if auditStatus == 0 || auditStatus == 1 {
-		return 3
-	}
-	return 1
-}
-
-func (s *OrganizationService) getAccountStatusMapByOrganizations(organizations []*model.Organization) (map[int64]int32, error) {
-	statusMap := make(map[int64]int32, len(organizations))
-	if len(organizations) == 0 {
-		return statusMap, nil
-	}
-
-	seen := make(map[int64]struct{}, len(organizations))
-	accountIDs := make([]int64, 0, len(organizations))
-	for _, org := range organizations {
-		if org == nil || org.AccountID <= 0 {
-			continue
-		}
-		if _, ok := seen[org.AccountID]; ok {
-			continue
-		}
-		seen[org.AccountID] = struct{}{}
-		accountIDs = append(accountIDs, org.AccountID)
-	}
-	if len(accountIDs) == 0 {
-		return statusMap, nil
-	}
-
-	var accounts []*model.SysAccount
-	if err := s.repo.DB.WithContext(s.ctx).
-		Model(&model.SysAccount{}).
-		Select("id", "status").
-		Where("id IN ?", accountIDs).
-		Find(&accounts).Error; err != nil {
-		return nil, err
-	}
-
-	for _, account := range accounts {
-		if account == nil {
-			continue
-		}
-		statusMap[account.ID] = account.Status
-	}
-
-	return statusMap, nil
 }
 
 func (s *OrganizationService) updateAccountStatus(tx *gorm.DB, accountID int64, status int32) error {

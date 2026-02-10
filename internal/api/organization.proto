@@ -241,8 +241,6 @@ message OrganizationUpdateRequest {
   string websiteUrl = 11;
   // Logo地址 可选 @gotags: json:"logoUrl"
   string logoUrl = 12;
-  // 组织状态 可选 @gotags: json:"status"
-  int32 status = 13;
 }
 
 // OrganizationUpdateResponse 更新组织响应

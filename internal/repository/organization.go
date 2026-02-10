@@ -30,14 +30,18 @@ func (r *Repository) GetOrganizationsByIDs(db *gorm.DB, ids []int64) ([]*model.O
 	return organizations, nil
 }
 
-// FindOrganizationByAccountID 根据账户ID查找组织
-func (r *Repository) FindOrganizationByAccountID(db *gorm.DB, accountID int64) (*model.Organization, error) {
-	var organization model.Organization
-	err := db.WithContext(r.ctx).Model(&model.Organization{}).Where("account_id = ?", accountID).First(&organization).Error
+// FindOrganizationByAccountID 根据账户ID查找组织列表
+func (r *Repository) FindOrganizationByAccountID(db *gorm.DB, accountID int64) ([]*model.Organization, error) {
+	organizations := make([]*model.Organization, 0)
+	err := db.WithContext(r.ctx).
+		Model(&model.Organization{}).
+		Where("account_id = ?", accountID).
+		Order("id ASC").
+		Find(&organizations).Error
 	if err != nil {
 		return nil, err
 	}
-	return &organization, nil
+	return organizations, nil
 }
 
 // CreateOrganization 创建组织档案

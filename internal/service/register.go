@@ -32,7 +32,7 @@ func NewRegisterService(ctx context.Context, c *app.RequestContext) *RegisterSer
 }
 
 // RegisterVolunteer 志愿者注册
-func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.RegisterResponse, error) {
+func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (*api.RegisterResponse, error) {
 	// 验证必填字段
 	if err := s.validateVolunteerRequest(req); err != nil {
 		log.Warn("志愿者注册验证失败: %v", err)
@@ -91,7 +91,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 			Email:        req.Email,
 			Password:     hashedPassword,
 			IdentityType: model.RegisterTypeVolunteerCode,
-			Status:       1, // 正常状态
+			Status:       model.SysAccountNormal, // 正常状态
 			CreatedAt:    time.Now(),
 		}
 		err = s.repo.CreateAccount(tx, account)
@@ -102,10 +102,11 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 
 		// 创建志愿者档案
 		volunteer := &model.Volunteer{
-			AccountID:   account.ID,
-			RealName:    req.Name,
-			Gender:      genderCode,
-			AuditStatus: 0, // 未认证
+			AccountID: account.ID,
+			RealName:  req.Name,
+			Gender:    genderCode,
+			// TODO(volunteer-status-migration): volunteers.status 字段尚未落库；DDL 上线后注册时同步写入 status=model.VolunteerActiveStatus，并明确其与 audit_status 的职责边界。
+			AuditStatus: model.VolunteerAuditStatusUnverified, // 未认证
 			CreatedAt:   time.Now(),
 		}
 		err = s.repo.CreateVolunteer(tx, volunteer)
@@ -125,7 +126,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.RegisterRequest) (*api.Regi
 }
 
 // RegisterOrganization 组织注册
-func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.RegisterResponse, error) {
+func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequest) (*api.RegisterResponse, error) {
 	// 验证必填字段
 	if err := s.validateOrganizationRequest(req); err != nil {
 		log.Warn("组织注册验证失败: %v", err)
@@ -178,7 +179,7 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 			Email:        req.Email,
 			Password:     hashedPassword,
 			IdentityType: model.RegisterTypeOrganizationCode,
-			Status:       1, // 正常状态
+			Status:       model.SysAccountNormal, // 正常状态
 			CreatedAt:    time.Now(),
 		}
 
@@ -193,10 +194,10 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 			AccountID:     account.ID,
 			OrgName:       req.OrganizationName,
 			ContactPerson: req.Name,
-			ContactPhone:  mobilePair.Encrypted, // 组织联系手机号也使用加密存储
-			// TODO(audit-status-removal): organizations 表移除 audit_status 后，删除该字段初始化。
-			AuditStatus: 0, // 未提交
-			CreatedAt:   time.Now(),
+			ContactPhone:  mobilePair.Encrypted,     // 组织联系手机号也使用加密存储
+			Status:        model.OrganizationNormal, // 默认启用组织
+			LicenseCode:   req.Code,
+			CreatedAt:     time.Now(),
 		}
 		err = s.repo.CreateOrganization(tx, org)
 		if err != nil {
@@ -216,7 +217,7 @@ func (s *RegisterService) RegisterOrganization(req *api.RegisterRequest) (*api.R
 }
 
 // validateVolunteerRequest 验证志愿者注册请求
-func (s *RegisterService) validateVolunteerRequest(req *api.RegisterRequest) error {
+func (s *RegisterService) validateVolunteerRequest(req *api.VolunteerRegisterRequest) error {
 	if req.Name == "" {
 		return errors.New("姓名不能为空")
 	}
@@ -256,7 +257,7 @@ func (s *RegisterService) validateVolunteerRequest(req *api.RegisterRequest) err
 }
 
 // validateOrganizationRequest 验证组织注册请求
-func (s *RegisterService) validateOrganizationRequest(req *api.RegisterRequest) error {
+func (s *RegisterService) validateOrganizationRequest(req *api.OrganizationRegisterRequest) error {
 	if req.Name == "" {
 		return errors.New("联系人姓名不能为空")
 	}

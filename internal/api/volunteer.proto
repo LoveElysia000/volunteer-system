@@ -45,12 +45,10 @@ service VolunteerService {
 message VolunteerListRequest {
   // 搜索关键字 可选 @gotags: query:"keyword"
   string keyword = 1;
-  // 筛选条件 1-活跃 2-非活跃 3-暂停 可选 @gotags: query:"filterBy"
-  int32 filterBy = 2;
   // 页码 必填 @gotags: query:"page,required"
-  int32 page = 3;
+  int32 page = 2;
   // 页大小 必填 @gotags: query:"pageSize,required"
-  int32 pageSize = 4;
+  int32 pageSize = 3;
 }
 
 // VolunteerListResponse 志愿者列表响应
@@ -76,6 +74,7 @@ message VolunteerListItem {
   int32 serviceCount = 7;
   // 信用分
   int32 creditScore = 8;
+  // TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于列表状态展示，避免与 auditStatus 语义混淆。
   // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
   int32 auditStatus = 9;
   // 创建时间
@@ -131,6 +130,7 @@ message VolunteerInfo {
   int32 serviceCount = 10;
   // 信用分
   int32 creditScore = 11;
+  // TODO(volunteer-status-migration): 接入 volunteers.status 后，评估是否新增 status 字段用于详情状态展示，避免与 auditStatus 语义混淆。
   // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
   int32 auditStatus = 12;
   // 创建时间

@@ -46,6 +46,27 @@ const (
 	// 组织状态
 	OrganizationDisabled int32 = 0 // 停用
 	OrganizationNormal   int32 = 1 // 正常
+
+	// 志愿者状态
+	VolunteerActiveStatus   int32 = 1 // 活跃
+	VolunteerInactiveStatus int32 = 2 // 非活跃
+	VolunteerEtcStatus      int32 = 3 // 其他
+
+	// 志愿者认证状态（volunteers.audit_status）
+	VolunteerAuditStatusUnverified int32 = 0 // 未认证
+	VolunteerAuditStatusPending    int32 = 1 // 审核中
+	VolunteerAuditStatusApproved   int32 = 2 // 已通过
+	VolunteerAuditStatusRejected   int32 = 3 // 已驳回
+
+	// 活动报名状态
+	ActivitySignupStatusPending  int32 = 1 // 待审核
+	ActivitySignupStatusSuccess  int32 = 2 // 报名成功
+	ActivitySignupStatusRejected int32 = 3 // 报名驳回
+	ActivitySignupStatusCanceled int32 = 4 // 已取消
+
+	// 账号状态
+	SysAccountNotNormal int32 = 0 // 禁用
+	SysAccountNormal    int32 = 1 // 正常
 )
 
 // GetRegisterTypeCode 根据注册类型字符串返回对应的数字代码

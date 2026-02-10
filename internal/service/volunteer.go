@@ -29,6 +29,7 @@ func NewVolunteerService(ctx context.Context, c *app.RequestContext) *VolunteerS
 	}
 }
 
+// VolunteerList 以组织管理者身份查询志愿者列表，仅返回其所管理组织下的志愿者。
 func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.VolunteerListResponse, error) {
 	// 参数校验
 	if req.Page <= 0 {
@@ -36,6 +37,27 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 	}
 	if req.PageSize <= 0 || req.PageSize > 100 {
 		req.PageSize = 20
+	}
+
+	// 获取当前组织管理者所属组织列表
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Warn("查询志愿者列表失败: 获取当前用户ID失败: %v", err)
+		return nil, err
+	}
+
+	organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
+	if err != nil {
+		log.Error("查询志愿者列表失败: 查询组织异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+	if len(organizations) == 0 {
+		log.Warn("查询志愿者列表失败: 当前用户无组织信息, user_id=%d", userID)
+		return nil, errors.New("当前用户无组织信息")
+	}
+	orgIDs := make([]int64, 0, len(organizations))
+	for _, org := range organizations {
+		orgIDs = append(orgIDs, org.ID)
 	}
 
 	// 构建查询参数map
@@ -58,24 +80,12 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		queryMap["v.id IN ?"] = ids
 	}
 
-	// 添加筛选条件
-	if req.FilterBy > 0 {
-		switch req.FilterBy {
-		case 1: // 活跃
-			queryMap["sys.status = ?"] = 1
-		case 2: // 非活跃
-			queryMap["sys.status = ?"] = 0
-		case 3: // 暂停
-			queryMap["sys.status = ?"] = 0
-		}
-	}
-
 	// 根据查询参数查询志愿者列表
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
-	volunteers, total, err := s.repo.GetVolunteerList(s.repo.DB, queryMap, pageSize, offset)
+	volunteers, total, err := s.repo.GetVolunteerList(s.repo.DB, orgIDs, queryMap, pageSize, offset)
 	if err != nil {
-		log.Error("查询志愿者列表失败: %v", err)
+		log.Error("查询志愿者列表失败: %v, organization_ids=%v", err, orgIDs)
 		return nil, err
 	}
 
@@ -85,6 +95,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		List:  make([]*api.VolunteerListItem, 0, len(volunteers)),
 	}
 
+	// TODO(volunteer-status-migration): 接入 volunteers.status 后，评估列表返回是否新增/替换状态字段，避免与 auditStatus 语义混淆。
 	for _, v := range volunteers {
 		item := &api.VolunteerListItem{
 			Id:           v.ID,
@@ -102,7 +113,6 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		resp.List = append(resp.List, item)
 	}
 
-	log.Info("志愿者列表查询成功: 总数=%d, 返回=%d条", total, len(volunteers))
 	return resp, nil
 }
 
@@ -139,13 +149,13 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 			TotalHours:   volunteer.TotalHours,
 			ServiceCount: volunteer.ServiceCount,
 			CreditScore:  volunteer.CreditScore,
-			AuditStatus:  volunteer.AuditStatus,
-			CreatedAt:    volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:    volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
+			// TODO(volunteer-status-migration): 接入 volunteers.status 后，评估详情返回是否新增/替换状态字段，避免与 auditStatus 语义混淆。
+			AuditStatus: volunteer.AuditStatus,
+			CreatedAt:   volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:   volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}
 
-	log.Info("志愿者详情查询成功: ID=%d", req.Id)
 	return resp, nil
 }
 
@@ -196,13 +206,13 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 			TotalHours:   volunteer.TotalHours,
 			ServiceCount: volunteer.ServiceCount,
 			CreditScore:  volunteer.CreditScore,
-			AuditStatus:  volunteer.AuditStatus,
-			CreatedAt:    volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:    volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
+			// TODO(volunteer-status-migration): 接入 volunteers.status 后，评估个人信息返回是否新增/替换状态字段，避免与 auditStatus 语义混淆。
+			AuditStatus: volunteer.AuditStatus,
+			CreatedAt:   volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:   volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}
 
-	log.Info("我的个人信息查询成功: 志愿者ID=%d", req.Id)
 	return resp, nil
 }
 
