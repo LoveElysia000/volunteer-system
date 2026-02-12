@@ -42,6 +42,7 @@ service MembershipService {
     };
   }
 
+  // todo 修改路由，不依赖ID
   // 更新成员状态（审核通过/拒绝等）
   rpc UpdateMemberStatus(MemberStatusUpdateRequest) returns (MemberStatusUpdateResponse) {
     option (google.api.http) = {
