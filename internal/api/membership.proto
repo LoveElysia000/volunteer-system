@@ -133,9 +133,9 @@ message VolunteerOrganizationsResponse {
 
 // MemberStatusUpdateRequest 更新成员状态请求
 message MemberStatusUpdateRequest {
-  // 组织管理者ID 必填 @gotags: "accountId,required"
+  // 组织管理者ID 必填 @gotags: json:"accountId,required"
   int64 accountId = 1;
-  // 成员关系ID 必填 @gotags: path:"membershipId,required"
+  // 成员关系ID 必填 @gotags: json:"membershipId,required"
   int64 membershipId = 2;
   // 成员状态 必填 @gotags: json:"status,required"
   int32 status = 3;

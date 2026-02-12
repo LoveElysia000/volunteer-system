@@ -64,19 +64,14 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/membership.MembershipStatsResponse'
-    /api/memberships/{membershipId}/status:
+    /api/memberships/status/update:
         post:
             tags:
                 - MembershipService
-            description: 更新成员状态（审核通过/拒绝等）
+            description: |-
+                todo 修改路由，不依赖ID
+                 更新成员状态（审核通过/拒绝等）
             operationId: MembershipService_UpdateMemberStatus
-            parameters:
-                - name: membershipId
-                  in: path
-                  description: '成员关系ID 必填 @gotags: path:"membershipId,required"'
-                  required: true
-                  schema:
-                    type: string
             requestBody:
                 content:
                     application/json:
@@ -244,10 +239,10 @@ components:
             properties:
                 accountId:
                     type: string
-                    description: '组织管理者ID 必填 @gotags: path:"accountId,required"'
+                    description: '组织管理者ID 必填 @gotags: json:"accountId,required"'
                 membershipId:
                     type: string
-                    description: '成员关系ID 必填 @gotags: path:"membershipId,required"'
+                    description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
                 status:
                     type: integer
                     description: '成员状态 必填 @gotags: json:"status,required"'

@@ -515,10 +515,10 @@ func (x *VolunteerOrganizationsResponse) GetList() []*OrganizationMemberInfo {
 // MemberStatusUpdateRequest 更新成员状态请求
 type MemberStatusUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织管理者ID 必填 @gotags: path:"accountId,required"
-	AccountId int64 `protobuf:"varint,1,opt,name=accountId,proto3" json:"accountId" path:"accountId,required"`
-	// 成员关系ID 必填 @gotags: path:"membershipId,required"
-	MembershipId int64 `protobuf:"varint,2,opt,name=membershipId,proto3" json:"membershipId" path:"membershipId,required"`
+	// 组织管理者ID 必填 @gotags: json:"accountId,required"
+	AccountId int64 `protobuf:"varint,1,opt,name=accountId,proto3" json:"accountId,required"`
+	// 成员关系ID 必填 @gotags: json:"membershipId,required"
+	MembershipId int64 `protobuf:"varint,2,opt,name=membershipId,proto3" json:"membershipId,required"`
 	// 成员状态 必填 @gotags: json:"status,required"
 	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status,required"`
 	// 审核意见 可选 @gotags: json:"reviewComment"
@@ -1196,13 +1196,13 @@ const file_internal_api_membership_proto_rawDesc = "" +
 	"\rreviewComment\x18\n" +
 	" \x01(\tR\rreviewComment\x12\x1c\n" +
 	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt\x12\x1c\n" +
-	"\tupdatedAt\x18\f \x01(\tR\tupdatedAt2\x92\a\n" +
+	"\tupdatedAt\x18\f \x01(\tR\tupdatedAt2\x8a\a\n" +
 	"\x11MembershipService\x12\x82\x01\n" +
 	"\x19VolunteerJoinOrganization\x12 .membership.VolunteerJoinRequest\x1a!.membership.VolunteerJoinResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/memberships/join\x12\x86\x01\n" +
 	"\x1aVolunteerLeaveOrganization\x12!.membership.VolunteerLeaveRequest\x1a\".membership.VolunteerLeaveResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/memberships/leave\x12\x9e\x01\n" +
 	"\x16GetOrganizationMembers\x12&.membership.OrganizationMembersRequest\x1a'.membership.OrganizationMembersResponse\"3\x82\xd3\xe4\x93\x02-\x12+/api/organizations/{organizationId}/members\x12\xa7\x01\n" +
-	"\x19GetVolunteerOrganizations\x12).membership.VolunteerOrganizationsRequest\x1a*.membership.VolunteerOrganizationsResponse\"3\x82\xd3\xe4\x93\x02-\x12+/api/volunteers/{volunteerId}/organizations\x12\x96\x01\n" +
-	"\x12UpdateMemberStatus\x12%.membership.MemberStatusUpdateRequest\x1a&.membership.MemberStatusUpdateResponse\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/memberships/{membershipId}/status\x12z\n" +
+	"\x19GetVolunteerOrganizations\x12).membership.VolunteerOrganizationsRequest\x1a*.membership.VolunteerOrganizationsResponse\"3\x82\xd3\xe4\x93\x02-\x12+/api/volunteers/{volunteerId}/organizations\x12\x8e\x01\n" +
+	"\x12UpdateMemberStatus\x12%.membership.MemberStatusUpdateRequest\x1a&.membership.MemberStatusUpdateResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/memberships/status/update\x12z\n" +
 	"\x0fMembershipStats\x12\".membership.MembershipStatsRequest\x1a#.membership.MembershipStatsResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/memberships/stats\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (

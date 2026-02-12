@@ -495,12 +495,16 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 	}
 
 	// Permission: only organization owner for the membership.
-	organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, req.AccountId)
+	organization, err := s.repo.GetOrganizationByID(s.repo.DB, member.OrgID)
 	if err != nil {
-		log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d account_id=%d", err, req.MembershipId, req.AccountId)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("更新成员状态失败: 组织不存在, membership_id=%d org_id=%d", req.MembershipId, member.OrgID)
+			return nil, errors.New("组织不存在")
+		}
+		log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d org_id=%d account_id=%d", err, req.MembershipId, member.OrgID, req.AccountId)
 		return nil, err
 	}
-	if !hasOrganizationPermission(organizations, member.OrgID) {
+	if organization.AccountID != req.AccountId {
 		return nil, errors.New("无权操作该组织")
 	}
 
