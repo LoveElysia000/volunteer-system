@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"strconv"
-	"strings"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
@@ -57,18 +55,12 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 				List:  []*api.OrganizationListItem{},
 			}, nil
 		}
-		queryMap["org.id IN ?"] = ids
+		queryMap["org.id IN (?)"] = ids
 	}
 
-	// 添加筛选条件
-	if req.Status != "" {
-		status, err := parseOrganizationStatus(req.Status)
-		if err != nil {
-			return nil, err
-		}
-		if err := applyOrganizationStatusFilter(queryMap, status); err != nil {
-			return nil, err
-		}
+	// 状态支持多选筛选（0-停用，1-正常）
+	if len(req.Status) > 0 {
+		queryMap["org.status IN (?)"] = req.Status
 	}
 
 	// 根据查询参数查询组织列表
@@ -135,7 +127,6 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 			Description:      organization.Introduction,
 			WebsiteUrl:       "",
 			LogoUrl:          organization.LogoURL,
-			AuditReason:      "",
 			CreatedAt:        organization.CreatedAt.Format("2006-01-02 15:04:05"),
 			UpdatedAt:        organization.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
@@ -209,7 +200,6 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 
 	// 构建更新查询
 	updateQuery := make(map[string]any)
-	var accountStatusToUpdate *int32
 
 	if req.Name != "" {
 		updateQuery["org_name"] = req.Name
@@ -233,23 +223,11 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 		updateQuery["logo_url"] = req.LogoUrl
 	}
 
-	if len(updateQuery) == 0 && accountStatusToUpdate == nil {
+	if len(updateQuery) == 0 {
 		return nil, errors.New("没有需要更新的字段")
 	}
 
-	err = s.repo.Transaction(func(tx *gorm.DB) error {
-		if len(updateQuery) > 0 {
-			if err := s.repo.UpdateOrganization(tx, req.Id, updateQuery); err != nil {
-				return err
-			}
-		}
-		if accountStatusToUpdate != nil {
-			if err := s.updateAccountStatus(tx, organization.AccountID, *accountStatusToUpdate); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, updateQuery)
 	if err != nil {
 		log.Error("更新组织信息失败: %v, ID=%d", err, req.Id)
 		return nil, errors.New("更新组织信息失败")
@@ -293,8 +271,6 @@ func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequ
 	}, nil
 }
 
-// TODO(org-status-sync): organizations.status 字段已存在；停用组织时应同步更新 organizations.status，
-// 并定义其与 sys_accounts.status 的一致性策略。
 func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRequest) (*api.DisableOrganizationResponse, error) {
 	// 参数校验
 	if req.Id <= 0 {
@@ -312,7 +288,12 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 		return nil, errors.New("组织不存在")
 	}
 
-	err = s.updateAccountStatus(s.repo.DB, organization.AccountID, 0)
+	err = s.repo.Transaction(func(tx *gorm.DB) error {
+		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationDisabled}); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		log.Error("停用组织失败: %v, ID=%d", err, req.Id)
 		return nil, errors.New("停用组织失败")
@@ -325,8 +306,6 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 	}, nil
 }
 
-// TODO(org-status-sync): organizations.status 字段已存在；启用组织时应同步更新 organizations.status，
-// 并定义其与 sys_accounts.status 的一致性策略。
 func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequest) (*api.EnableOrganizationResponse, error) {
 	// 参数校验
 	if req.Id <= 0 {
@@ -344,7 +323,12 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 		return nil, errors.New("组织不存在")
 	}
 
-	err = s.updateAccountStatus(s.repo.DB, organization.AccountID, 1)
+	err = s.repo.Transaction(func(tx *gorm.DB) error {
+		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationNormal}); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		log.Error("启用组织失败: %v, ID=%d", err, req.Id)
 		return nil, errors.New("启用组织失败")
@@ -386,11 +370,9 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 		queryMap["org.id IN ?"] = ids
 	}
 
-	// 添加筛选条件
-	if req.Status > 0 {
-		if err := applyOrganizationStatusFilter(queryMap, req.Status); err != nil {
-			return nil, err
-		}
+	// 状态支持多选筛选（0-停用，1-正常）
+	if len(req.Status) > 0 {
+		queryMap["org.status in (?)"] = req.Status
 	}
 
 	if req.StartDate != "" {
@@ -460,50 +442,4 @@ func (s *OrganizationService) BulkDeleteOrganizations(req *api.BulkDeleteOrganiz
 		FailedCount:  int32(failedCount),
 		Message:      "批量删除完成",
 	}, nil
-}
-
-func parseOrganizationStatus(raw string) (int32, error) {
-	statusText := strings.TrimSpace(raw)
-	if statusText == "" {
-		return 0, errors.New("状态参数无效")
-	}
-
-	status, err := strconv.ParseInt(statusText, 10, 32)
-	if err != nil {
-		return 0, errors.New("状态参数无效")
-	}
-	return int32(status), nil
-}
-
-func applyOrganizationStatusFilter(queryMap map[string]any, status int32) error {
-	switch status {
-	case 1:
-		queryMap["sys.status = ?"] = int32(1)
-	case 2:
-		queryMap["sys.status = ?"] = int32(0)
-	case 3:
-		// TODO(audit-status-removal): organizations 表移除 audit_status 后，重新定义“待审核”筛选逻辑或删除该状态。
-		queryMap["org.audit_status IN ?"] = []int32{0, 1}
-	default:
-		return errors.New("状态参数无效")
-	}
-	return nil
-}
-
-func (s *OrganizationService) updateAccountStatus(tx *gorm.DB, accountID int64, status int32) error {
-	if accountID <= 0 {
-		return errors.New("组织账号无效")
-	}
-
-	result := tx.WithContext(s.ctx).
-		Model(&model.SysAccount{}).
-		Where("id = ?", accountID).
-		Update("status", status)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
 }

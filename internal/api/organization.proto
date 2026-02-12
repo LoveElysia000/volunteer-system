@@ -14,21 +14,21 @@ service OrganizationService {
   // 组织列表
   rpc OrganizationList(OrganizationListRequest) returns (OrganizationListResponse) {
     option (google.api.http) = {
-      post: "/api/admin/organizations"
+      post: "/api/organizations/list"
     };
   }
 
   // 组织详情
   rpc OrganizationDetail(OrganizationDetailRequest) returns (OrganizationDetailResponse) {
     option (google.api.http) = {
-      get: "/api/admin/organizations/:id"
+      get: "/api/organizations/:id"
     };
   }
 
   // 创建组织
   rpc CreateOrganization(OrganizationCreateRequest) returns (OrganizationCreateResponse) {
     option (google.api.http) = {
-      post: "/api/admin/organizations"
+      post: "/api/organizations/create"
       body: "*"
     };
   }
@@ -36,7 +36,7 @@ service OrganizationService {
   // 更新组织信息
   rpc UpdateOrganization(OrganizationUpdateRequest) returns (OrganizationUpdateResponse) {
     option (google.api.http) = {
-      put : "/api/admin/organizations/:id"
+      put : "/api/organizations/:id"
       body: "*"
     };
   }
@@ -44,14 +44,14 @@ service OrganizationService {
   // 删除组织
   rpc DeleteOrganization(DeleteOrganizationRequest) returns (DeleteOrganizationResponse) {
     option (google.api.http) = {
-      delete: "/api/admin/organizations/:id"
+      delete: "/api/organizations/:id"
     };
   }
 
   // 停用组织
   rpc DisableOrganization(DisableOrganizationRequest) returns (DisableOrganizationResponse) {
     option (google.api.http) = {
-      post: "/api/admin/organizations/:id/disable"
+      post: "/api/organizations/:id/disable"
       body: "*"
     };
   }
@@ -59,7 +59,7 @@ service OrganizationService {
   // 启用组织
   rpc EnableOrganization(EnableOrganizationRequest) returns (EnableOrganizationResponse) {
     option (google.api.http) = {
-      post: "/api/admin/organizations/:id/enable"
+      post: "/api/organizations/:id/enable"
       body: "*"
     };
   }
@@ -67,7 +67,7 @@ service OrganizationService {
   // 搜索组织
   rpc SearchOrganizations(OrganizationSearchRequest) returns (OrganizationSearchResponse) {
     option (google.api.http) = {
-      post: "/api/admin/organizations/search"
+      post: "/api/organizations/search"
       body: "*"
     };
   }
@@ -75,7 +75,7 @@ service OrganizationService {
   // 批量删除组织
   rpc BulkDeleteOrganizations(BulkDeleteOrganizationRequest) returns (BulkDeleteOrganizationResponse) {
     option (google.api.http) = {
-      post: "/api/admin/organizations/bulk-delete"
+      post: "/api/organizations/bulk-delete"
       body: "*"
     };
   }
@@ -86,7 +86,7 @@ message OrganizationListRequest {
   // 搜索关键字 可选 @gotags: query:"keyword"
   string keyword = 1;
   // 状态筛选 可选 @gotags: query:"status"
-  string status = 2;
+  repeated int32 status = 2;
   // 组织类型筛选 可选 @gotags: query:"organizationType"
   string organizationType = 3;
   // 地区筛选 可选 @gotags: query:"region"
@@ -118,14 +118,13 @@ message OrganizationListItem {
   string email = 6;
   // 地址
   string address = 7;
-  // 状态 1-正常 2-停用 3-待审核
+  // 状态 0-停用 1-正常
   int32 status = 8;
   // 组织类型
   string organizationType = 9;
   // 地区
   string region = 10;
-  // 审核状态 0-待审核 1-已通过 2-已拒绝
-  int32 auditStatus = 11;
+  reserved 11;
   // 创建时间
   string createdAt = 12;
 }
@@ -159,7 +158,7 @@ message OrganizationInfo {
   string email = 7;
   // 地址
   string address = 8;
-  // 状态 1-正常 2-停用 3-待审核
+  // 状态 0-停用 1-正常
   int32 status = 9;
   // 组织类型
   string organizationType = 10;
@@ -171,10 +170,7 @@ message OrganizationInfo {
   string websiteUrl = 13;
   // Logo地址
   string logoUrl = 14;
-  // 审核状态 0-待审核 1-已通过 2-已拒绝
-  int32 auditStatus = 15;
-  // 审核意见
-  string auditReason = 16;
+  reserved 15, 16;
   // 创建时间
   string createdAt = 17;
   // 更新时间
@@ -266,13 +262,12 @@ message OrganizationSearchRequest {
   // 搜索关键字 可选 @gotags: json:"keyword"
   string keyword = 1;
   // 状态筛选 可选 @gotags: json:"status"
-  int32 status = 2;
+  repeated int32 status = 2;
   // 组织类型筛选 可选 @gotags: json:"organizationType"
   string organizationType = 3;
   // 地区筛选 可选 @gotags: json:"region"
   string region = 4;
-  // 审核状态筛选 可选 @gotags: json:"auditStatus"
-  int32 auditStatus = 5;
+  reserved 5;
   // 创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"
   string startDate = 6;
   // 创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"

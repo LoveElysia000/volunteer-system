@@ -7,13 +7,12 @@
 package api
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -29,7 +28,7 @@ type OrganizationListRequest struct {
 	// 搜索关键字 可选 @gotags: query:"keyword"
 	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
 	// 状态筛选 可选 @gotags: query:"status"
-	Status string `protobuf:"bytes,2,opt,name=status,proto3" json:"status" query:"status"`
+	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status" query:"status"`
 	// 组织类型筛选 可选 @gotags: query:"organizationType"
 	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType" query:"organizationType"`
 	// 地区筛选 可选 @gotags: query:"region"
@@ -79,11 +78,11 @@ func (x *OrganizationListRequest) GetKeyword() string {
 	return ""
 }
 
-func (x *OrganizationListRequest) GetStatus() string {
+func (x *OrganizationListRequest) GetStatus() []int32 {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return nil
 }
 
 func (x *OrganizationListRequest) GetOrganizationType() string {
@@ -183,14 +182,12 @@ type OrganizationListItem struct {
 	Email string `protobuf:"bytes,6,opt,name=email,proto3" json:"email"`
 	// 地址
 	Address string `protobuf:"bytes,7,opt,name=address,proto3" json:"address"`
-	// 状态 1-正常 2-停用 3-待审核
+	// 状态 0-停用 1-正常
 	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status"`
 	// 组织类型
 	OrganizationType string `protobuf:"bytes,9,opt,name=organizationType,proto3" json:"organizationType"`
 	// 地区
 	Region string `protobuf:"bytes,10,opt,name=region,proto3" json:"region"`
-	// 审核状态 0-待审核 1-已通过 2-已拒绝
-	AuditStatus int32 `protobuf:"varint,11,opt,name=auditStatus,proto3" json:"auditStatus"`
 	// 创建时间
 	CreatedAt     string `protobuf:"bytes,12,opt,name=createdAt,proto3" json:"createdAt"`
 	unknownFields protoimpl.UnknownFields
@@ -295,13 +292,6 @@ func (x *OrganizationListItem) GetRegion() string {
 		return x.Region
 	}
 	return ""
-}
-
-func (x *OrganizationListItem) GetAuditStatus() int32 {
-	if x != nil {
-		return x.AuditStatus
-	}
-	return 0
 }
 
 func (x *OrganizationListItem) GetCreatedAt() string {
@@ -421,7 +411,7 @@ type OrganizationInfo struct {
 	Email string `protobuf:"bytes,7,opt,name=email,proto3" json:"email"`
 	// 地址
 	Address string `protobuf:"bytes,8,opt,name=address,proto3" json:"address"`
-	// 状态 1-正常 2-停用 3-待审核
+	// 状态 0-停用 1-正常
 	Status int32 `protobuf:"varint,9,opt,name=status,proto3" json:"status"`
 	// 组织类型
 	OrganizationType string `protobuf:"bytes,10,opt,name=organizationType,proto3" json:"organizationType"`
@@ -433,10 +423,6 @@ type OrganizationInfo struct {
 	WebsiteUrl string `protobuf:"bytes,13,opt,name=websiteUrl,proto3" json:"websiteUrl"`
 	// Logo地址
 	LogoUrl string `protobuf:"bytes,14,opt,name=logoUrl,proto3" json:"logoUrl"`
-	// 审核状态 0-待审核 1-已通过 2-已拒绝
-	AuditStatus int32 `protobuf:"varint,15,opt,name=auditStatus,proto3" json:"auditStatus"`
-	// 审核意见
-	AuditReason string `protobuf:"bytes,16,opt,name=auditReason,proto3" json:"auditReason"`
 	// 创建时间
 	CreatedAt string `protobuf:"bytes,17,opt,name=createdAt,proto3" json:"createdAt"`
 	// 更新时间
@@ -569,20 +555,6 @@ func (x *OrganizationInfo) GetWebsiteUrl() string {
 func (x *OrganizationInfo) GetLogoUrl() string {
 	if x != nil {
 		return x.LogoUrl
-	}
-	return ""
-}
-
-func (x *OrganizationInfo) GetAuditStatus() int32 {
-	if x != nil {
-		return x.AuditStatus
-	}
-	return 0
-}
-
-func (x *OrganizationInfo) GetAuditReason() string {
-	if x != nil {
-		return x.AuditReason
 	}
 	return ""
 }
@@ -1081,13 +1053,11 @@ type OrganizationSearchRequest struct {
 	// 搜索关键字 可选 @gotags: json:"keyword"
 	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword"`
 	// 状态筛选 可选 @gotags: json:"status"
-	Status int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status"`
+	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status"`
 	// 组织类型筛选 可选 @gotags: json:"organizationType"
 	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType"`
 	// 地区筛选 可选 @gotags: json:"region"
 	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region"`
-	// 审核状态筛选 可选 @gotags: json:"auditStatus"
-	AuditStatus int32 `protobuf:"varint,5,opt,name=auditStatus,proto3" json:"auditStatus"`
 	// 创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"
 	StartDate string `protobuf:"bytes,6,opt,name=startDate,proto3" json:"startDate"`
 	// 创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"
@@ -1137,11 +1107,11 @@ func (x *OrganizationSearchRequest) GetKeyword() string {
 	return ""
 }
 
-func (x *OrganizationSearchRequest) GetStatus() int32 {
+func (x *OrganizationSearchRequest) GetStatus() []int32 {
 	if x != nil {
 		return x.Status
 	}
-	return 0
+	return nil
 }
 
 func (x *OrganizationSearchRequest) GetOrganizationType() string {
@@ -1156,13 +1126,6 @@ func (x *OrganizationSearchRequest) GetRegion() string {
 		return x.Region
 	}
 	return ""
-}
-
-func (x *OrganizationSearchRequest) GetAuditStatus() int32 {
-	if x != nil {
-		return x.AuditStatus
-	}
-	return 0
 }
 
 func (x *OrganizationSearchRequest) GetStartDate() string {
@@ -1565,14 +1528,14 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x1finternal/api/organization.proto\x12\forganization\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\xbf\x01\n" +
 	"\x17OrganizationListRequest\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12*\n" +
+	"\x06status\x18\x02 \x03(\x05R\x06status\x12*\n" +
 	"\x10organizationType\x18\x03 \x01(\tR\x10organizationType\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06region\x12\x12\n" +
 	"\x04page\x18\x05 \x01(\x05R\x04page\x12\x1a\n" +
 	"\bpageSize\x18\x06 \x01(\x05R\bpageSize\"h\n" +
 	"\x18OrganizationListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x126\n" +
-	"\x04list\x18\x02 \x03(\v2\".organization.OrganizationListItemR\x04list\"\xfc\x02\n" +
+	"\x04list\x18\x02 \x03(\v2\".organization.OrganizationListItemR\x04list\"\xe0\x02\n" +
 	"\x14OrganizationListItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
@@ -1584,13 +1547,12 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x06status\x18\b \x01(\x05R\x06status\x12*\n" +
 	"\x10organizationType\x18\t \x01(\tR\x10organizationType\x12\x16\n" +
 	"\x06region\x18\n" +
-	" \x01(\tR\x06region\x12 \n" +
-	"\vauditStatus\x18\v \x01(\x05R\vauditStatus\x12\x1c\n" +
-	"\tcreatedAt\x18\f \x01(\tR\tcreatedAt\"+\n" +
+	" \x01(\tR\x06region\x12\x1c\n" +
+	"\tcreatedAt\x18\f \x01(\tR\tcreatedAtJ\x04\b\v\x10\f\"+\n" +
 	"\x19OrganizationDetailRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"`\n" +
 	"\x1aOrganizationDetailResponse\x12B\n" +
-	"\forganization\x18\x01 \x01(\v2\x1e.organization.OrganizationInfoR\forganization\"\xb2\x04\n" +
+	"\forganization\x18\x01 \x01(\v2\x1e.organization.OrganizationInfoR\forganization\"\xfa\x03\n" +
 	"\x10OrganizationInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1c\n" +
 	"\taccountId\x18\x02 \x01(\x03R\taccountId\x12\x12\n" +
@@ -1608,11 +1570,9 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\n" +
 	"websiteUrl\x18\r \x01(\tR\n" +
 	"websiteUrl\x12\x18\n" +
-	"\alogoUrl\x18\x0e \x01(\tR\alogoUrl\x12 \n" +
-	"\vauditStatus\x18\x0f \x01(\x05R\vauditStatus\x12 \n" +
-	"\vauditReason\x18\x10 \x01(\tR\vauditReason\x12\x1c\n" +
+	"\alogoUrl\x18\x0e \x01(\tR\alogoUrl\x12\x1c\n" +
 	"\tcreatedAt\x18\x11 \x01(\tR\tcreatedAt\x12\x1c\n" +
-	"\tupdatedAt\x18\x12 \x01(\tR\tupdatedAt\"\xf5\x02\n" +
+	"\tupdatedAt\x18\x12 \x01(\tR\tupdatedAtJ\x04\b\x0f\x10\x10J\x04\b\x10\x10\x11\"\xf5\x02\n" +
 	"\x19OrganizationCreateRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
 	"\x10organizationCode\x18\x02 \x01(\tR\x10organizationCode\x12$\n" +
@@ -1652,17 +1612,16 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x19DeleteOrganizationRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"6\n" +
 	"\x1aDeleteOrganizationResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\"\x9b\x02\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\xff\x01\n" +
 	"\x19OrganizationSearchRequest\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\x05R\x06status\x12*\n" +
+	"\x06status\x18\x02 \x03(\x05R\x06status\x12*\n" +
 	"\x10organizationType\x18\x03 \x01(\tR\x10organizationType\x12\x16\n" +
-	"\x06region\x18\x04 \x01(\tR\x06region\x12 \n" +
-	"\vauditStatus\x18\x05 \x01(\x05R\vauditStatus\x12\x1c\n" +
+	"\x06region\x18\x04 \x01(\tR\x06region\x12\x1c\n" +
 	"\tstartDate\x18\x06 \x01(\tR\tstartDate\x12\x18\n" +
 	"\aendDate\x18\a \x01(\tR\aendDate\x12\x12\n" +
 	"\x04page\x18\b \x01(\x05R\x04page\x12\x1a\n" +
-	"\bpageSize\x18\t \x01(\x05R\bpageSize\"j\n" +
+	"\bpageSize\x18\t \x01(\x05R\bpageSizeJ\x04\b\x05\x10\x06\"j\n" +
 	"\x1aOrganizationSearchResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x126\n" +
 	"\x04list\x18\x02 \x03(\v2\".organization.OrganizationListItemR\x04list\"1\n" +
@@ -1681,18 +1640,18 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"6\n" +
 	"\x1aEnableOrganizationResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xe5\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xbb\n" +
 	"\n" +
-	"\x13OrganizationService\x12\x83\x01\n" +
-	"\x10OrganizationList\x12%.organization.OrganizationListRequest\x1a&.organization.OrganizationListResponse\" \x82\xd3\xe4\x93\x02\x1a\"\x18/api/admin/organizations\x12\x8d\x01\n" +
-	"\x12OrganizationDetail\x12'.organization.OrganizationDetailRequest\x1a(.organization.OrganizationDetailResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/admin/organizations/:id\x12\x8c\x01\n" +
-	"\x12CreateOrganization\x12'.organization.OrganizationCreateRequest\x1a(.organization.OrganizationCreateResponse\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/api/admin/organizations\x12\x90\x01\n" +
-	"\x12UpdateOrganization\x12'.organization.OrganizationUpdateRequest\x1a(.organization.OrganizationUpdateResponse\"'\x82\xd3\xe4\x93\x02!:\x01*\x1a\x1c/api/admin/organizations/:id\x12\x8d\x01\n" +
-	"\x12DeleteOrganization\x12'.organization.DeleteOrganizationRequest\x1a(.organization.DeleteOrganizationResponse\"$\x82\xd3\xe4\x93\x02\x1e*\x1c/api/admin/organizations/:id\x12\x9b\x01\n" +
-	"\x13DisableOrganization\x12(.organization.DisableOrganizationRequest\x1a).organization.DisableOrganizationResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/admin/organizations/:id/disable\x12\x97\x01\n" +
-	"\x12EnableOrganization\x12'.organization.EnableOrganizationRequest\x1a(.organization.EnableOrganizationResponse\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/admin/organizations/:id/enable\x12\x94\x01\n" +
-	"\x13SearchOrganizations\x12'.organization.OrganizationSearchRequest\x1a(.organization.OrganizationSearchResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/admin/organizations/search\x12\xa5\x01\n" +
-	"\x17BulkDeleteOrganizations\x12+.organization.BulkDeleteOrganizationRequest\x1a,.organization.BulkDeleteOrganizationResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/admin/organizations/bulk-delete\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
+	"\x13OrganizationService\x12\x82\x01\n" +
+	"\x10OrganizationList\x12%.organization.OrganizationListRequest\x1a&.organization.OrganizationListResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\"\x17/api/organizations/list\x12\x87\x01\n" +
+	"\x12OrganizationDetail\x12'.organization.OrganizationDetailRequest\x1a(.organization.OrganizationDetailResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/organizations/:id\x12\x8d\x01\n" +
+	"\x12CreateOrganization\x12'.organization.OrganizationCreateRequest\x1a(.organization.OrganizationCreateResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/organizations/create\x12\x8a\x01\n" +
+	"\x12UpdateOrganization\x12'.organization.OrganizationUpdateRequest\x1a(.organization.OrganizationUpdateResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\x1a\x16/api/organizations/:id\x12\x87\x01\n" +
+	"\x12DeleteOrganization\x12'.organization.DeleteOrganizationRequest\x1a(.organization.DeleteOrganizationResponse\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/api/organizations/:id\x12\x95\x01\n" +
+	"\x13DisableOrganization\x12(.organization.DisableOrganizationRequest\x1a).organization.DisableOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/:id/disable\x12\x91\x01\n" +
+	"\x12EnableOrganization\x12'.organization.EnableOrganizationRequest\x1a(.organization.EnableOrganizationResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/organizations/:id/enable\x12\x8e\x01\n" +
+	"\x13SearchOrganizations\x12'.organization.OrganizationSearchRequest\x1a(.organization.OrganizationSearchResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/organizations/search\x12\x9f\x01\n" +
+	"\x17BulkDeleteOrganizations\x12+.organization.BulkDeleteOrganizationRequest\x1a,.organization.BulkDeleteOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/bulk-delete\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (
 	file_internal_api_organization_proto_rawDescOnce sync.Once

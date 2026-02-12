@@ -10,6 +10,7 @@ import (
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"gorm.io/gorm"
 )
 
 type VolunteerService struct {
@@ -42,7 +43,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 	// 获取当前组织管理者所属组织列表
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("查询志愿者列表失败: 获取当前用户ID失败: %v", err)
+		log.Error("查询志愿者列表失败: 获取当前用户ID失败: %v", err)
 		return nil, err
 	}
 
@@ -52,7 +53,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		return nil, err
 	}
 	if len(organizations) == 0 {
-		log.Warn("查询志愿者列表失败: 当前用户无组织信息, user_id=%d", userID)
+		log.Error("查询志愿者列表失败: 当前用户无组织信息, user_id=%d", userID)
 		return nil, errors.New("当前用户无组织信息")
 	}
 	orgIDs := make([]int64, 0, len(organizations))
@@ -127,7 +128,7 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 	}
 
 	if volunteer == nil {
-		log.Warn("志愿者不存在: ID=%d", req.Id)
+		log.Error("查询志愿者信息失败: 志愿者不存在, id=%d", req.Id)
 		return nil, errors.New("志愿者不存在")
 	}
 
@@ -163,28 +164,34 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 
 // MyProfile 我的个人信息（志愿者端）
 func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileResponse, error) {
-	// 获取当前登录用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
-	if err != nil {
-		log.Warn("获取当前用户ID失败: %v", err)
-		return nil, err
+	// 参数校验
+	if req == nil || req.Id <= 0 {
+		return nil, errors.New("志愿者ID无效")
 	}
 
-	// 查询志愿者信息
+	// 通过请求ID查询志愿者信息
 	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.Id)
 	if err != nil {
-		log.Error("查询志愿者信息失败: %v, ID=%d", err, req.Id)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("志愿者不存在")
+		}
+		log.Error("查询我的个人信息失败: 查询志愿者信息异常: %v, volunteer_id=%d", err, req.Id)
 		return nil, err
 	}
 
 	if volunteer == nil {
-		log.Warn("志愿者不存在: ID=%d", req.Id)
+		log.Error("查询我的个人信息失败: 志愿者不存在, volunteer_id=%d", req.Id)
 		return nil, errors.New("志愿者不存在")
 	}
 
-	// 权限校验：只能查看自己的信息
+	// 权限校验：只能查询自己的档案
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("查询我的个人信息失败: 获取当前用户ID失败: %v", err)
+		return nil, err
+	}
 	if volunteer.AccountID != userID {
-		log.Warn("无权查看他人信息: 当前用户ID=%d, 志愿者账户ID=%d", userID, volunteer.AccountID)
+		log.Error("查询我的个人信息失败: 无权查看他人信息, user_id=%d, volunteer_account_id=%d, volunteer_id=%d", userID, volunteer.AccountID, req.Id)
 		return nil, errors.New("无权查看他人信息")
 	}
 
@@ -221,6 +228,7 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*api.VolunteerUpdateResponse, error) {
 	// 参数校验 + 构建更新查询
 	if req.VolunteerId <= 0 {
+		log.Error("更新志愿者信息失败: 志愿者ID无效, volunteer_id=%d", req.VolunteerId)
 		return nil, errors.New("志愿者ID无效")
 	}
 
@@ -229,6 +237,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	// 校验真实姓名
 	if req.RealName != "" {
 		if len(req.RealName) > 50 {
+			log.Error("更新志愿者信息失败: 真实姓名长度超限, volunteer_id=%d, length=%d", req.VolunteerId, len(req.RealName))
 			return nil, errors.New("真实姓名长度不能超过50个字符")
 		}
 		updateQuery["real_name"] = req.RealName
@@ -237,6 +246,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	// 校验性别
 	if req.Gender >= 0 {
 		if req.Gender > 2 {
+			log.Error("更新志愿者信息失败: 性别值无效, volunteer_id=%d, gender=%d", req.VolunteerId, req.Gender)
 			return nil, errors.New("性别值无效，0-未知, 1-男, 2-女")
 		}
 		updateQuery["gender"] = req.Gender
@@ -247,6 +257,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	if req.Birthday != "" {
 		t, err := util.ParsePastDate(req.Birthday)
 		if err != nil {
+			log.Error("更新志愿者信息失败: 生日格式错误, volunteer_id=%d, birthday=%s, err=%v", req.VolunteerId, req.Birthday, err)
 			return nil, errors.New("生日格式错误，请使用 YYYY-MM-DD 格式")
 		}
 		birthday = &t
@@ -256,6 +267,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	// 校验头像URL
 	if req.AvatarUrl != "" {
 		if len(req.AvatarUrl) > 255 {
+			log.Error("更新志愿者信息失败: 头像URL长度超限, volunteer_id=%d, length=%d", req.VolunteerId, len(req.AvatarUrl))
 			return nil, errors.New("头像URL长度不能超过255个字符")
 		}
 		updateQuery["avatar_url"] = req.AvatarUrl
@@ -264,12 +276,14 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	// 校验个人简介
 	if req.Introduction != "" {
 		if len(req.Introduction) > 2000 {
+			log.Error("更新志愿者信息失败: 个人简介长度超限, volunteer_id=%d, length=%d", req.VolunteerId, len(req.Introduction))
 			return nil, errors.New("个人简介长度不能超过2000个字符")
 		}
 		updateQuery["introduction"] = req.Introduction
 	}
 
 	if len(updateQuery) == 0 {
+		log.Error("更新志愿者信息失败: 没有需要更新的字段, volunteer_id=%d", req.VolunteerId)
 		return nil, errors.New("没有需要更新的字段")
 	}
 
@@ -281,6 +295,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	}
 
 	if volunteer == nil {
+		log.Error("更新志愿者信息失败: 志愿者不存在, volunteer_id=%d", req.VolunteerId)
 		return nil, errors.New("志愿者不存在")
 	}
 
@@ -290,8 +305,6 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 		log.Error("更新志愿者信息失败: %v, ID=%d", err, req.VolunteerId)
 		return nil, errors.New("更新志愿者信息失败")
 	}
-
-	log.Info("志愿者信息更新成功: ID=%d", req.VolunteerId)
 
 	var resp api.VolunteerUpdateResponse
 	return &resp, nil

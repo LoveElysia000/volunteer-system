@@ -79,6 +79,7 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	return resp, nil
 }
 
+// todo 活动报名不是直接创建数据，而是创建审核数据，走审核流程
 // ActivitySignup 活动报名
 func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.ActivitySignupResponse, error) {
 	// 获取当前用户ID

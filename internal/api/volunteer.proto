@@ -28,7 +28,7 @@ service VolunteerService {
   // 我的个人信息（志愿者端）
   rpc MyProfile(MyProfileRequest) returns (MyProfileResponse) {
     option (google.api.http) = {
-      get: "/api/volunteers/my/profile"
+      get: "/api/volunteers/my/profile/:id"
     };
   }
 
@@ -98,7 +98,7 @@ message VolunteerDetailResponse {
 
 // MyProfileRequest 我的个人信息请求（志愿者端）
 message MyProfileRequest {
-  // 志愿者ID 必填 @gotags: query:"id,required"
+  // 志愿者ID @gotags: path:"id,required"
   int64 id = 1;
 }
 
@@ -143,7 +143,7 @@ message VolunteerInfo {
 
 // VolunteerUpdateRequest 更新志愿者请求
 message VolunteerUpdateRequest {
-  // 志愿者ID @gotags: path:"volunteerId,required"
+  // 志愿者ID @gotags: path:"id,required"
   int64 volunteerId = 1;
   // 真实姓名 可选 @gotags: json:"realName"
   string realName = 2;

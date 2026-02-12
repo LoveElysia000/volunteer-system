@@ -85,10 +85,9 @@ func (r *Repository) GetOrganizationList(db *gorm.DB, queryMap map[string]any, l
 	var organizations []*model.Organization
 	var total int64
 
-	// 创建 base session，关联 sys_accounts 表获取账号状态
+	// 创建 base session
 	baseSession := db.WithContext(r.ctx).
-		Table("organizations as org").
-		Joins("LEFT JOIN sys_accounts as sys ON org.account_id = sys.id")
+		Table("organizations as org")
 
 	// 循环处理所有查询条件
 	for key, value := range queryMap {

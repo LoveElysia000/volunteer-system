@@ -8,11 +8,11 @@ import (
 
 func RegisterOrganizationRouter(r *route.RouterGroup) {
 	// 组织列表
-	r.POST("/organizations", handler.OrganizationList)
+	r.POST("/organizations/list", handler.OrganizationList)
 	// 组织详情
 	r.GET("/organizations/:id", handler.OrganizationDetail)
 	// 创建组织
-	r.POST("/organizations", handler.CreateOrganization)
+	r.POST("/organizations/create", handler.CreateOrganization)
 	// 更新组织
 	r.PUT("/organizations/:id", handler.UpdateOrganization)
 	// 删除组织

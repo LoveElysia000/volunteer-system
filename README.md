@@ -28,6 +28,11 @@
 - 组织内成员管理
 - 活动发布权限控制
 
+### 成员关系与审核
+- 志愿者加入/退出组织申请
+- 成员状态变更与统计分析
+- 审核记录快照与审批留痕
+
 ### 数据导入导出
 - 志愿者信息批量导入/导出
 - 活动数据批量处理
@@ -186,6 +191,75 @@ API 文档使用 OpenAPI 规范生成，可通过以下方式访问：
 | **静态文档** | 查看 `docs/openapi.yaml` 文件 |
 | **Swagger UI** (开发中) | 访问 `http://localhost:1109/swagger/` |
 
+## 会员关系与审核（2026-02）
+
+### 认证与响应约定
+
+- 除登录/注册外，`/api/*` 默认需要携带 `Authorization: Bearer <access_token>`。
+- 接口响应统一为：
+
+```json
+{
+  "code": 200,
+  "msg": "OK",
+  "data": {}
+}
+```
+
+### 关键业务流程
+
+1. 志愿者提交加入组织：`POST /api/memberships/join`  
+   服务端会创建 `audit_records` 待审核记录（`target_type=3, operation_type=1, status=1`）。
+2. 组织账号审核加入申请：`POST /api/audits/approval` 或 `POST /api/audits/rejection`。  
+   审核通过后才会真正写入 `org_members`。
+3. 志愿者提交退出组织：`POST /api/memberships/leave`。  
+   服务端会创建退出审核记录（`operation_type=3, status=1`）。
+4. 组织账号审核退出申请通过后，成员状态更新为 `已退出`（`status=4`）。
+5. 组织管理者可直接更新成员状态：`POST /api/memberships/{membershipId}/status`，仅允许 `2/3/4`（不能直接改为待审核）。
+
+### 状态枚举
+
+| 类型 | 值 | 说明 |
+|------|----|------|
+| 成员状态 | `1` | 待审核 |
+| 成员状态 | `2` | 正式成员（已通过） |
+| 成员状态 | `3` | 已拒绝 |
+| 成员状态 | `4` | 已退出 |
+| 成员角色 | `1` | 普通成员 |
+| 成员角色 | `2` | 管理员 |
+| 成员角色 | `3` | 负责人 |
+| 审核状态 | `1` | 待审核 |
+| 审核状态 | `2` | 审核通过 |
+| 审核状态 | `3` | 审核拒绝 |
+| 审核操作类型 | `1` | 新增 |
+| 审核操作类型 | `2` | 更新 |
+| 审核操作类型 | `3` | 删除 |
+
+### 会员与审核 API 索引
+
+| 接口 | 方法 | 说明 | 主要权限约束 |
+|------|------|------|-------------|
+| `/api/memberships/join` | `POST` | 志愿者提交加入组织申请 | 仅志愿者本人可提交 |
+| `/api/memberships/leave` | `POST` | 志愿者提交退出组织申请 | 仅该成员关系对应志愿者本人 |
+| `/api/organizations/{organizationId}/members` | `GET` | 组织成员列表 | 仅该组织管理者 |
+| `/api/volunteers/{volunteerId}/organizations` | `GET` | 志愿者组织列表 | 仅志愿者本人可查自己 |
+| `/api/memberships/{membershipId}/status` | `POST` | 组织侧更新成员状态 | 仅该组织管理者；状态仅 `2/3/4` |
+| `/api/memberships/stats` | `GET` | 成员统计 | 组织管理者；`organizationId` 可选 |
+| `/api/audits/volunteer-join-org/pending` | `POST` | 待审核列表 | 需登录 |
+| `/api/audits/approval` | `POST` | 审核通过 | 组织账号 |
+| `/api/audits/rejection` | `POST` | 审核驳回 | 组织账号 |
+| `/api/audits/records/:id` | `GET` | 审核记录详情 | 需登录 |
+
+## 数据库迁移
+
+- 本次版本新增 `sql/ddl/ddl_v1.1.6.sql`，用于将 `org_members` 的 `(org_id, volunteer_id)` 升级为唯一索引，避免同一组织出现重复成员关系。
+- 建议按版本顺序执行 DDL 脚本（`sql/ddl/ddl_v1.1.0.sql` -> 最新版本）。
+- 执行示例：
+
+```bash
+mysql -h127.0.0.1 -uroot -p volunteer_system < sql/ddl/ddl_v1.1.6.sql
+```
+
 ## 用户权限体系
 
 平台支持 2 种角色：
@@ -241,7 +315,9 @@ make test
 | `make install` | 安装开发依赖工具 |
 | `make api` | 批量生成API代码 |
 | `make api-single file=<file>` | 生成单个proto文件代码 |
+| `make api-single-mac file=<file>` | Mac/Linux 下生成单个proto文件代码 |
 | `make build` | 构建可执行文件 |
+| `make build-mac` | 构建 Mac/Linux 可执行文件 |
 | `make run` | 运行服务 |
 | `make clean` | 清理编译产物 |
 | `make test` | 运行测试 |
@@ -249,6 +325,8 @@ make test
 | `make mod` | 整理依赖 |
 | `make models` | 生成数据库模型代码 |
 | `make docker-build` | 构建Docker镜像 |
+| `make docker-tag` | 镜像打 tag 到 Harbor 地址 |
+| `make docker-push` | 推送镜像到 Harbor |
 
 ## 部署
 
@@ -299,11 +377,3 @@ MIT License - 查看 [LICENSE](LICENSE) 文件了解详情。
 - [CloudWeGo](https://www.cloudwego.io/) - 提供高性能的 Hertz 框架
 - [GORM](https://gorm.io/) - 优秀的 Go ORM 库
 - 所有为环保事业贡献的志愿者
-
-## 联系方式
-
-如有问题或建议，请联系项目维护者。
-
----
-
-⭐ 如果这个项目对您有帮助，请给我们一个 star！

@@ -3,21 +3,21 @@
 
 openapi: 3.0.3
 info:
-    title: VolunteerService API
-    description: 志愿者管理服务端接口
+    title: MembershipService API
+    description: 志愿者-组织关联关系管理服务端接口
     version: 0.0.1
 paths:
-    /api/volunteers/:id:
-        put:
+    /api/memberships/join:
+        post:
             tags:
-                - VolunteerService
-            description: 更新志愿者信息（志愿者端）
-            operationId: VolunteerService_VolunteerUpdate
+                - MembershipService
+            description: 志愿者加入组织
+            operationId: MembershipService_VolunteerJoinOrganization
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/volunteer.VolunteerUpdateRequest'
+                            $ref: '#/components/schemas/membership.VolunteerJoinRequest'
                 required: true
             responses:
                 "200":
@@ -25,17 +25,36 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerUpdateResponse'
-    /api/volunteers/detail/:id:
+                                $ref: '#/components/schemas/membership.VolunteerJoinResponse'
+    /api/memberships/leave:
+        post:
+            tags:
+                - MembershipService
+            description: 志愿者退出组织
+            operationId: MembershipService_VolunteerLeaveOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/membership.VolunteerLeaveRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.VolunteerLeaveResponse'
+    /api/memberships/stats:
         get:
             tags:
-                - VolunteerService
-            description: 志愿者详情（管理员端）
-            operationId: VolunteerService_VolunteerDetail
+                - MembershipService
+            description: 成员统计信息
+            operationId: MembershipService_MembershipStats
             parameters:
-                - name: id
+                - name: organizationId
                   in: query
-                  description: '志愿者ID 必填 @gotags: path:"id,required"'
+                  description: '组织ID 可选 @gotags: query:"organizationId"'
                   schema:
                     type: string
             responses:
@@ -44,14 +63,58 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerDetailResponse'
-    /api/volunteers/list:
+                                $ref: '#/components/schemas/membership.MembershipStatsResponse'
+    /api/memberships/{membershipId}/status:
         post:
             tags:
-                - VolunteerService
-            description: 志愿者列表（管理员端）
-            operationId: VolunteerService_VolunteerList
+                - MembershipService
+            description: 更新成员状态（审核通过/拒绝等）
+            operationId: MembershipService_UpdateMemberStatus
             parameters:
+                - name: membershipId
+                  in: path
+                  description: '成员关系ID 必填 @gotags: path:"membershipId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/membership.MemberStatusUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.MemberStatusUpdateResponse'
+    /api/organizations/{organizationId}/members:
+        get:
+            tags:
+                - MembershipService
+            description: 获取组织成员列表
+            operationId: MembershipService_GetOrganizationMembers
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: role
+                  in: query
+                  description: '角色筛选 可选 @gotags: query:"role"'
+                  schema:
+                    type: integer
+                    format: int32
                 - name: keyword
                   in: query
                   description: '搜索关键字 可选 @gotags: query:"keyword"'
@@ -75,144 +138,193 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerListResponse'
-    /api/volunteers/my/profile:
+                                $ref: '#/components/schemas/membership.OrganizationMembersResponse'
+    /api/volunteers/{volunteerId}/organizations:
         get:
             tags:
-                - VolunteerService
-            description: 我的个人信息（志愿者端）
-            operationId: VolunteerService_MyProfile
+                - MembershipService
+            description: 查询志愿者加入的组织
+            operationId: MembershipService_GetVolunteerOrganizations
             parameters:
-                - name: id
-                  in: query
-                  description: '志愿者ID 必填 @gotags: query:"id,required"'
+                - name: volunteerId
+                  in: path
+                  description: '志愿者ID 必填 @gotags: path:"volunteerId,required"'
+                  required: true
                   schema:
                     type: string
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page
+                  in: query
+                  description: '页码 必填 @gotags: query:"page,required"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
+                  schema:
+                    type: integer
+                    format: int32
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/volunteer.MyProfileResponse'
+                                $ref: '#/components/schemas/membership.VolunteerOrganizationsResponse'
 components:
     schemas:
-        volunteer.MyProfileResponse:
+        membership.MemberInfo:
             type: object
             properties:
-                volunteer:
-                    allOf:
-                        - $ref: '#/components/schemas/volunteer.VolunteerInfo'
-                    description: 志愿者信息
-            description: MyProfileResponse 我的个人信息响应（志愿者端）
-        volunteer.VolunteerDetailResponse:
-            type: object
-            properties:
-                volunteer:
-                    allOf:
-                        - $ref: '#/components/schemas/volunteer.VolunteerInfo'
-                    description: 志愿者信息
-            description: VolunteerDetailResponse 志愿者详情响应（管理员端）
-        volunteer.VolunteerInfo:
-            type: object
-            properties:
-                id:
+                membershipId:
                     type: string
-                accountId:
+                    description: 成员关系ID
+                volunteerId:
                     type: string
-                    description: 账户ID
-                realName:
+                    description: 志愿者ID
+                volunteerName:
                     type: string
-                    description: 真实姓名
-                gender:
+                    description: 志愿者姓名
+                volunteerCode:
+                    type: string
+                    description: 志愿者编号
+                organizationId:
+                    type: string
+                    description: 组织ID
+                organizationName:
+                    type: string
+                    description: 组织名称
+                status:
                     type: integer
-                    description: '性别: 0-未知, 1-男, 2-女'
+                    description: 成员状态
                     format: int32
-                birthday:
-                    type: string
-                    description: 出生日期
-                idCard:
-                    type: string
-                    description: 身份证号
-                avatarUrl:
-                    type: string
-                    description: 头像URL
-                introduction:
-                    type: string
-                    description: 个人简介
-                totalHours:
-                    type: number
-                    description: 累计服务时长(小时)
-                    format: double
-                serviceCount:
+                role:
                     type: integer
-                    description: 累计服务次数
+                    description: 成员角色
                     format: int32
-                creditScore:
-                    type: integer
-                    description: 信用分
-                    format: int32
-                auditStatus:
-                    type: integer
-                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
-                    format: int32
+                position:
+                    type: string
+                    description: 申请职位
+                motivation:
+                    type: string
+                    description: 申请动机
+                expectedHours:
+                    type: string
+                    description: 期望工作时间
+                joinDate:
+                    type: string
+                    description: 加入时间
+                reviewDate:
+                    type: string
+                    description: 审核时间
+                reviewComment:
+                    type: string
+                    description: 审核意见
+                leaveDate:
+                    type: string
+                    description: 离开时间
+                leaveReason:
+                    type: string
+                    description: 离开原因
                 createdAt:
                     type: string
                     description: 创建时间
                 updatedAt:
                     type: string
                     description: 更新时间
-                status:
-                    type: integer
-                    description: 志愿者状态
-                    format: int32
-            description: VolunteerInfo 志愿者信息
-        volunteer.VolunteerListItem:
+            description: MemberInfo 成员信息
+        membership.MemberStatusUpdateRequest:
             type: object
             properties:
-                id:
-                    type: string
                 accountId:
                     type: string
-                    description: 账户ID
-                realName:
+                    description: '组织管理者ID 必填 @gotags: path:"accountId,required"'
+                membershipId:
                     type: string
-                    description: 真实姓名
-                gender:
+                    description: '成员关系ID 必填 @gotags: path:"membershipId,required"'
+                status:
                     type: integer
-                    description: '性别: 0-未知, 1-男, 2-女'
+                    description: '成员状态 必填 @gotags: json:"status,required"'
                     format: int32
-                avatarUrl:
+                reviewComment:
                     type: string
-                    description: 头像URL
-                totalHours:
-                    type: number
-                    description: 累计服务时长(小时)
-                    format: double
-                serviceCount:
+                    description: '审核意见 可选 @gotags: json:"reviewComment"'
+            description: MemberStatusUpdateRequest 更新成员状态请求
+        membership.MemberStatusUpdateResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: MemberStatusUpdateResponse 更新成员状态响应
+        membership.MembershipStatsResponse:
+            type: object
+            properties:
+                pendingCount:
+                    type: string
+                    description: 待审核成员数量
+                activeCount:
+                    type: string
+                    description: 活跃成员数量
+                inactiveCount:
+                    type: string
+                    description: 非活跃成员数量
+                suspendedCount:
+                    type: string
+                    description: 暂停成员数量
+                totalCount:
+                    type: string
+                    description: 总成员数量
+            description: MembershipStatsResponse 成员统计响应
+        membership.OrganizationMemberInfo:
+            type: object
+            properties:
+                membershipId:
+                    type: string
+                    description: 成员关系ID
+                organizationId:
+                    type: string
+                    description: 组织ID
+                organizationName:
+                    type: string
+                    description: 组织名称
+                organizationCode:
+                    type: string
+                    description: 组织代码
+                status:
                     type: integer
-                    description: 累计服务次数
+                    description: 成员状态
                     format: int32
-                creditScore:
+                role:
                     type: integer
-                    description: 信用分
+                    description: 成员角色
                     format: int32
-                auditStatus:
-                    type: integer
-                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
-                    format: int32
+                position:
+                    type: string
+                    description: 申请职位
+                joinDate:
+                    type: string
+                    description: 加入时间
+                reviewDate:
+                    type: string
+                    description: 审核时间
+                reviewComment:
+                    type: string
+                    description: 审核意见
                 createdAt:
                     type: string
                     description: 创建时间
                 updatedAt:
                     type: string
                     description: 更新时间
-                status:
-                    type: integer
-                    description: 志愿者状态
-                    format: int32
-            description: VolunteerListItem 志愿者列表项
-        volunteer.VolunteerListResponse:
+            description: OrganizationMemberInfo 组织成员信息（用于志愿者视角）
+        membership.OrganizationMembersResponse:
             type: object
             properties:
                 total:
@@ -221,34 +333,59 @@ components:
                 list:
                     type: array
                     items:
-                        $ref: '#/components/schemas/volunteer.VolunteerListItem'
-            description: VolunteerListResponse 志愿者列表响应
-        volunteer.VolunteerUpdateRequest:
+                        $ref: '#/components/schemas/membership.MemberInfo'
+            description: OrganizationMembersResponse 获取组织成员响应
+        membership.VolunteerJoinRequest:
             type: object
             properties:
                 volunteerId:
                     type: string
-                    description: '志愿者ID @gotags: path:"volunteerId,required"'
-                realName:
+                    description: '志愿者ID 必填 @gotags: json:"volunteerId,required"'
+                organizationId:
                     type: string
-                    description: '真实姓名 可选 @gotags: json:"realName"'
-                gender:
-                    type: integer
-                    description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"'
-                    format: int32
-                birthday:
-                    type: string
-                    description: '出生日期 可选 @gotags: json:"birthday"'
-                avatarUrl:
-                    type: string
-                    description: '头像URL 可选 @gotags: json:"avatarUrl"'
-                introduction:
-                    type: string
-                    description: '个人简介 可选 @gotags: json:"introduction"'
-            description: VolunteerUpdateRequest 更新志愿者请求
-        volunteer.VolunteerUpdateResponse:
+                    description: '组织ID 必填 @gotags: json:"organizationId,required"'
+            description: VolunteerJoinRequest 志愿者加入组织请求
+        membership.VolunteerJoinResponse:
             type: object
-            properties: {}
-            description: VolunteerUpdateResponse 更新志愿者响应
+            properties:
+                membershipId:
+                    type: string
+                    description: 成员关系ID
+                status:
+                    type: integer
+                    description: 状态
+                    format: int32
+                message:
+                    type: string
+                    description: 消息
+            description: VolunteerJoinResponse 志愿者加入组织响应
+        membership.VolunteerLeaveRequest:
+            type: object
+            properties:
+                membershipId:
+                    type: string
+                    description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
+                reason:
+                    type: string
+                    description: '退出原因 可选 @gotags: json:"reason"'
+            description: VolunteerLeaveRequest 志愿者退出组织请求
+        membership.VolunteerLeaveResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: VolunteerLeaveResponse 志愿者退出组织响应
+        membership.VolunteerOrganizationsResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/membership.OrganizationMemberInfo'
+            description: VolunteerOrganizationsResponse 查询志愿者加入的组织响应
 tags:
-    - name: VolunteerService
+    - name: MembershipService

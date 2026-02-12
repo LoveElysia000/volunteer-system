@@ -8,6 +8,7 @@ import (
 
 func RegisterVolunteerRouter(r *route.RouterGroup) {
 	r.POST("/volunteers/list", handler.VolunteerList)
-	r.GET("/volunteers/detail/:volunteerId", handler.VolunteerDetail)
-	r.PUT("/volunteers/:volunteerId", handler.VolunteerUpdate)
+	r.GET("/volunteers/detail/:id", handler.VolunteerDetail)
+	r.GET("/volunteers/my/profile/:id", handler.MyProfile)
+	r.PUT("/volunteers/:id", handler.VolunteerUpdate)
 }

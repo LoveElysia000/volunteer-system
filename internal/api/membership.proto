@@ -45,7 +45,7 @@ service MembershipService {
   // 更新成员状态（审核通过/拒绝等）
   rpc UpdateMemberStatus(MemberStatusUpdateRequest) returns (MemberStatusUpdateResponse) {
     option (google.api.http) = {
-      post: "/api/memberships/{membershipId}/status"
+      post: "/api/memberships/status/update"
       body: "*"
     };
   }
@@ -132,12 +132,14 @@ message VolunteerOrganizationsResponse {
 
 // MemberStatusUpdateRequest 更新成员状态请求
 message MemberStatusUpdateRequest {
+  // 组织管理者ID 必填 @gotags: "accountId,required"
+  int64 accountId = 1;
   // 成员关系ID 必填 @gotags: path:"membershipId,required"
-  int64 membershipId = 1;
+  int64 membershipId = 2;
   // 成员状态 必填 @gotags: json:"status,required"
-  int32 status = 2;
+  int32 status = 3;
   // 审核意见 可选 @gotags: json:"reviewComment"
-  string reviewComment = 3;
+  string reviewComment = 4;
 }
 
 // MemberStatusUpdateResponse 更新成员状态响应
@@ -155,15 +157,15 @@ message MembershipStatsRequest {
 // MembershipStatsResponse 成员统计响应
 message MembershipStatsResponse {
   // 待审核成员数量
-  int32 pendingCount = 1;
+  int64 pendingCount = 1;
   // 活跃成员数量
-  int32 activeCount = 2;
+  int64 activeCount = 2;
   // 非活跃成员数量
-  int32 inactiveCount = 3;
+  int64 inactiveCount = 3;
   // 暂停成员数量
-  int32 suspendedCount = 4;
+  int64 suspendedCount = 4;
   // 总成员数量
-  int32 totalCount = 5;
+  int64 totalCount = 5;
 }
 
 // MemberInfo 成员信息
