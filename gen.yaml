@@ -13,7 +13,8 @@ database:
   #   - "organizations"
   # 活动相关表
   # - "org_members"
-   - "volunteers"
+  # - "activity_signups"
+   - "work_hour_logs"
   # 输出目录
   outPath: "./internal/dao"
   # 查询代码文件名，默认: gen.go

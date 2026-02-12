@@ -336,6 +336,50 @@ func (s *AuditService) applyMemberAuditApproval(tx *gorm.DB, record *model.Audit
 }
 
 func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.AuditRecord) error {
+	if record.OperationType == model.OperationTypeCreate && record.TargetID <= 0 {
+		if strings.TrimSpace(record.NewContent) == "" {
+			return errors.New("报名快照无效")
+		}
+
+		var signupSnapshot model.ActivitySignup
+		if err := json.Unmarshal([]byte(record.NewContent), &signupSnapshot); err != nil {
+			return err
+		}
+		if signupSnapshot.ActivityID <= 0 || signupSnapshot.VolunteerID <= 0 {
+			return errors.New("报名快照无效")
+		}
+
+		needIncrementPeople := false
+		signup, err := s.repo.GetSignup(tx, signupSnapshot.ActivityID, signupSnapshot.VolunteerID)
+		if err != nil {
+			return err
+		}
+
+		if signup == nil {
+			signup = &model.ActivitySignup{
+				ActivityID:  signupSnapshot.ActivityID,
+				VolunteerID: signupSnapshot.VolunteerID,
+				Status:      model.ActivitySignupStatusSuccess,
+			}
+			if err := s.repo.CreateSignup(tx, signup); err != nil {
+				return err
+			}
+			needIncrementPeople = true
+		} else if signup.Status != model.ActivitySignupStatusSuccess {
+			if err := s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusSuccess); err != nil {
+				return err
+			}
+			needIncrementPeople = true
+		}
+
+		if needIncrementPeople {
+			if err := s.repo.IncrementActivityPeople(tx, signupSnapshot.ActivityID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	signup, err := s.repo.GetActivitySignupByID(tx, record.TargetID)
 	if err != nil {
 		return err

@@ -12,15 +12,22 @@ const TableNameActivitySignup = "activity_signups"
 
 // ActivitySignup 活动报名记录表
 type ActivitySignup struct {
-	ID            int64      `gorm:"column:id;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                          // 主键ID
-	ActivityID    int64      `gorm:"column:activity_id;not null;comment:活动ID (关联activities.id)" json:"activity_id"`           // 活动ID (关联activities.id)
-	VolunteerID   int64      `gorm:"column:volunteer_id;not null;comment:志愿者ID (关联volunteers.id)" json:"volunteer_id"`        // 志愿者ID (关联volunteers.id)
-	SignupTime    time.Time  `gorm:"column:signup_time;not null;default:CURRENT_TIMESTAMP;comment:报名时间" json:"signup_time"`   // 报名时间
-	Status        int32      `gorm:"column:status;not null;default:1;comment:状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消" json:"status"` // 状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
-	CheckInStatus int32      `gorm:"column:check_in_status;not null;comment:签到状态: 0-未签到, 1-已签到" json:"check_in_status"`       // 签到状态: 0-未签到, 1-已签到
-	CheckInTime   *time.Time `gorm:"column:check_in_time;comment:签到时间" json:"check_in_time"`                                  // 签到时间
-	CreatedAt     time.Time  `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`     // 创建时间
-	UpdatedAt     time.Time  `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`     // 更新时间
+	ID                int64      `gorm:"column:id;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                            // 主键ID
+	ActivityID        int64      `gorm:"column:activity_id;not null;comment:活动ID (关联activities.id)" json:"activity_id"`             // 活动ID (关联activities.id)
+	VolunteerID       int64      `gorm:"column:volunteer_id;not null;comment:志愿者ID (关联volunteers.id)" json:"volunteer_id"`          // 志愿者ID (关联volunteers.id)
+	SignupTime        time.Time  `gorm:"column:signup_time;not null;default:CURRENT_TIMESTAMP;comment:报名时间" json:"signup_time"`     // 报名时间
+	Status            int32      `gorm:"column:status;not null;default:1;comment:状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消" json:"status"`   // 状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
+	CheckInStatus     int32      `gorm:"column:check_in_status;not null;comment:签到状态: 0-未签到, 1-已签到" json:"check_in_status"`         // 签到状态: 0-未签到, 1-已签到
+	CheckInTime       *time.Time `gorm:"column:check_in_time;comment:签到时间" json:"check_in_time"`                                    // 签到时间
+	CheckOutStatus    int32      `gorm:"column:check_out_status;not null;comment:签退状态：0-未签退，1-已签退" json:"check_out_status"`         // 签退状态：0-未签退，1-已签退
+	CheckOutTime      *time.Time `gorm:"column:check_out_time;comment:签退时间" json:"check_out_time"`                                  // 签退时间
+	WorkHourStatus    int32      `gorm:"column:work_hour_status;not null;comment:工时结算状态：0-未结算，1-已发放，2-已作废" json:"work_hour_status"` // 工时结算状态：0-未结算，1-已发放，2-已作废
+	WorkHourVersion   int64      `gorm:"column:work_hour_version;not null;comment:工时结算版本号（用于重算）" json:"work_hour_version"`          // 工时结算版本号（用于重算）
+	LastWorkHourLogID int64      `gorm:"column:last_work_hour_log_id;not null;comment:最后一次生效的工时流水ID" json:"last_work_hour_log_id"`  // 最后一次生效的工时流水ID
+	GrantedHours      float64    `gorm:"column:granted_hours;not null;comment:本次报名最终发放工时" json:"granted_hours"`                     // 本次报名最终发放工时
+	GrantedAt         *time.Time `gorm:"column:granted_at;comment:工时发放时间" json:"granted_at"`                                        // 工时发放时间
+	CreatedAt         time.Time  `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`       // 创建时间
+	UpdatedAt         time.Time  `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`       // 更新时间
 }
 
 // TableName ActivitySignup's table name

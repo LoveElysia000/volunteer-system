@@ -17,23 +17,23 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:        db,
-		Volunteer: newVolunteer(db, opts...),
+		db:          db,
+		WorkHourLog: newWorkHourLog(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Volunteer volunteer
+	WorkHourLog workHourLog
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:        db,
-		Volunteer: q.Volunteer.clone(db),
+		db:          db,
+		WorkHourLog: q.WorkHourLog.clone(db),
 	}
 }
 
@@ -47,18 +47,18 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:        db,
-		Volunteer: q.Volunteer.replaceDB(db),
+		db:          db,
+		WorkHourLog: q.WorkHourLog.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Volunteer *volunteerDo
+	WorkHourLog *workHourLogDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Volunteer: q.Volunteer.WithContext(ctx),
+		WorkHourLog: q.WorkHourLog.WithContext(ctx),
 	}
 }
 

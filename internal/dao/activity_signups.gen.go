@@ -34,6 +34,13 @@ func newActivitySignup(db *gorm.DB, opts ...gen.DOOption) activitySignup {
 	_activitySignup.Status = field.NewInt32(tableName, "status")
 	_activitySignup.CheckInStatus = field.NewInt32(tableName, "check_in_status")
 	_activitySignup.CheckInTime = field.NewTime(tableName, "check_in_time")
+	_activitySignup.CheckOutStatus = field.NewInt32(tableName, "check_out_status")
+	_activitySignup.CheckOutTime = field.NewTime(tableName, "check_out_time")
+	_activitySignup.WorkHourStatus = field.NewInt32(tableName, "work_hour_status")
+	_activitySignup.WorkHourVersion = field.NewInt64(tableName, "work_hour_version")
+	_activitySignup.LastWorkHourLogID = field.NewInt64(tableName, "last_work_hour_log_id")
+	_activitySignup.GrantedHours = field.NewFloat64(tableName, "granted_hours")
+	_activitySignup.GrantedAt = field.NewTime(tableName, "granted_at")
 	_activitySignup.CreatedAt = field.NewTime(tableName, "created_at")
 	_activitySignup.UpdatedAt = field.NewTime(tableName, "updated_at")
 
@@ -46,16 +53,23 @@ func newActivitySignup(db *gorm.DB, opts ...gen.DOOption) activitySignup {
 type activitySignup struct {
 	activitySignupDo activitySignupDo
 
-	ALL           field.Asterisk
-	ID            field.Int64 // 主键ID
-	ActivityID    field.Int64 // 活动ID (关联activities.id)
-	VolunteerID   field.Int64 // 志愿者ID (关联volunteers.id)
-	SignupTime    field.Time  // 报名时间
-	Status        field.Int32 // 状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
-	CheckInStatus field.Int32 // 签到状态: 0-未签到, 1-已签到
-	CheckInTime   field.Time  // 签到时间
-	CreatedAt     field.Time  // 创建时间
-	UpdatedAt     field.Time  // 更新时间
+	ALL               field.Asterisk
+	ID                field.Int64   // 主键ID
+	ActivityID        field.Int64   // 活动ID (关联activities.id)
+	VolunteerID       field.Int64   // 志愿者ID (关联volunteers.id)
+	SignupTime        field.Time    // 报名时间
+	Status            field.Int32   // 状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
+	CheckInStatus     field.Int32   // 签到状态: 0-未签到, 1-已签到
+	CheckInTime       field.Time    // 签到时间
+	CheckOutStatus    field.Int32   // 签退状态：0-未签退，1-已签退
+	CheckOutTime      field.Time    // 签退时间
+	WorkHourStatus    field.Int32   // 工时结算状态：0-未结算，1-已发放，2-已作废
+	WorkHourVersion   field.Int64   // 工时结算版本号（用于重算）
+	LastWorkHourLogID field.Int64   // 最后一次生效的工时流水ID
+	GrantedHours      field.Float64 // 本次报名最终发放工时
+	GrantedAt         field.Time    // 工时发放时间
+	CreatedAt         field.Time    // 创建时间
+	UpdatedAt         field.Time    // 更新时间
 
 	fieldMap map[string]field.Expr
 }
@@ -79,6 +93,13 @@ func (a *activitySignup) updateTableName(table string) *activitySignup {
 	a.Status = field.NewInt32(table, "status")
 	a.CheckInStatus = field.NewInt32(table, "check_in_status")
 	a.CheckInTime = field.NewTime(table, "check_in_time")
+	a.CheckOutStatus = field.NewInt32(table, "check_out_status")
+	a.CheckOutTime = field.NewTime(table, "check_out_time")
+	a.WorkHourStatus = field.NewInt32(table, "work_hour_status")
+	a.WorkHourVersion = field.NewInt64(table, "work_hour_version")
+	a.LastWorkHourLogID = field.NewInt64(table, "last_work_hour_log_id")
+	a.GrantedHours = field.NewFloat64(table, "granted_hours")
+	a.GrantedAt = field.NewTime(table, "granted_at")
 	a.CreatedAt = field.NewTime(table, "created_at")
 	a.UpdatedAt = field.NewTime(table, "updated_at")
 
@@ -109,7 +130,7 @@ func (a *activitySignup) GetFieldByName(fieldName string) (field.OrderExpr, bool
 }
 
 func (a *activitySignup) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 9)
+	a.fieldMap = make(map[string]field.Expr, 16)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["activity_id"] = a.ActivityID
 	a.fieldMap["volunteer_id"] = a.VolunteerID
@@ -117,6 +138,13 @@ func (a *activitySignup) fillFieldMap() {
 	a.fieldMap["status"] = a.Status
 	a.fieldMap["check_in_status"] = a.CheckInStatus
 	a.fieldMap["check_in_time"] = a.CheckInTime
+	a.fieldMap["check_out_status"] = a.CheckOutStatus
+	a.fieldMap["check_out_time"] = a.CheckOutTime
+	a.fieldMap["work_hour_status"] = a.WorkHourStatus
+	a.fieldMap["work_hour_version"] = a.WorkHourVersion
+	a.fieldMap["last_work_hour_log_id"] = a.LastWorkHourLogID
+	a.fieldMap["granted_hours"] = a.GrantedHours
+	a.fieldMap["granted_at"] = a.GrantedAt
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt
 }

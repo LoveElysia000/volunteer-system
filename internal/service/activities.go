@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 	"volunteer-system/internal/api"
@@ -79,13 +80,11 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	return resp, nil
 }
 
-// todo 活动报名不是直接创建数据，而是创建审核数据，走审核流程
 // ActivitySignup 活动报名
 func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.ActivitySignupResponse, error) {
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("活动报名失败: 获取当前用户失败: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
@@ -93,7 +92,6 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("活动报名失败: 活动不存在, activity_id=%d user_id=%d", req.ActivityId, userID)
 			return nil, errors.New("活动不存在")
 		}
 		log.Error("活动报名失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
@@ -102,13 +100,11 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 
 	// 校验活动状态
 	if activity.Status != 1 {
-		log.Warn("活动报名失败: 活动状态不允许报名, activity_id=%d user_id=%d status=%d", req.ActivityId, userID, activity.Status)
 		return nil, errors.New("活动已结束或已取消")
 	}
 
 	// 校验名额
 	if activity.MaxPeople > 0 && activity.CurrentPeople >= activity.MaxPeople {
-		log.Warn("活动报名失败: 名额已满, activity_id=%d user_id=%d max_people=%d current_people=%d", req.ActivityId, userID, activity.MaxPeople, activity.CurrentPeople)
 		return nil, errors.New("名额已满")
 	}
 
@@ -118,41 +114,76 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		log.Error("活动报名前检查失败: 查询报名记录异常: %v, activity_id=%d user_id=%d", signupErr, req.ActivityId, userID)
 	}
 	if existing != nil && (existing.Status == model.ActivitySignupStatusPending || existing.Status == model.ActivitySignupStatusSuccess) {
-		log.Warn("活动报名失败: 重复报名, activity_id=%d user_id=%d", req.ActivityId, userID)
 		return nil, errors.New("请勿重复报名")
 	}
 
-	// 事务处理
-	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
-		// 创建报名记录
-		signup := &model.ActivitySignup{
-			ActivityID:  req.ActivityId,
-			VolunteerID: userID,
-			Status:      model.ActivitySignupStatusPending,
-		}
-		if err := s.repo.CreateSignup(tx, signup); err != nil {
-			log.Error("活动报名失败: 创建报名记录异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
-			return err
-		}
-
-		// 增加活动当前报名人数（原子操作）
-		if err := s.repo.IncrementActivityPeople(tx, req.ActivityId); err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Warn("活动报名失败: 增加报名人数时活动不存在或已满, activity_id=%d user_id=%d", req.ActivityId, userID)
-				return errors.New("名额已满")
-			}
-			log.Error("活动报名失败: 增加报名人数异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
-			return err
-		}
-
-		return nil
-	})
-
+	hasPendingAudit, err := s.hasPendingSignupCreateAudit(req.ActivityId, userID)
 	if err != nil {
-		log.Warn("活动报名失败: 事务执行失败: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+		log.Error("活动报名失败: 查询待审核报名异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 		return nil, err
 	}
+	if hasPendingAudit {
+		return nil, errors.New("请勿重复报名")
+	}
+
+	signupSnapshot := &model.ActivitySignup{
+		ActivityID:  req.ActivityId,
+		VolunteerID: userID,
+		Status:      model.ActivitySignupStatusPending,
+	}
+	newContent, err := json.Marshal(signupSnapshot)
+	if err != nil {
+		log.Error("活动报名失败: 序列化报名快照异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+		return nil, err
+	}
+
+	record := &model.AuditRecord{
+		TargetType:    model.AuditTargetSignup,
+		TargetID:      0,
+		AuditorID:     0,
+		OldContent:    "{}",
+		NewContent:    string(newContent),
+		AuditResult:   0,
+		RejectReason:  "",
+		AuditTime:     time.Now(),
+		OperationType: model.OperationTypeCreate,
+		Status:        model.AuditStatusPending,
+	}
+	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
+		log.Error("活动报名失败: 创建审核记录异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+		return nil, err
+	}
+
+	log.Info("活动报名申请已提交: activity_id=%d user_id=%d record_id=%d", req.ActivityId, userID, record.ID)
 	return &api.ActivitySignupResponse{Success: true}, nil
+}
+
+func (s *ActivityService) hasPendingSignupCreateAudit(activityID, volunteerID int64) (bool, error) {
+	queryMap := map[string]any{
+		"target_type = ?":    model.AuditTargetSignup,
+		"operation_type = ?": model.OperationTypeCreate,
+		"status = ?":         model.AuditStatusPending,
+	}
+	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
+	if err != nil {
+		return false, err
+	}
+
+	for _, record := range records {
+		if record == nil || record.TargetID > 0 {
+			continue
+		}
+
+		var signup model.ActivitySignup
+		if err := json.Unmarshal([]byte(record.NewContent), &signup); err != nil {
+			continue
+		}
+		if signup.ActivityID == activityID && signup.VolunteerID == volunteerID {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // ActivityCancel 取消报名
@@ -160,7 +191,6 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("取消报名失败: 获取当前用户失败: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
@@ -173,13 +203,11 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 
 	// 校验报名记录是否存在
 	if signup == nil {
-		log.Warn("取消报名失败: 报名记录不存在, activity_id=%d user_id=%d", req.ActivityId, userID)
 		return nil, errors.New("报名记录不存在")
 	}
 
 	// 校验报名状态
 	if signup.Status != model.ActivitySignupStatusPending && signup.Status != model.ActivitySignupStatusSuccess {
-		log.Warn("取消报名失败: 当前状态不允许取消, activity_id=%d user_id=%d signup_status=%d", req.ActivityId, userID, signup.Status)
 		return nil, errors.New("当前状态不允许取消")
 	}
 
@@ -205,6 +233,8 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 		log.Error("取消报名失败: 事务执行失败: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 		return nil, err
 	}
+
+	log.Info("取消报名成功: activity_id=%d user_id=%d signup_id=%d", req.ActivityId, userID, signup.ID)
 	return &api.ActivityCancelResponse{Success: true}, nil
 }
 
@@ -213,7 +243,6 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("活动详情查询失败: 获取当前用户失败: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -221,7 +250,6 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	activity, orgName, err := s.repo.GetActivityWithOrg(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("活动详情查询失败: 活动不存在, activity_id=%d user_id=%d", req.Id, userID)
 			return nil, errors.New("活动不存在")
 		}
 		log.Error("活动详情查询失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
@@ -231,7 +259,6 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	// 查询用户是否已报名
 	signup, signupErr := s.repo.GetSignup(s.repo.DB, req.Id, userID)
 	if signupErr != nil {
-		log.Warn("活动详情查询: 查询报名状态失败: %v, activity_id=%d user_id=%d", signupErr, req.Id, userID)
 	}
 	isRegistered := signup != nil && (signup.Status == model.ActivitySignupStatusPending || signup.Status == model.ActivitySignupStatusSuccess)
 
@@ -273,7 +300,6 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("我的活动列表查询失败: 获取当前用户失败: %v", err)
 		return nil, err
 	}
 
@@ -367,13 +393,11 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("创建活动失败: 获取当前用户失败: %v, org_id=%d", err, req.OrgId)
 		return nil, err
 	}
 
 	// 校验必填字段
 	if req.OrgId <= 0 {
-		log.Warn("创建活动失败: 组织ID为空, user_id=%d", userID)
 		return nil, errors.New("组织ID不能为空")
 	}
 
@@ -381,7 +405,6 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	org, err := s.repo.GetOrganizationByID(s.repo.DB, req.OrgId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("创建活动失败: 组织不存在, org_id=%d user_id=%d", req.OrgId, userID)
 			return nil, errors.New("组织不存在")
 		}
 		log.Error("创建活动失败: 查询组织异常: %v, org_id=%d user_id=%d", err, req.OrgId, userID)
@@ -390,29 +413,24 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 
 	// 校验组织是否属于当前登录的管理者
 	if org.AccountID != userID {
-		log.Warn("创建活动失败: 无权为该组织创建活动, org_id=%d user_id=%d owner_id=%d", req.OrgId, userID, org.AccountID)
 		return nil, errors.New("无权为该组织创建活动")
 	}
 
 	// 解析时间
 	startTime, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
 	if err != nil {
-		log.Warn("创建活动失败: 开始时间格式错误, start_time=%s org_id=%d user_id=%d", req.StartTime, req.OrgId, userID)
 		return nil, errors.New("开始时间格式错误")
 	}
 	endTime, err := time.Parse("2006-01-02 15:04:05", req.EndTime)
 	if err != nil {
-		log.Warn("创建活动失败: 结束时间格式错误, end_time=%s org_id=%d user_id=%d", req.EndTime, req.OrgId, userID)
 		return nil, errors.New("结束时间格式错误")
 	}
 
 	// 校验时间
 	if endTime.Before(startTime) {
-		log.Warn("创建活动失败: 结束时间早于开始时间, org_id=%d user_id=%d start_time=%s end_time=%s", req.OrgId, userID, req.StartTime, req.EndTime)
 		return nil, errors.New("结束时间不能早于开始时间")
 	}
 	if startTime.Before(time.Now()) {
-		log.Warn("创建活动失败: 开始时间早于当前时间, org_id=%d user_id=%d start_time=%s", req.OrgId, userID, req.StartTime)
 		return nil, errors.New("开始时间不能早于当前时间")
 	}
 
@@ -437,8 +455,7 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		return nil, err
 	}
 
-	log.Info("创建活动成功 activity_id=%d org_id=%d user_id=%d", activity.ID, req.OrgId, userID)
-
+	log.Info("创建活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, req.OrgId, userID)
 	return &api.CreateActivityResponse{
 		Id:      activity.ID,
 		Message: "创建活动成功",
@@ -450,7 +467,6 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("更新活动失败: 获取当前用户失败: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -458,7 +474,6 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	activity, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("更新活动失败: 活动不存在, activity_id=%d user_id=%d", req.Id, userID)
 			return nil, errors.New("活动不存在")
 		}
 		log.Error("更新活动失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
@@ -474,13 +489,11 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 
 	// 校验活动归属
 	if activity.OrgID != org.ID {
-		log.Warn("更新活动失败: 无权操作此活动, activity_id=%d activity_org_id=%d user_org_id=%d user_id=%d", req.Id, activity.OrgID, org.ID, userID)
 		return nil, errors.New("无权操作此活动")
 	}
 
 	// 校验活动状态
 	if activity.Status == 2 || activity.Status == 3 {
-		log.Warn("更新活动失败: 活动状态不允许修改, activity_id=%d user_id=%d status=%d", req.Id, userID, activity.Status)
 		return nil, errors.New("已结束或已取消的活动不能修改")
 	}
 
@@ -488,7 +501,6 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.StartTime != "" {
 		startTime, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
 		if err != nil {
-			log.Warn("更新活动失败: 开始时间格式错误, activity_id=%d user_id=%d start_time=%s", req.Id, userID, req.StartTime)
 			return nil, errors.New("开始时间格式错误")
 		}
 		activity.StartTime = startTime
@@ -496,7 +508,6 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.EndTime != "" {
 		endTime, err := time.Parse("2006-01-02 15:04:05", req.EndTime)
 		if err != nil {
-			log.Warn("更新活动失败: 结束时间格式错误, activity_id=%d user_id=%d end_time=%s", req.Id, userID, req.EndTime)
 			return nil, errors.New("结束时间格式错误")
 		}
 		activity.EndTime = endTime
@@ -504,7 +515,6 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 
 	// 校验时间
 	if activity.EndTime.Before(activity.StartTime) {
-		log.Warn("更新活动失败: 结束时间早于开始时间, activity_id=%d user_id=%d", req.Id, userID)
 		return nil, errors.New("结束时间不能早于开始时间")
 	}
 
@@ -530,7 +540,6 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.MaxPeople >= 0 {
 		// 检查是否会导致报名人数超过新设定的最大人数
 		if req.MaxPeople > 0 && activity.CurrentPeople > req.MaxPeople {
-			log.Warn("更新活动失败: 新名额小于当前报名人数, activity_id=%d user_id=%d current_people=%d new_max_people=%d", req.Id, userID, activity.CurrentPeople, req.MaxPeople)
 			return nil, errors.New("当前报名人数超过新设定的最大人数")
 		}
 		activity.MaxPeople = req.MaxPeople
@@ -541,8 +550,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		return nil, err
 	}
 
-	log.Info("更新活动成功 activity_id=%d org_id=%d user_id=%d", activity.ID, org.ID, userID)
-
+	log.Info("更新活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, org.ID, userID)
 	return &api.UpdateActivityResponse{
 		Message: "更新活动成功",
 	}, nil
@@ -553,7 +561,6 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("删除活动失败: 获取当前用户失败: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -561,7 +568,6 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 	activity, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("删除活动失败: 活动不存在, activity_id=%d user_id=%d", req.Id, userID)
 			return nil, errors.New("活动不存在")
 		}
 		log.Error("删除活动失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
@@ -577,13 +583,11 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 
 	// 校验活动归属
 	if activity.OrgID != org.ID {
-		log.Warn("删除活动失败: 无权操作此活动, activity_id=%d activity_org_id=%d user_org_id=%d user_id=%d", req.Id, activity.OrgID, org.ID, userID)
 		return nil, errors.New("无权操作此活动")
 	}
 
 	// 校验活动状态
 	if activity.Status == 2 {
-		log.Warn("删除活动失败: 活动已结束, activity_id=%d user_id=%d", req.Id, userID)
 		return nil, errors.New("已结束的活动不能删除")
 	}
 
@@ -591,7 +595,6 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 	if activity.CurrentPeople > 0 {
 		// 可以选择允许删除或拒绝
 		// 这里选择允许删除，记录日志
-		log.Warn("删除有报名人数的活动 activity_id=%d current_people=%d", activity.ID, activity.CurrentPeople)
 	}
 
 	if err := s.repo.DeleteActivity(s.repo.DB, req.Id); err != nil {
@@ -599,8 +602,7 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 		return nil, err
 	}
 
-	log.Info("删除活动成功 activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
-
+	log.Info("删除活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
 	return &api.DeleteActivityResponse{
 		Message: "删除活动成功",
 	}, nil
@@ -611,7 +613,6 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		log.Warn("取消活动失败: 获取当前用户失败: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -619,7 +620,6 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 	activity, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("取消活动失败: 活动不存在, activity_id=%d user_id=%d", req.Id, userID)
 			return nil, errors.New("活动不存在")
 		}
 		log.Error("取消活动失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
@@ -635,13 +635,11 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 
 	// 校验活动归属
 	if activity.OrgID != org.ID {
-		log.Warn("取消活动失败: 无权操作此活动, activity_id=%d activity_org_id=%d user_org_id=%d user_id=%d", req.Id, activity.OrgID, org.ID, userID)
 		return nil, errors.New("无权操作此活动")
 	}
 
 	// 校验活动状态
 	if activity.Status == 2 || activity.Status == 3 {
-		log.Warn("取消活动失败: 活动状态不允许取消, activity_id=%d user_id=%d status=%d", req.Id, userID, activity.Status)
 		return nil, errors.New("已结束或已取消的活动不能取消")
 	}
 
@@ -650,8 +648,7 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		return nil, err
 	}
 
-	log.Info("取消活动成功 activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
-
+	log.Info("取消活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
 	return &api.CancelActivityResponse{
 		Message: "取消活动成功",
 	}, nil
