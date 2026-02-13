@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package workhour;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 工时流水服务接口
+service WorkHourService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 工时流水查询
+  rpc WorkHourLogList(WorkHourLogListRequest) returns (WorkHourLogListResponse) {
+    option (google.api.http) = {
+      post: "/api/work-hours/list"
+      body: "*"
+    };
+  }
+
+  // 工时作废
+  rpc VoidWorkHour(VoidWorkHourRequest) returns (VoidWorkHourResponse) {
+    option (google.api.http) = {
+      post: "/api/work-hours/void"
+      body: "*"
+    };
+  }
+
+  // 工时重算
+  rpc RecalculateWorkHour(RecalculateWorkHourRequest) returns (RecalculateWorkHourResponse) {
+    option (google.api.http) = {
+      post: "/api/work-hours/recalculate"
+      body: "*"
+    };
+  }
+}
+
+message WorkHourLogListRequest {
+  // 页码 可选 @gotags: query:"page"
+  int32 page = 1;
+  // 页大小 可选 @gotags: query:"pageSize"
+  int32 pageSize = 2;
+  // 活动ID 可选 @gotags: json:"activityId"
+  int64 activityId = 3;
+  // 报名ID 可选 @gotags: json:"signupId"
+  int64 signupId = 4;
+  // 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
+  int32 operationType = 5;
+}
+
+message WorkHourLogListResponse {
+  int32 total = 1;
+  repeated WorkHourLogItem list = 2;
+}
+
+message WorkHourLogItem {
+  // 工时流水ID
+  int64 id = 1;
+  // 志愿者ID（volunteers.id）
+  int64 volunteerId = 2;
+  // 活动ID
+  int64 activityId = 3;
+  // 报名ID
+  int64 signupId = 4;
+  // 操作类型: 1-发放,2-作废,3-重发
+  int32 operationType = 5;
+  // 工时增量（作废时为负数）
+  double hoursDelta = 6;
+  // 服务次数增量
+  int64 serviceCountDelta = 7;
+  // 变更前累计工时
+  double beforeTotalHours = 8;
+  // 变更后累计工时
+  double afterTotalHours = 9;
+  // 变更前累计服务次数
+  int64 beforeServiceCount = 10;
+  // 变更后累计服务次数
+  int64 afterServiceCount = 11;
+  // 工时结算版本号
+  int64 workHourVersion = 12;
+  // 关联原流水ID（作废/重发场景）
+  int64 refLogId = 13;
+  // 备注原因
+  string reason = 14;
+  // 操作人账号ID
+  int64 operatorId = 15;
+  // 幂等键
+  string idempotencyKey = 16;
+  // 创建时间
+  string createdAt = 17;
+}
+
+message VoidWorkHourRequest {
+  // 报名ID 必填 @gotags: json:"signupId,required"
+  int64 signupId = 1;
+  // 作废原因 必填 @gotags: json:"reason,required"
+  string reason = 2;
+  // 幂等键 必填 @gotags: json:"idempotencyKey,required"
+  string idempotencyKey = 3;
+}
+
+message VoidWorkHourResponse {
+  bool success = 1;
+  int64 workHourLogId = 2;
+}
+
+message RecalculateWorkHourRequest {
+  // 报名ID 必填 @gotags: json:"signupId,required"
+  int64 signupId = 1;
+  // 重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: json:"hours"
+  double hours = 2;
+  // 重算原因 必填 @gotags: json:"reason,required"
+  string reason = 3;
+  // 幂等键 必填 @gotags: json:"idempotencyKey,required"
+  string idempotencyKey = 4;
+}
+
+message RecalculateWorkHourResponse {
+  // 是否成功
+  bool success = 1;
+  // 本次重算写入的工时流水ID
+  int64 workHourLogId = 2;
+  // 重算后发放工时
+  double grantedHours = 3;
+}

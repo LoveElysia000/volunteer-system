@@ -64,6 +64,27 @@ const (
 	ActivitySignupStatusRejected int32 = 3 // 报名驳回
 	ActivitySignupStatusCanceled int32 = 4 // 已取消
 
+	// 活动状态（activities.status）
+	ActivityStatusRecruiting int32 = 1 // 报名中
+	ActivityStatusFinished   int32 = 2 // 已结束
+	ActivityStatusCanceled   int32 = 3 // 已取消
+
+	// 活动签到/签退状态（activity_signups）
+	ActivityCheckInPending  int32 = 0 // 未签到
+	ActivityCheckInDone     int32 = 1 // 已签到
+	ActivityCheckOutPending int32 = 0 // 未签退
+	ActivityCheckOutDone    int32 = 1 // 已签退
+
+	// 工时结算状态（activity_signups.work_hour_status）
+	WorkHourStatusPending int32 = 0 // 未结算
+	WorkHourStatusGranted int32 = 1 // 已发放
+	WorkHourStatusVoided  int32 = 2 // 已作废
+
+	// 工时流水操作类型（work_hour_logs.operation_type）
+	WorkHourOperationGrant   int32 = 1 // 发放
+	WorkHourOperationVoid    int32 = 2 // 作废
+	WorkHourOperationRegrant int32 = 3 // 重发/重算
+
 	// 账号状态
 	SysAccountNotNormal int32 = 0 // 禁用
 	SysAccountNormal    int32 = 1 // 正常

@@ -4,6 +4,7 @@ import (
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // GetActivitiesByStatus 根据状态查询活动列表
@@ -54,6 +55,19 @@ func (r *Repository) GetActivityByID(db *gorm.DB, id int64) (*model.Activity, er
 	return &activity, nil
 }
 
+// GetActivityByIDForUpdate 根据ID查询活动并加行锁
+func (r *Repository) GetActivityByIDForUpdate(db *gorm.DB, id int64) (*model.Activity, error) {
+	var activity model.Activity
+	err := db.WithContext(r.ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ?", id).
+		First(&activity).Error
+	if err != nil {
+		return nil, err
+	}
+	return &activity, nil
+}
+
 // GetSignup 查询报名记录
 func (r *Repository) GetSignup(db *gorm.DB, activityID, volunteerID int64) (*model.ActivitySignup, error) {
 	var signup model.ActivitySignup
@@ -69,10 +83,40 @@ func (r *Repository) GetSignup(db *gorm.DB, activityID, volunteerID int64) (*mod
 	return &signup, nil
 }
 
+// GetSignupForUpdate 查询报名记录并加行锁
+func (r *Repository) GetSignupForUpdate(db *gorm.DB, activityID, volunteerID int64) (*model.ActivitySignup, error) {
+	var signup model.ActivitySignup
+	err := db.WithContext(r.ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("activity_id = ? AND volunteer_id = ?", activityID, volunteerID).
+		First(&signup).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &signup, nil
+}
+
 // GetActivitySignupByID finds a signup record by id.
 func (r *Repository) GetActivitySignupByID(db *gorm.DB, id int64) (*model.ActivitySignup, error) {
 	var signup model.ActivitySignup
 	err := db.WithContext(r.ctx).
+		Model(&model.ActivitySignup{}).
+		Where("id = ?", id).
+		First(&signup).Error
+	if err != nil {
+		return nil, err
+	}
+	return &signup, nil
+}
+
+// GetActivitySignupByIDForUpdate 根据ID查询报名记录并加行锁
+func (r *Repository) GetActivitySignupByIDForUpdate(db *gorm.DB, id int64) (*model.ActivitySignup, error) {
+	var signup model.ActivitySignup
+	err := db.WithContext(r.ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Model(&model.ActivitySignup{}).
 		Where("id = ?", id).
 		First(&signup).Error
@@ -98,6 +142,14 @@ func (r *Repository) UpdateActivitySignupStatusByID(db *gorm.DB, id int64, statu
 // UpdateSignupStatus 更新报名记录状态
 func (r *Repository) UpdateSignupStatus(db *gorm.DB, signup *model.ActivitySignup) error {
 	return db.WithContext(r.ctx).Save(signup).Error
+}
+
+// UpdateActivitySignupByID updates signup fields by id.
+func (r *Repository) UpdateActivitySignupByID(db *gorm.DB, id int64, updates map[string]any) error {
+	return db.WithContext(r.ctx).
+		Model(&model.ActivitySignup{}).
+		Where("id = ?", id).
+		Updates(updates).Error
 }
 
 // IncrementActivityPeople 增加活动当前报名人数（原子操作）
@@ -294,7 +346,15 @@ func (r *Repository) DeleteActivity(db *gorm.DB, id int64) error {
 func (r *Repository) CancelActivity(db *gorm.DB, id int64) error {
 	return db.WithContext(r.ctx).Model(&model.Activity{}).
 		Where("id = ?", id).
-		Update("status", 3).Error // 3-已取消
+		Update("status", model.ActivityStatusCanceled).Error
+}
+
+// FinishActivity 完结活动
+func (r *Repository) FinishActivity(db *gorm.DB, id int64) error {
+	return db.WithContext(r.ctx).
+		Model(&model.Activity{}).
+		Where("id = ?", id).
+		Update("status", model.ActivityStatusFinished).Error
 }
 
 // GetOrganizationByAccountID 根据账号ID获取组织

@@ -288,7 +288,7 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 		return nil, errors.New("组织不存在")
 	}
 
-	err = s.repo.Transaction(func(tx *gorm.DB) error {
+	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationDisabled}); err != nil {
 			return err
 		}
@@ -323,7 +323,7 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 		return nil, errors.New("组织不存在")
 	}
 
-	err = s.repo.Transaction(func(tx *gorm.DB) error {
+	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationNormal}); err != nil {
 			return err
 		}

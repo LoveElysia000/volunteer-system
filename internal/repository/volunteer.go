@@ -4,6 +4,7 @@ import (
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // FindVolunteerByAccountID 根据账户ID查找志愿者
@@ -20,6 +21,20 @@ func (r *Repository) FindVolunteerByAccountID(db *gorm.DB, accountID int64) (*mo
 func (r *Repository) FindVolunteerByID(db *gorm.DB, id int64) (*model.Volunteer, error) {
 	var volunteer model.Volunteer
 	err := db.WithContext(r.ctx).Model(&volunteer).Where("id = ?", id).First(&volunteer).Error
+	if err != nil {
+		return nil, err
+	}
+	return &volunteer, nil
+}
+
+// FindVolunteerByIDForUpdate 根据ID查找志愿者并加行锁
+func (r *Repository) FindVolunteerByIDForUpdate(db *gorm.DB, id int64) (*model.Volunteer, error) {
+	var volunteer model.Volunteer
+	err := db.WithContext(r.ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Model(&volunteer).
+		Where("id = ?", id).
+		First(&volunteer).Error
 	if err != nil {
 		return nil, err
 	}

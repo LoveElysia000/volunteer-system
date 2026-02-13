@@ -164,7 +164,7 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 	}
 	reason := strings.TrimSpace(req.Reason)
 
-	err = s.repo.Transaction(func(tx *gorm.DB) error {
+	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		handler, ok := auditHandlerMap[record.TargetType]
 		if !ok {
 			return errors.New("不支持的审核目标类型")

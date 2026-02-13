@@ -36,8 +36,3 @@ func NewRepository(ctx context.Context, c *app.RequestContext) *Repository {
 func (r *Repository) GetRedisCmd() goredis.Cmdable {
 	return r.rDB
 }
-
-// Transaction 执行事务
-func (r *Repository) Transaction(fn func(tx *gorm.DB) error) error {
-	return r.DB.WithContext(r.ctx).Transaction(fn)
-}

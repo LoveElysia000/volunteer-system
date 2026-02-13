@@ -49,6 +49,22 @@ func FormatDateTime(t time.Time) string {
 	return t.Format(DateTimeLayout)
 }
 
+// FormatDateTimeOrEmpty 格式化时间；零值时间返回空字符串
+func FormatDateTimeOrEmpty(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(DateTimeLayout)
+}
+
+// FormatDateTimePtr 格式化时间指针；nil 或零值时间返回空字符串
+func FormatDateTimePtr(t *time.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.Format(DateTimeLayout)
+}
+
 // FormatJoinDate 格式化加入日期，优先使用 joinedAt，否则使用 appliedAt
 func FormatJoinDate(joinedAt *time.Time, appliedAt time.Time) string {
 	if joinedAt != nil {

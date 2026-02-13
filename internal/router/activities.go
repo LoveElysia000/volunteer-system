@@ -14,10 +14,14 @@ func RegisterActivityRouter(r *route.RouterGroup) {
 	r.POST("/activities/cancel", handler.ActivityCancel)
 	r.GET("/activities/:id", handler.ActivityDetail)
 	r.POST("/activities/my", handler.MyActivities)
+	r.POST("/activities/checkin", handler.ActivityCheckIn)
+	r.POST("/activities/checkout", handler.ActivityCheckOut)
 
 	// 组织端 - 活动管理
 	r.POST("/activities/create", handler.CreateActivity)
 	r.PUT("/activities/:id", handler.UpdateActivity)
 	r.DELETE("/activities/:id", handler.DeleteActivity)
 	r.POST("/activities/:id/cancel", handler.CancelActivity)
+	r.POST("/activities/:id/finish", handler.FinishActivity)
+	r.POST("/activities/supplement-attendance", handler.ActivitySupplementAttendance)
 }

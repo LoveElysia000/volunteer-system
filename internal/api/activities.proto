@@ -34,6 +34,22 @@ service ActivityService {
     };
   }
 
+  // 活动签到（志愿者侧）
+  rpc ActivityCheckIn(ActivityCheckInRequest) returns (ActivityCheckInResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/checkin"
+      body: "*"
+    };
+  }
+
+  // 活动签退（志愿者侧，签退后触发工时结算）
+  rpc ActivityCheckOut(ActivityCheckOutRequest) returns (ActivityCheckOutResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/checkout"
+      body: "*"
+    };
+  }
+
   // 获取活动详情
   rpc ActivityDetail(ActivityDetailRequest) returns (ActivityDetailResponse) {
     option (google.api.http) = {
@@ -77,6 +93,22 @@ service ActivityService {
   rpc CancelActivity(CancelActivityRequest) returns (CancelActivityResponse) {
     option (google.api.http) = {
       post: "/api/activities/{id}/cancel"
+      body: "*"
+    };
+  }
+
+  // 完结活动
+  rpc FinishActivity(FinishActivityRequest) returns (FinishActivityResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/{id}/finish"
+      body: "*"
+    };
+  }
+
+  // 活动签到签退补录（组织侧）
+  rpc ActivitySupplementAttendance(ActivitySupplementAttendanceRequest) returns (ActivitySupplementAttendanceResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/supplement-attendance"
       body: "*"
     };
   }
@@ -150,6 +182,58 @@ message ActivityCancelResponse {
   bool success = 1;
 }
 
+// ========== 活动签到签退 ==========
+
+message ActivityCheckInRequest {
+  // 活动ID 必填 @gotags: json:"activityId,required"
+  int64 activityId = 1;
+}
+
+message ActivityCheckInResponse {
+  // 是否成功
+  bool success = 1;
+  // 签到时间
+  string checkInTime = 2;
+}
+
+message ActivityCheckOutRequest {
+  // 活动ID 必填 @gotags: json:"activityId,required"
+  int64 activityId = 1;
+}
+
+message ActivityCheckOutResponse {
+  // 是否成功
+  bool success = 1;
+  // 签退时间
+  string checkOutTime = 2;
+  // 本次发放工时
+  double grantedHours = 3;
+}
+
+message ActivitySupplementAttendanceRequest {
+  // 活动ID 必填 @gotags: json:"activityId,required"
+  int64 activityId = 1;
+  // 志愿者ID（volunteers.id）必填 @gotags: json:"volunteerId,required"
+  int64 volunteerId = 2;
+  // 补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: json:"checkInTime"
+  string checkInTime = 3;
+  // 补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: json:"checkOutTime,required"
+  string checkOutTime = 4;
+  // 补录原因 可选 @gotags: json:"reason"
+  string reason = 5;
+}
+
+message ActivitySupplementAttendanceResponse {
+  // 是否成功
+  bool success = 1;
+  // 补录后的签到时间
+  string checkInTime = 2;
+  // 补录后的签退时间
+  string checkOutTime = 3;
+  // 本次发放工时
+  double grantedHours = 4;
+}
+
 // ========== 活动详情 ==========
 
 message ActivityDetailRequest {
@@ -193,6 +277,18 @@ message ActivityInfo {
   bool isRegistered = 15;
   // 创建时间
   string createdAt = 16;
+  // 签到状态: 0-未签到, 1-已签到
+  int32 checkInStatus = 17;
+  // 签到时间
+  string checkInTime = 18;
+  // 签退状态: 0-未签退, 1-已签退
+  int32 checkOutStatus = 19;
+  // 签退时间
+  string checkOutTime = 20;
+  // 工时结算状态: 0-未结算, 1-已发放, 2-已作废
+  int32 workHourStatus = 21;
+  // 本次发放工时
+  double grantedHours = 22;
 }
 
 // ========== 我的活动 ==========
@@ -244,6 +340,14 @@ message MyActivityItem {
   int32 checkInStatus = 15;
   // 签到时间
   string checkInTime = 16;
+  // 签退状态: 0-未签退, 1-已签退
+  int32 checkOutStatus = 17;
+  // 签退时间
+  string checkOutTime = 18;
+  // 工时结算状态: 0-未结算, 1-已发放, 2-已作废
+  int32 workHourStatus = 19;
+  // 本次发放工时
+  double grantedHours = 20;
 }
 
 // ========== 组织端活动管理 ==========
@@ -332,6 +436,18 @@ message CancelActivityRequest {
 
 // CancelActivityResponse 取消活动响应
 message CancelActivityResponse {
+  // 消息
+  string message = 1;
+}
+
+// FinishActivityRequest 完结活动请求
+message FinishActivityRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+}
+
+// FinishActivityResponse 完结活动响应
+message FinishActivityResponse {
   // 消息
   string message = 1;
 }
