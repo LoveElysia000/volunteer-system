@@ -15,6 +15,7 @@ type AuditRecord struct {
 	ID            int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                 // 主键ID
 	TargetType    int32     `gorm:"column:target_type;not null;comment:审核类型: 1-志愿者实名, 2-组织资质, 3-加入组织申请, 4-活动报名" json:"target_type"` // 审核类型: 1-志愿者实名, 2-组织资质, 3-加入组织申请, 4-活动报名
 	TargetID      int64     `gorm:"column:target_id;not null;comment:关联目标表的主键ID" json:"target_id"`                                  // 关联目标表的主键ID
+	CreatorID     int64     `gorm:"column:creator_id;not null;comment:提交人账号ID(关联sys_accounts.id)" json:"creator_id"`                // 提交人账号ID(关联sys_accounts.id)
 	AuditorID     int64     `gorm:"column:auditor_id;not null;comment:审核人账号ID(关联sys_accounts.id)" json:"auditor_id"`                // 审核人账号ID(关联sys_accounts.id)
 	OldContent    string    `gorm:"column:old_content;not null;comment:变更前数据快照(JSON形式)" json:"old_content"`                         // 变更前数据快照(JSON形式)
 	NewContent    string    `gorm:"column:new_content;not null;comment:变更后数据快照(JSON形式)" json:"new_content"`                         // 变更后数据快照(JSON形式)

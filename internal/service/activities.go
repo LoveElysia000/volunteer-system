@@ -127,9 +127,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	}
 
 	// 第二层去重：检查审核表（audit_records）里是否已有待审核的创建申请（未落库）
-	// TODO: audit_records 增加 creator_id 并更新模型后，将 userID 传入 hasPendingSignupCreateAudit，
-	// TODO: 在 SQL 条件中增加 creator_id = userID，避免跨用户扫描。
-	hasPendingAudit, err := s.hasPendingSignupCreateAudit(req.ActivityId, volunteerID)
+	hasPendingAudit, err := s.hasPendingSignupCreateAudit(req.ActivityId, volunteerID, userID)
 	if err != nil {
 		log.Error("活动报名失败: 查询待审核报名异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
 		return nil, err
@@ -150,9 +148,9 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	}
 
 	record := &model.AuditRecord{
-		TargetType: model.AuditTargetSignup,
-		TargetID:   0,
-		// TODO: audit_records 增加 creator_id 并更新模型后，在此写入 CreatorID: userID。
+		TargetType:    model.AuditTargetSignup,
+		TargetID:      0,
+		CreatorID:     userID,
 		AuditorID:     0,
 		OldContent:    "{}",
 		NewContent:    string(newContent),
@@ -171,14 +169,13 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	return &api.ActivitySignupResponse{Success: true}, nil
 }
 
-func (s *ActivityService) hasPendingSignupCreateAudit(activityID, volunteerID int64) (bool, error) {
+func (s *ActivityService) hasPendingSignupCreateAudit(activityID, volunteerID, userID int64) (bool, error) {
 	// 仅查询“活动报名 + 新增 + 待审核”的记录，再从快照中匹配 activity_id/volunteer_id。
-	// TODO: audit_records 增加 creator_id 并更新模型后，
-	// TODO: 在 queryMap 增加 "creator_id = ?" 条件，并将函数签名扩展为接收 userID。
 	queryMap := map[string]any{
 		"target_type = ?":    model.AuditTargetSignup,
 		"operation_type = ?": model.OperationTypeCreate,
 		"status = ?":         model.AuditStatusPending,
+		"creator_id = ?":     userID,
 	}
 	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
 	if err != nil {

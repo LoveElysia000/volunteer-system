@@ -18,14 +18,14 @@ import (
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:          db,
-		WorkHourLog: newWorkHourLog(db, opts...),
+		AuditRecord: newAuditRecord(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	WorkHourLog workHourLog
+	AuditRecord auditRecord
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -33,7 +33,7 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
-		WorkHourLog: q.WorkHourLog.clone(db),
+		AuditRecord: q.AuditRecord.clone(db),
 	}
 }
 
@@ -48,17 +48,17 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
-		WorkHourLog: q.WorkHourLog.replaceDB(db),
+		AuditRecord: q.AuditRecord.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	WorkHourLog *workHourLogDo
+	AuditRecord *auditRecordDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		WorkHourLog: q.WorkHourLog.WithContext(ctx),
+		AuditRecord: q.AuditRecord.WithContext(ctx),
 	}
 }
 

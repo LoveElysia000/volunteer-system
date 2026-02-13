@@ -14,7 +14,7 @@ database:
   # 活动相关表
   # - "org_members"
   # - "activity_signups"
-   - "work_hour_logs"
+   - "audit_records"
   # 输出目录
   outPath: "./internal/dao"
   # 查询代码文件名，默认: gen.go

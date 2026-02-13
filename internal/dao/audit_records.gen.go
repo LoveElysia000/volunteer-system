@@ -30,6 +30,7 @@ func newAuditRecord(db *gorm.DB, opts ...gen.DOOption) auditRecord {
 	_auditRecord.ID = field.NewInt64(tableName, "id")
 	_auditRecord.TargetType = field.NewInt32(tableName, "target_type")
 	_auditRecord.TargetID = field.NewInt64(tableName, "target_id")
+	_auditRecord.CreatorID = field.NewInt64(tableName, "creator_id")
 	_auditRecord.AuditorID = field.NewInt64(tableName, "auditor_id")
 	_auditRecord.OldContent = field.NewString(tableName, "old_content")
 	_auditRecord.NewContent = field.NewString(tableName, "new_content")
@@ -53,6 +54,7 @@ type auditRecord struct {
 	ID            field.Int64  // 主键ID
 	TargetType    field.Int32  // 审核类型: 1-志愿者实名, 2-组织资质, 3-加入组织申请, 4-活动报名
 	TargetID      field.Int64  // 关联目标表的主键ID
+	CreatorID     field.Int64  // 提交人账号ID(关联sys_accounts.id)
 	AuditorID     field.Int64  // 审核人账号ID(关联sys_accounts.id)
 	OldContent    field.String // 变更前数据快照(JSON形式)
 	NewContent    field.String // 变更后数据快照(JSON形式)
@@ -81,6 +83,7 @@ func (a *auditRecord) updateTableName(table string) *auditRecord {
 	a.ID = field.NewInt64(table, "id")
 	a.TargetType = field.NewInt32(table, "target_type")
 	a.TargetID = field.NewInt64(table, "target_id")
+	a.CreatorID = field.NewInt64(table, "creator_id")
 	a.AuditorID = field.NewInt64(table, "auditor_id")
 	a.OldContent = field.NewString(table, "old_content")
 	a.NewContent = field.NewString(table, "new_content")
@@ -116,10 +119,11 @@ func (a *auditRecord) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *auditRecord) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 12)
+	a.fieldMap = make(map[string]field.Expr, 13)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["target_type"] = a.TargetType
 	a.fieldMap["target_id"] = a.TargetID
+	a.fieldMap["creator_id"] = a.CreatorID
 	a.fieldMap["auditor_id"] = a.AuditorID
 	a.fieldMap["old_content"] = a.OldContent
 	a.fieldMap["new_content"] = a.NewContent

@@ -181,6 +181,9 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 			"audit_time":    time.Now(),
 			"status":        model.AuditStatusApproved,
 		}
+		if record.TargetID > 0 {
+			updates["target_id"] = record.TargetID
+		}
 		return s.repo.UpdateAuditRecordByID(tx, record.ID, updates)
 	})
 	if err != nil {
@@ -283,15 +286,24 @@ func (s *AuditService) applyMemberAuditApproval(tx *gorm.DB, record *model.Audit
 		if member.JoinedAt == nil {
 			member.JoinedAt = &now
 		}
-		return s.repo.CreateMembership(tx, &member)
+		if err := s.repo.CreateMembership(tx, &member); err != nil {
+			return err
+		}
+		record.TargetID = member.ID
+		return nil
 
 	case model.OperationTypeUpdate:
-		memberID := member.ID
+		// Prefer audit target_id as the canonical target.
+		memberID := record.TargetID
 		if memberID <= 0 {
-			memberID = record.TargetID
+			// Backward-compatibility for historical records lacking target_id.
+			memberID = member.ID
 		}
 		if memberID <= 0 {
 			return errors.New("目标ID不能为空")
+		}
+		if record.TargetID > 0 && member.ID > 0 && member.ID != record.TargetID {
+			return errors.New("目标ID不一致")
 		}
 
 		updates := map[string]any{
@@ -320,7 +332,11 @@ func (s *AuditService) applyMemberAuditApproval(tx *gorm.DB, record *model.Audit
 			updates["joined_at"] = &now
 		}
 
-		return s.repo.UpdateMembershipFields(tx, memberID, updates)
+		if err := s.repo.UpdateMembershipFields(tx, memberID, updates); err != nil {
+			return err
+		}
+		record.TargetID = memberID
+		return nil
 
 	case model.OperationTypeDelete:
 		if record.TargetID <= 0 {
@@ -377,6 +393,7 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 				return err
 			}
 		}
+		record.TargetID = signup.ID
 		return nil
 	}
 
