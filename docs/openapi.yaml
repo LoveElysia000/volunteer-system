@@ -3,21 +3,71 @@
 
 openapi: 3.0.3
 info:
-    title: WorkHourService API
-    description: 工时流水服务接口
+    title: ActivityService API
+    description: 活动管理服务端接口
     version: 0.0.1
 paths:
-    /api/work-hours/list:
+    /api/activities:
         post:
             tags:
-                - WorkHourService
-            description: 工时流水查询
-            operationId: WorkHourService_WorkHourLogList
+                - ActivityService
+            description: 获取活动列表
+            operationId: ActivityService_ActivityList
+            parameters:
+                - name: page
+                  in: query
+                  description: '页码 可选 @gotags: query:"page"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 可选 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityListResponse'
+    /api/activities/:id:
+        get:
+            tags:
+                - ActivityService
+            description: 获取活动详情
+            operationId: ActivityService_ActivityDetail
+            parameters:
+                - name: id
+                  in: query
+                  description: '活动ID 必填 @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityDetailResponse'
+        put:
+            tags:
+                - ActivityService
+            description: 更新活动
+            operationId: ActivityService_UpdateActivity
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/workhour.WorkHourLogListRequest'
+                            $ref: '#/components/schemas/activity.UpdateActivityRequest'
                 required: true
             responses:
                 "200":
@@ -25,18 +75,55 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/workhour.WorkHourLogListResponse'
-    /api/work-hours/recalculate:
+                                $ref: '#/components/schemas/activity.UpdateActivityResponse'
+        delete:
+            tags:
+                - ActivityService
+            description: 删除活动
+            operationId: ActivityService_DeleteActivity
+            parameters:
+                - name: id
+                  in: query
+                  description: '活动ID 必填 @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.DeleteActivityResponse'
+    /api/activities/attendance-codes/:id:
+        get:
+            tags:
+                - ActivityService
+            description: 查询活动签到码/签退码（组织侧）
+            operationId: ActivityService_GetActivityAttendanceCodes
+            parameters:
+                - name: id
+                  in: query
+                  description: '活动ID 必填 @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.GetActivityAttendanceCodesResponse'
+    /api/activities/attendance-codes/generate/:id:
         post:
             tags:
-                - WorkHourService
-            description: 工时重算
-            operationId: WorkHourService_RecalculateWorkHour
+                - ActivityService
+            description: 生成签到码/签退码（组织侧）
+            operationId: ActivityService_GenerateAttendanceCodes
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/workhour.RecalculateWorkHourRequest'
+                            $ref: '#/components/schemas/activity.GenerateAttendanceCodesRequest'
                 required: true
             responses:
                 "200":
@@ -44,18 +131,18 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/workhour.RecalculateWorkHourResponse'
-    /api/work-hours/void:
+                                $ref: '#/components/schemas/activity.GenerateAttendanceCodesResponse'
+    /api/activities/attendance-codes/reset/:id:
         post:
             tags:
-                - WorkHourService
-            description: 工时作废
-            operationId: WorkHourService_VoidWorkHour
+                - ActivityService
+            description: 重置签到码/签退码（组织侧）
+            operationId: ActivityService_ResetAttendanceCode
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/workhour.VoidWorkHourRequest'
+                            $ref: '#/components/schemas/activity.ResetAttendanceCodeRequest'
                 required: true
             responses:
                 "200":
@@ -63,137 +150,374 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/workhour.VoidWorkHourResponse'
+                                $ref: '#/components/schemas/activity.ResetAttendanceCodeResponse'
+    /api/activities/cancel:
+        post:
+            tags:
+                - ActivityService
+            description: 取消报名
+            operationId: ActivityService_ActivityCancel
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.ActivityCancelRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityCancelResponse'
+    /api/activities/cancel/:id:
+        post:
+            tags:
+                - ActivityService
+            description: 取消活动
+            operationId: ActivityService_CancelActivity
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.CancelActivityRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.CancelActivityResponse'
+    /api/activities/checkin:
+        post:
+            tags:
+                - ActivityService
+            description: 活动签到（志愿者侧）
+            operationId: ActivityService_ActivityCheckIn
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.ActivityCheckInRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityCheckInResponse'
+    /api/activities/checkout:
+        post:
+            tags:
+                - ActivityService
+            description: 活动签退（志愿者侧，签退后触发工时结算）
+            operationId: ActivityService_ActivityCheckOut
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.ActivityCheckOutRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityCheckOutResponse'
+    /api/activities/create:
+        post:
+            tags:
+                - ActivityService
+            description: 创建活动
+            operationId: ActivityService_CreateActivity
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.CreateActivityRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.CreateActivityResponse'
+    /api/activities/finish/:id:
+        post:
+            tags:
+                - ActivityService
+            description: 完结活动
+            operationId: ActivityService_FinishActivity
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.FinishActivityRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.FinishActivityResponse'
+    /api/activities/my:
+        post:
+            tags:
+                - ActivityService
+            description: 获取我的活动列表
+            operationId: ActivityService_MyActivities
+            parameters:
+                - name: page
+                  in: query
+                  description: '页码 可选 @gotags: query:"page"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 可选 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: status
+                  in: query
+                  description: |-
+                    状态筛选 可选 @gotags: query:"status"
+                     1-报名中, 2-已结束, 3-已取消
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.MyActivitiesResponse'
+    /api/activities/signup:
+        post:
+            tags:
+                - ActivityService
+            description: 活动报名
+            operationId: ActivityService_ActivitySignup
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.ActivitySignupRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivitySignupResponse'
+    /api/activities/supplement-attendance:
+        post:
+            tags:
+                - ActivityService
+            description: 活动签到签退补录（组织侧）
+            operationId: ActivityService_ActivitySupplementAttendance
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.ActivitySupplementAttendanceRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivitySupplementAttendanceResponse'
 components:
     schemas:
-        workhour.RecalculateWorkHourRequest:
+        activity.ActivityCancelRequest:
             type: object
             properties:
-                signupId:
+                activityId:
                     type: string
-                    description: '报名ID 必填 @gotags: json:"signupId,required"'
-                hours:
-                    type: number
-                    description: '重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: json:"hours"'
-                    format: double
-                reason:
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
+        activity.ActivityCancelResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 取消成功
+        activity.ActivityCheckInRequest:
+            type: object
+            properties:
+                activityId:
                     type: string
-                    description: '重算原因 必填 @gotags: json:"reason,required"'
-                idempotencyKey:
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
+                checkInCode:
                     type: string
-                    description: '幂等键 必填 @gotags: json:"idempotencyKey,required"'
-        workhour.RecalculateWorkHourResponse:
+                    description: '签到码 必填 @gotags: json:"checkInCode,required"'
+        activity.ActivityCheckInResponse:
             type: object
             properties:
                 success:
                     type: boolean
                     description: 是否成功
-                workHourLogId:
+                checkInTime:
                     type: string
-                    description: 本次重算写入的工时流水ID
-                grantedHours:
-                    type: number
-                    description: 重算后发放工时
-                    format: double
-        workhour.VoidWorkHourRequest:
+                    description: 签到时间
+        activity.ActivityCheckOutRequest:
             type: object
             properties:
-                signupId:
+                activityId:
                     type: string
-                    description: '报名ID 必填 @gotags: json:"signupId,required"'
-                reason:
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
+                checkOutCode:
                     type: string
-                    description: '作废原因 必填 @gotags: json:"reason,required"'
-                idempotencyKey:
-                    type: string
-                    description: '幂等键 必填 @gotags: json:"idempotencyKey,required"'
-        workhour.VoidWorkHourResponse:
+                    description: '签退码 必填 @gotags: json:"checkOutCode,required"'
+        activity.ActivityCheckOutResponse:
             type: object
             properties:
                 success:
                     type: boolean
-                workHourLogId:
+                    description: 是否成功
+                checkOutTime:
                     type: string
-        workhour.WorkHourLogItem:
+                    description: 签退时间
+                grantedHours:
+                    type: number
+                    description: 本次发放工时
+                    format: double
+        activity.ActivityDetailResponse:
+            type: object
+            properties:
+                activity:
+                    $ref: '#/components/schemas/activity.ActivityInfo'
+        activity.ActivityInfo:
             type: object
             properties:
                 id:
                     type: string
-                    description: 工时流水ID
-                volunteerId:
+                orgId:
                     type: string
-                    description: 志愿者ID（volunteers.id）
-                activityId:
+                    description: 组织ID
+                orgName:
                     type: string
-                    description: 活动ID
-                signupId:
+                    description: 组织名称
+                title:
                     type: string
-                    description: 报名ID
-                operationType:
+                    description: 活动标题
+                description:
+                    type: string
+                    description: 活动描述
+                coverUrl:
+                    type: string
+                    description: 封面图URL
+                startTime:
+                    type: string
+                    description: 开始时间
+                endTime:
+                    type: string
+                    description: 结束时间
+                location:
+                    type: string
+                    description: 地点名称
+                address:
+                    type: string
+                    description: 详细地址
+                duration:
+                    type: number
+                    description: 预估工时
+                    format: double
+                maxPeople:
                     type: integer
-                    description: '操作类型: 1-发放,2-作废,3-重发'
+                    description: 最大招募人数
                     format: int32
-                hoursDelta:
-                    type: number
-                    description: 工时增量（作废时为负数）
-                    format: double
-                serviceCountDelta:
-                    type: string
-                    description: 服务次数增量
-                beforeTotalHours:
-                    type: number
-                    description: 变更前累计工时
-                    format: double
-                afterTotalHours:
-                    type: number
-                    description: 变更后累计工时
-                    format: double
-                beforeServiceCount:
-                    type: string
-                    description: 变更前累计服务次数
-                afterServiceCount:
-                    type: string
-                    description: 变更后累计服务次数
-                workHourVersion:
-                    type: string
-                    description: 工时结算版本号
-                refLogId:
-                    type: string
-                    description: 关联原流水ID（作废/重发场景）
-                reason:
-                    type: string
-                    description: 备注原因
-                operatorId:
-                    type: string
-                    description: 操作人账号ID
-                idempotencyKey:
-                    type: string
-                    description: 幂等键
+                currentPeople:
+                    type: integer
+                    description: 当前已报名人数
+                    format: int32
+                status:
+                    type: integer
+                    description: '状态: 1-报名中, 2-已结束, 3-已取消'
+                    format: int32
+                isRegistered:
+                    type: boolean
+                    description: 是否已报名 (当前用户)
                 createdAt:
                     type: string
                     description: 创建时间
-        workhour.WorkHourLogListRequest:
+                checkInStatus:
+                    type: integer
+                    description: '签到状态: 0-未签到, 1-已签到'
+                    format: int32
+                checkInTime:
+                    type: string
+                    description: 签到时间
+                checkOutStatus:
+                    type: integer
+                    description: '签退状态: 0-未签退, 1-已签退'
+                    format: int32
+                checkOutTime:
+                    type: string
+                    description: 签退时间
+                workHourStatus:
+                    type: integer
+                    description: '工时结算状态: 0-未结算, 1-已发放, 2-已作废'
+                    format: int32
+                grantedHours:
+                    type: number
+                    description: 本次发放工时
+                    format: double
+        activity.ActivityItem:
             type: object
             properties:
-                page:
-                    type: integer
-                    description: '页码 可选 @gotags: query:"page"'
-                    format: int32
-                pageSize:
-                    type: integer
-                    description: '页大小 可选 @gotags: query:"pageSize"'
-                    format: int32
-                activityId:
+                id:
                     type: string
-                    description: '活动ID 可选 @gotags: json:"activityId"'
-                signupId:
+                title:
                     type: string
-                    description: '报名ID 可选 @gotags: json:"signupId"'
-                operationType:
+                    description: 活动标题
+                description:
+                    type: string
+                    description: 活动描述
+                coverUrl:
+                    type: string
+                    description: 封面图URL
+                startTime:
+                    type: string
+                    description: 开始时间
+                endTime:
+                    type: string
+                    description: 结束时间
+                location:
+                    type: string
+                    description: 地点名称
+                duration:
+                    type: number
+                    description: 预估工时
+                    format: double
+                maxPeople:
                     type: integer
-                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"'
+                    description: 最大招募人数
                     format: int32
-        workhour.WorkHourLogListResponse:
+                currentPeople:
+                    type: integer
+                    description: 当前已报名人数
+                    format: int32
+                status:
+                    type: integer
+                    description: '状态: 1-报名中, 2-已结束, 3-已取消'
+                    format: int32
+                isRegistered:
+                    type: boolean
+                    description: 是否已报名 (当前用户)
+                isFull:
+                    type: boolean
+                    description: 是否已满员
+        activity.ActivityListResponse:
             type: object
             properties:
                 total:
@@ -202,6 +526,362 @@ components:
                 list:
                     type: array
                     items:
-                        $ref: '#/components/schemas/workhour.WorkHourLogItem'
+                        $ref: '#/components/schemas/activity.ActivityItem'
+        activity.ActivitySignupRequest:
+            type: object
+            properties:
+                activityId:
+                    type: string
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
+        activity.ActivitySignupResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 报名成功
+        activity.ActivitySupplementAttendanceRequest:
+            type: object
+            properties:
+                activityId:
+                    type: string
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
+                volunteerId:
+                    type: string
+                    description: '志愿者ID（volunteers.id）必填 @gotags: json:"volunteerId,required"'
+                checkInTime:
+                    type: string
+                    description: '补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: json:"checkInTime"'
+                checkOutTime:
+                    type: string
+                    description: '补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: json:"checkOutTime,required"'
+                reason:
+                    type: string
+                    description: '补录原因 可选 @gotags: json:"reason"'
+        activity.ActivitySupplementAttendanceResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 是否成功
+                checkInTime:
+                    type: string
+                    description: 补录后的签到时间
+                checkOutTime:
+                    type: string
+                    description: 补录后的签退时间
+                grantedHours:
+                    type: number
+                    description: 本次发放工时
+                    format: double
+        activity.CancelActivityRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '活动ID 必填 @gotags: path:"id,required"'
+                reason:
+                    type: string
+                    description: '取消原因 可选 @gotags: json:"reason"'
+            description: CancelActivityRequest 取消活动请求
+        activity.CancelActivityResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: CancelActivityResponse 取消活动响应
+        activity.CreateActivityRequest:
+            type: object
+            properties:
+                orgId:
+                    type: string
+                    description: '组织ID 必填 @gotags: json:"orgId,required"'
+                title:
+                    type: string
+                    description: '活动标题 必填 @gotags: json:"title,required"'
+                description:
+                    type: string
+                    description: '活动描述 可选 @gotags: json:"description"'
+                coverUrl:
+                    type: string
+                    description: '封面图URL 可选 @gotags: json:"coverUrl"'
+                startTime:
+                    type: string
+                    description: '开始时间 必填 @gotags: json:"startTime,required"'
+                endTime:
+                    type: string
+                    description: '结束时间 必填 @gotags: json:"endTime,required"'
+                location:
+                    type: string
+                    description: '地点名称 必填 @gotags: json:"location,required"'
+                address:
+                    type: string
+                    description: '详细地址 可选 @gotags: json:"address"'
+                duration:
+                    type: number
+                    description: '预估工时（小时） 必填 @gotags: json:"duration,required"'
+                    format: double
+                maxPeople:
+                    type: integer
+                    description: '最大招募人数（0表示不限） 必填 @gotags: json:"maxPeople,required"'
+                    format: int32
+            description: CreateActivityRequest 创建活动请求
+        activity.CreateActivityResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 活动ID
+                message:
+                    type: string
+                    description: 消息
+            description: CreateActivityResponse 创建活动响应
+        activity.DeleteActivityResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: DeleteActivityResponse 删除活动响应
+        activity.FinishActivityRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '活动ID 必填 @gotags: path:"id,required"'
+            description: FinishActivityRequest 完结活动请求
+        activity.FinishActivityResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: FinishActivityResponse 完结活动响应
+        activity.GenerateAttendanceCodesRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '活动ID 必填 @gotags: path:"id,required"'
+                checkInValidMinutes:
+                    type: integer
+                    description: '签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"'
+                    format: int32
+                checkOutValidMinutes:
+                    type: integer
+                    description: '签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"'
+                    format: int32
+            description: GenerateAttendanceCodesRequest 生成签到码/签退码请求
+        activity.GenerateAttendanceCodesResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 是否成功
+                checkInCode:
+                    type: string
+                    description: 本次生成的签到码
+                checkOutCode:
+                    type: string
+                    description: 本次生成的签退码
+                attendanceCodeVersion:
+                    type: string
+                    description: 当前码版本号
+                attendanceCodeUpdatedAt:
+                    type: string
+                    description: 码更新时间
+                checkInExpireAt:
+                    type: string
+                    description: 签到码过期时间（为空表示不过期）
+                checkOutExpireAt:
+                    type: string
+                    description: 签退码过期时间（为空表示不过期）
+            description: GenerateAttendanceCodesResponse 生成签到码/签退码响应
+        activity.GetActivityAttendanceCodesResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 是否成功
+                checkInCode:
+                    type: string
+                    description: 当前签到码
+                checkOutCode:
+                    type: string
+                    description: 当前签退码
+                checkInExpireAt:
+                    type: string
+                    description: 签到码过期时间（为空表示不过期）
+                checkOutExpireAt:
+                    type: string
+                    description: 签退码过期时间（为空表示不过期）
+                attendanceCodeVersion:
+                    type: string
+                    description: 当前码版本号
+                attendanceCodeUpdatedAt:
+                    type: string
+                    description: 码更新时间
+            description: GetActivityAttendanceCodesResponse 查询活动签到码/签退码响应
+        activity.MyActivitiesResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/activity.MyActivityItem'
+        activity.MyActivityItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                orgId:
+                    type: string
+                    description: 组织ID
+                orgName:
+                    type: string
+                    description: 组织名称
+                title:
+                    type: string
+                    description: 活动标题
+                description:
+                    type: string
+                    description: 活动描述
+                coverUrl:
+                    type: string
+                    description: 封面图URL
+                startTime:
+                    type: string
+                    description: 开始时间
+                endTime:
+                    type: string
+                    description: 结束时间
+                location:
+                    type: string
+                    description: 地点名称
+                duration:
+                    type: number
+                    description: 预估工时
+                    format: double
+                maxPeople:
+                    type: integer
+                    description: 最大招募人数
+                    format: int32
+                currentPeople:
+                    type: integer
+                    description: 当前已报名人数
+                    format: int32
+                status:
+                    type: integer
+                    description: '状态: 1-报名中, 2-已结束, 3-已取消'
+                    format: int32
+                signupTime:
+                    type: string
+                    description: 报名时间
+                checkInStatus:
+                    type: integer
+                    description: '签到状态: 0-未签到, 1-已签到'
+                    format: int32
+                checkInTime:
+                    type: string
+                    description: 签到时间
+                checkOutStatus:
+                    type: integer
+                    description: '签退状态: 0-未签退, 1-已签退'
+                    format: int32
+                checkOutTime:
+                    type: string
+                    description: 签退时间
+                workHourStatus:
+                    type: integer
+                    description: '工时结算状态: 0-未结算, 1-已发放, 2-已作废'
+                    format: int32
+                grantedHours:
+                    type: number
+                    description: 本次发放工时
+                    format: double
+        activity.ResetAttendanceCodeRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '活动ID 必填 @gotags: path:"id,required"'
+                codeType:
+                    type: integer
+                    description: '重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"'
+                    format: int32
+                validMinutes:
+                    type: integer
+                    description: '码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"'
+                    format: int32
+            description: ResetAttendanceCodeRequest 重置签到码/签退码请求
+        activity.ResetAttendanceCodeResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 是否成功
+                codeType:
+                    type: integer
+                    description: 重置码类型（1-签到码，2-签退码）
+                    format: int32
+                code:
+                    type: string
+                    description: 本次重置后的码
+                expireAt:
+                    type: string
+                    description: 本次重置后的码过期时间（为空表示不过期）
+                attendanceCodeVersion:
+                    type: string
+                    description: 当前码版本号
+                attendanceCodeUpdatedAt:
+                    type: string
+                    description: 码更新时间
+            description: ResetAttendanceCodeResponse 重置签到码/签退码响应
+        activity.UpdateActivityRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '活动ID 必填 @gotags: path:"id,required"'
+                title:
+                    type: string
+                    description: '活动标题 可选 @gotags: json:"title"'
+                description:
+                    type: string
+                    description: '活动描述 可选 @gotags: json:"description"'
+                coverUrl:
+                    type: string
+                    description: '封面图URL 可选 @gotags: json:"coverUrl"'
+                startTime:
+                    type: string
+                    description: '开始时间 可选 @gotags: json:"startTime"'
+                endTime:
+                    type: string
+                    description: '结束时间 可选 @gotags: json:"endTime"'
+                location:
+                    type: string
+                    description: '地点名称 可选 @gotags: json:"location"'
+                address:
+                    type: string
+                    description: '详细地址 可选 @gotags: json:"address"'
+                duration:
+                    type: number
+                    description: '预估工时（小时） 可选 @gotags: json:"duration"'
+                    format: double
+                maxPeople:
+                    type: integer
+                    description: '最大招募人数（0表示不限） 可选 @gotags: json:"maxPeople"'
+                    format: int32
+            description: UpdateActivityRequest 更新活动请求
+        activity.UpdateActivityResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: UpdateActivityResponse 更新活动响应
 tags:
-    - name: WorkHourService
+    - name: ActivityService

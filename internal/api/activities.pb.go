@@ -472,7 +472,9 @@ func (x *ActivityCancelResponse) GetSuccess() bool {
 type ActivityCheckInRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 活动ID 必填 @gotags: json:"activityId,required"
-	ActivityId    int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	// 签到码 必填 @gotags: json:"checkInCode,required"
+	CheckInCode   string `protobuf:"bytes,2,opt,name=checkInCode,proto3" json:"checkInCode,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -512,6 +514,13 @@ func (x *ActivityCheckInRequest) GetActivityId() int64 {
 		return x.ActivityId
 	}
 	return 0
+}
+
+func (x *ActivityCheckInRequest) GetCheckInCode() string {
+	if x != nil {
+		return x.CheckInCode
+	}
+	return ""
 }
 
 type ActivityCheckInResponse struct {
@@ -571,7 +580,9 @@ func (x *ActivityCheckInResponse) GetCheckInTime() string {
 type ActivityCheckOutRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 活动ID 必填 @gotags: json:"activityId,required"
-	ActivityId    int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	// 签退码 必填 @gotags: json:"checkOutCode,required"
+	CheckOutCode  string `protobuf:"bytes,2,opt,name=checkOutCode,proto3" json:"checkOutCode,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -611,6 +622,13 @@ func (x *ActivityCheckOutRequest) GetActivityId() int64 {
 		return x.ActivityId
 	}
 	return 0
+}
+
+func (x *ActivityCheckOutRequest) GetCheckOutCode() string {
+	if x != nil {
+		return x.CheckOutCode
+	}
+	return ""
 }
 
 type ActivityCheckOutResponse struct {
@@ -2122,6 +2140,471 @@ func (x *FinishActivityResponse) GetMessage() string {
 	return ""
 }
 
+// GenerateAttendanceCodesRequest 生成签到码/签退码请求
+type GenerateAttendanceCodesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 活动ID 必填 @gotags: path:"id,required"
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"
+	CheckInValidMinutes int32 `protobuf:"varint,2,opt,name=checkInValidMinutes,proto3" json:"checkInValidMinutes"`
+	// 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"
+	CheckOutValidMinutes int32 `protobuf:"varint,3,opt,name=checkOutValidMinutes,proto3" json:"checkOutValidMinutes"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GenerateAttendanceCodesRequest) Reset() {
+	*x = GenerateAttendanceCodesRequest{}
+	mi := &file_internal_api_activities_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateAttendanceCodesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateAttendanceCodesRequest) ProtoMessage() {}
+
+func (x *GenerateAttendanceCodesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_activities_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateAttendanceCodesRequest.ProtoReflect.Descriptor instead.
+func (*GenerateAttendanceCodesRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_activities_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GenerateAttendanceCodesRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *GenerateAttendanceCodesRequest) GetCheckInValidMinutes() int32 {
+	if x != nil {
+		return x.CheckInValidMinutes
+	}
+	return 0
+}
+
+func (x *GenerateAttendanceCodesRequest) GetCheckOutValidMinutes() int32 {
+	if x != nil {
+		return x.CheckOutValidMinutes
+	}
+	return 0
+}
+
+// GenerateAttendanceCodesResponse 生成签到码/签退码响应
+type GenerateAttendanceCodesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 是否成功
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success"`
+	// 本次生成的签到码
+	CheckInCode string `protobuf:"bytes,2,opt,name=checkInCode,proto3" json:"checkInCode"`
+	// 本次生成的签退码
+	CheckOutCode string `protobuf:"bytes,3,opt,name=checkOutCode,proto3" json:"checkOutCode"`
+	// 当前码版本号
+	AttendanceCodeVersion int64 `protobuf:"varint,4,opt,name=attendanceCodeVersion,proto3" json:"attendanceCodeVersion"`
+	// 码更新时间
+	AttendanceCodeUpdatedAt string `protobuf:"bytes,5,opt,name=attendanceCodeUpdatedAt,proto3" json:"attendanceCodeUpdatedAt"`
+	// 签到码过期时间（为空表示不过期）
+	CheckInExpireAt string `protobuf:"bytes,6,opt,name=checkInExpireAt,proto3" json:"checkInExpireAt"`
+	// 签退码过期时间（为空表示不过期）
+	CheckOutExpireAt string `protobuf:"bytes,7,opt,name=checkOutExpireAt,proto3" json:"checkOutExpireAt"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GenerateAttendanceCodesResponse) Reset() {
+	*x = GenerateAttendanceCodesResponse{}
+	mi := &file_internal_api_activities_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateAttendanceCodesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateAttendanceCodesResponse) ProtoMessage() {}
+
+func (x *GenerateAttendanceCodesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_activities_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateAttendanceCodesResponse.ProtoReflect.Descriptor instead.
+func (*GenerateAttendanceCodesResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_activities_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GenerateAttendanceCodesResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *GenerateAttendanceCodesResponse) GetCheckInCode() string {
+	if x != nil {
+		return x.CheckInCode
+	}
+	return ""
+}
+
+func (x *GenerateAttendanceCodesResponse) GetCheckOutCode() string {
+	if x != nil {
+		return x.CheckOutCode
+	}
+	return ""
+}
+
+func (x *GenerateAttendanceCodesResponse) GetAttendanceCodeVersion() int64 {
+	if x != nil {
+		return x.AttendanceCodeVersion
+	}
+	return 0
+}
+
+func (x *GenerateAttendanceCodesResponse) GetAttendanceCodeUpdatedAt() string {
+	if x != nil {
+		return x.AttendanceCodeUpdatedAt
+	}
+	return ""
+}
+
+func (x *GenerateAttendanceCodesResponse) GetCheckInExpireAt() string {
+	if x != nil {
+		return x.CheckInExpireAt
+	}
+	return ""
+}
+
+func (x *GenerateAttendanceCodesResponse) GetCheckOutExpireAt() string {
+	if x != nil {
+		return x.CheckOutExpireAt
+	}
+	return ""
+}
+
+// ResetAttendanceCodeRequest 重置签到码/签退码请求
+type ResetAttendanceCodeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 活动ID 必填 @gotags: path:"id,required"
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"
+	CodeType int32 `protobuf:"varint,2,opt,name=codeType,proto3" json:"codeType,required"`
+	// 码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"
+	ValidMinutes  int32 `protobuf:"varint,3,opt,name=validMinutes,proto3" json:"validMinutes"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetAttendanceCodeRequest) Reset() {
+	*x = ResetAttendanceCodeRequest{}
+	mi := &file_internal_api_activities_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetAttendanceCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetAttendanceCodeRequest) ProtoMessage() {}
+
+func (x *ResetAttendanceCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_activities_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetAttendanceCodeRequest.ProtoReflect.Descriptor instead.
+func (*ResetAttendanceCodeRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_activities_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ResetAttendanceCodeRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *ResetAttendanceCodeRequest) GetCodeType() int32 {
+	if x != nil {
+		return x.CodeType
+	}
+	return 0
+}
+
+func (x *ResetAttendanceCodeRequest) GetValidMinutes() int32 {
+	if x != nil {
+		return x.ValidMinutes
+	}
+	return 0
+}
+
+// ResetAttendanceCodeResponse 重置签到码/签退码响应
+type ResetAttendanceCodeResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 是否成功
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success"`
+	// 重置码类型（1-签到码，2-签退码）
+	CodeType int32 `protobuf:"varint,2,opt,name=codeType,proto3" json:"codeType"`
+	// 本次重置后的码
+	Code string `protobuf:"bytes,3,opt,name=code,proto3" json:"code"`
+	// 本次重置后的码过期时间（为空表示不过期）
+	ExpireAt string `protobuf:"bytes,4,opt,name=expireAt,proto3" json:"expireAt"`
+	// 当前码版本号
+	AttendanceCodeVersion int64 `protobuf:"varint,5,opt,name=attendanceCodeVersion,proto3" json:"attendanceCodeVersion"`
+	// 码更新时间
+	AttendanceCodeUpdatedAt string `protobuf:"bytes,6,opt,name=attendanceCodeUpdatedAt,proto3" json:"attendanceCodeUpdatedAt"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *ResetAttendanceCodeResponse) Reset() {
+	*x = ResetAttendanceCodeResponse{}
+	mi := &file_internal_api_activities_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetAttendanceCodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetAttendanceCodeResponse) ProtoMessage() {}
+
+func (x *ResetAttendanceCodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_activities_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetAttendanceCodeResponse.ProtoReflect.Descriptor instead.
+func (*ResetAttendanceCodeResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_activities_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ResetAttendanceCodeResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ResetAttendanceCodeResponse) GetCodeType() int32 {
+	if x != nil {
+		return x.CodeType
+	}
+	return 0
+}
+
+func (x *ResetAttendanceCodeResponse) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *ResetAttendanceCodeResponse) GetExpireAt() string {
+	if x != nil {
+		return x.ExpireAt
+	}
+	return ""
+}
+
+func (x *ResetAttendanceCodeResponse) GetAttendanceCodeVersion() int64 {
+	if x != nil {
+		return x.AttendanceCodeVersion
+	}
+	return 0
+}
+
+func (x *ResetAttendanceCodeResponse) GetAttendanceCodeUpdatedAt() string {
+	if x != nil {
+		return x.AttendanceCodeUpdatedAt
+	}
+	return ""
+}
+
+// GetActivityAttendanceCodesRequest 查询活动签到码/签退码请求
+type GetActivityAttendanceCodesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 活动ID 必填 @gotags: path:"id,required"
+	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetActivityAttendanceCodesRequest) Reset() {
+	*x = GetActivityAttendanceCodesRequest{}
+	mi := &file_internal_api_activities_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActivityAttendanceCodesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActivityAttendanceCodesRequest) ProtoMessage() {}
+
+func (x *GetActivityAttendanceCodesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_activities_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActivityAttendanceCodesRequest.ProtoReflect.Descriptor instead.
+func (*GetActivityAttendanceCodesRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_activities_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *GetActivityAttendanceCodesRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+// GetActivityAttendanceCodesResponse 查询活动签到码/签退码响应
+type GetActivityAttendanceCodesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 是否成功
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success"`
+	// 当前签到码
+	CheckInCode string `protobuf:"bytes,2,opt,name=checkInCode,proto3" json:"checkInCode"`
+	// 当前签退码
+	CheckOutCode string `protobuf:"bytes,3,opt,name=checkOutCode,proto3" json:"checkOutCode"`
+	// 签到码过期时间（为空表示不过期）
+	CheckInExpireAt string `protobuf:"bytes,4,opt,name=checkInExpireAt,proto3" json:"checkInExpireAt"`
+	// 签退码过期时间（为空表示不过期）
+	CheckOutExpireAt string `protobuf:"bytes,5,opt,name=checkOutExpireAt,proto3" json:"checkOutExpireAt"`
+	// 当前码版本号
+	AttendanceCodeVersion int64 `protobuf:"varint,6,opt,name=attendanceCodeVersion,proto3" json:"attendanceCodeVersion"`
+	// 码更新时间
+	AttendanceCodeUpdatedAt string `protobuf:"bytes,7,opt,name=attendanceCodeUpdatedAt,proto3" json:"attendanceCodeUpdatedAt"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GetActivityAttendanceCodesResponse) Reset() {
+	*x = GetActivityAttendanceCodesResponse{}
+	mi := &file_internal_api_activities_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetActivityAttendanceCodesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetActivityAttendanceCodesResponse) ProtoMessage() {}
+
+func (x *GetActivityAttendanceCodesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_activities_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetActivityAttendanceCodesResponse.ProtoReflect.Descriptor instead.
+func (*GetActivityAttendanceCodesResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_activities_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetCheckInCode() string {
+	if x != nil {
+		return x.CheckInCode
+	}
+	return ""
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetCheckOutCode() string {
+	if x != nil {
+		return x.CheckOutCode
+	}
+	return ""
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetCheckInExpireAt() string {
+	if x != nil {
+		return x.CheckInExpireAt
+	}
+	return ""
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetCheckOutExpireAt() string {
+	if x != nil {
+		return x.CheckOutExpireAt
+	}
+	return ""
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetAttendanceCodeVersion() int64 {
+	if x != nil {
+		return x.AttendanceCodeVersion
+	}
+	return 0
+}
+
+func (x *GetActivityAttendanceCodesResponse) GetAttendanceCodeUpdatedAt() string {
+	if x != nil {
+		return x.AttendanceCodeUpdatedAt
+	}
+	return ""
+}
+
 var File_internal_api_activities_proto protoreflect.FileDescriptor
 
 const file_internal_api_activities_proto_rawDesc = "" +
@@ -2160,18 +2643,20 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"activityId\x18\x01 \x01(\x03R\n" +
 	"activityId\"2\n" +
 	"\x16ActivityCancelResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"8\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"Z\n" +
 	"\x16ActivityCheckInRequest\x12\x1e\n" +
 	"\n" +
 	"activityId\x18\x01 \x01(\x03R\n" +
-	"activityId\"U\n" +
+	"activityId\x12 \n" +
+	"\vcheckInCode\x18\x02 \x01(\tR\vcheckInCode\"U\n" +
 	"\x17ActivityCheckInResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12 \n" +
-	"\vcheckInTime\x18\x02 \x01(\tR\vcheckInTime\"9\n" +
+	"\vcheckInTime\x18\x02 \x01(\tR\vcheckInTime\"]\n" +
 	"\x17ActivityCheckOutRequest\x12\x1e\n" +
 	"\n" +
 	"activityId\x18\x01 \x01(\x03R\n" +
-	"activityId\"|\n" +
+	"activityId\x12\"\n" +
+	"\fcheckOutCode\x18\x02 \x01(\tR\fcheckOutCode\"|\n" +
 	"\x18ActivityCheckOutResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\"\n" +
 	"\fcheckOutTime\x18\x02 \x01(\tR\fcheckOutTime\x12\"\n" +
@@ -2289,7 +2774,40 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"\x15FinishActivityRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"2\n" +
 	"\x16FinishActivityResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xdf\f\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\x96\x01\n" +
+	"\x1eGenerateAttendanceCodesRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x120\n" +
+	"\x13checkInValidMinutes\x18\x02 \x01(\x05R\x13checkInValidMinutes\x122\n" +
+	"\x14checkOutValidMinutes\x18\x03 \x01(\x05R\x14checkOutValidMinutes\"\xc7\x02\n" +
+	"\x1fGenerateAttendanceCodesResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12 \n" +
+	"\vcheckInCode\x18\x02 \x01(\tR\vcheckInCode\x12\"\n" +
+	"\fcheckOutCode\x18\x03 \x01(\tR\fcheckOutCode\x124\n" +
+	"\x15attendanceCodeVersion\x18\x04 \x01(\x03R\x15attendanceCodeVersion\x128\n" +
+	"\x17attendanceCodeUpdatedAt\x18\x05 \x01(\tR\x17attendanceCodeUpdatedAt\x12(\n" +
+	"\x0fcheckInExpireAt\x18\x06 \x01(\tR\x0fcheckInExpireAt\x12*\n" +
+	"\x10checkOutExpireAt\x18\a \x01(\tR\x10checkOutExpireAt\"l\n" +
+	"\x1aResetAttendanceCodeRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
+	"\bcodeType\x18\x02 \x01(\x05R\bcodeType\x12\"\n" +
+	"\fvalidMinutes\x18\x03 \x01(\x05R\fvalidMinutes\"\xf3\x01\n" +
+	"\x1bResetAttendanceCodeResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1a\n" +
+	"\bcodeType\x18\x02 \x01(\x05R\bcodeType\x12\x12\n" +
+	"\x04code\x18\x03 \x01(\tR\x04code\x12\x1a\n" +
+	"\bexpireAt\x18\x04 \x01(\tR\bexpireAt\x124\n" +
+	"\x15attendanceCodeVersion\x18\x05 \x01(\x03R\x15attendanceCodeVersion\x128\n" +
+	"\x17attendanceCodeUpdatedAt\x18\x06 \x01(\tR\x17attendanceCodeUpdatedAt\"3\n" +
+	"!GetActivityAttendanceCodesRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\xca\x02\n" +
+	"\"GetActivityAttendanceCodesResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12 \n" +
+	"\vcheckInCode\x18\x02 \x01(\tR\vcheckInCode\x12\"\n" +
+	"\fcheckOutCode\x18\x03 \x01(\tR\fcheckOutCode\x12(\n" +
+	"\x0fcheckInExpireAt\x18\x04 \x01(\tR\x0fcheckInExpireAt\x12*\n" +
+	"\x10checkOutExpireAt\x18\x05 \x01(\tR\x10checkOutExpireAt\x124\n" +
+	"\x15attendanceCodeVersion\x18\x06 \x01(\x03R\x15attendanceCodeVersion\x128\n" +
+	"\x17attendanceCodeUpdatedAt\x18\a \x01(\tR\x17attendanceCodeUpdatedAt2\xcb\x10\n" +
 	"\x0fActivityService\x12f\n" +
 	"\fActivityList\x12\x1d.activity.ActivityListRequest\x1a\x1e.activity.ActivityListResponse\"\x17\x82\xd3\xe4\x93\x02\x11\"\x0f/api/activities\x12v\n" +
 	"\x0eActivitySignup\x12\x1f.activity.ActivitySignupRequest\x1a .activity.ActivitySignupResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/activities/signup\x12v\n" +
@@ -2299,10 +2817,13 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"\x0eActivityDetail\x12\x1f.activity.ActivityDetailRequest\x1a .activity.ActivityDetailResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/activities/:id\x12i\n" +
 	"\fMyActivities\x12\x1d.activity.MyActivitiesRequest\x1a\x1e.activity.MyActivitiesResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\"\x12/api/activities/my\x12v\n" +
 	"\x0eCreateActivity\x12\x1f.activity.CreateActivityRequest\x1a .activity.CreateActivityResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/activities/create\x12s\n" +
-	"\x0eUpdateActivity\x12\x1f.activity.UpdateActivityRequest\x1a .activity.UpdateActivityResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\x1a\x13/api/activities/:id\x12q\n" +
-	"\x0eDeleteActivity\x12\x1f.activity.DeleteActivityRequest\x1a .activity.DeleteActivityResponse\"\x1c\x82\xd3\xe4\x93\x02\x16*\x14/api/activities/{id}\x12{\n" +
-	"\x0eCancelActivity\x12\x1f.activity.CancelActivityRequest\x1a .activity.CancelActivityResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/activities/{id}/cancel\x12{\n" +
-	"\x0eFinishActivity\x12\x1f.activity.FinishActivityRequest\x1a .activity.FinishActivityResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/activities/{id}/finish\x12\xaf\x01\n" +
+	"\x0eUpdateActivity\x12\x1f.activity.UpdateActivityRequest\x1a .activity.UpdateActivityResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\x1a\x13/api/activities/:id\x12p\n" +
+	"\x0eDeleteActivity\x12\x1f.activity.DeleteActivityRequest\x1a .activity.DeleteActivityResponse\"\x1b\x82\xd3\xe4\x93\x02\x15*\x13/api/activities/:id\x12z\n" +
+	"\x0eCancelActivity\x12\x1f.activity.CancelActivityRequest\x1a .activity.CancelActivityResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/activities/cancel/:id\x12z\n" +
+	"\x0eFinishActivity\x12\x1f.activity.FinishActivityRequest\x1a .activity.FinishActivityResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/activities/finish/:id\x12\xa8\x01\n" +
+	"\x17GenerateAttendanceCodes\x12(.activity.GenerateAttendanceCodesRequest\x1a).activity.GenerateAttendanceCodesResponse\"8\x82\xd3\xe4\x93\x022:\x01*\"-/api/activities/attendance-codes/generate/:id\x12\x99\x01\n" +
+	"\x13ResetAttendanceCode\x12$.activity.ResetAttendanceCodeRequest\x1a%.activity.ResetAttendanceCodeResponse\"5\x82\xd3\xe4\x93\x02/:\x01*\"*/api/activities/attendance-codes/reset/:id\x12\xa5\x01\n" +
+	"\x1aGetActivityAttendanceCodes\x12+.activity.GetActivityAttendanceCodesRequest\x1a,.activity.GetActivityAttendanceCodesResponse\",\x82\xd3\xe4\x93\x02&\x12$/api/activities/attendance-codes/:id\x12\xaf\x01\n" +
 	"\x1cActivitySupplementAttendance\x12-.activity.ActivitySupplementAttendanceRequest\x1a..activity.ActivitySupplementAttendanceResponse\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/api/activities/supplement-attendance\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (
@@ -2317,7 +2838,7 @@ func file_internal_api_activities_proto_rawDescGZIP() []byte {
 	return file_internal_api_activities_proto_rawDescData
 }
 
-var file_internal_api_activities_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_internal_api_activities_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_internal_api_activities_proto_goTypes = []any{
 	(*ActivityListRequest)(nil),                  // 0: activity.ActivityListRequest
 	(*ActivityListResponse)(nil),                 // 1: activity.ActivityListResponse
@@ -2348,6 +2869,12 @@ var file_internal_api_activities_proto_goTypes = []any{
 	(*CancelActivityResponse)(nil),               // 26: activity.CancelActivityResponse
 	(*FinishActivityRequest)(nil),                // 27: activity.FinishActivityRequest
 	(*FinishActivityResponse)(nil),               // 28: activity.FinishActivityResponse
+	(*GenerateAttendanceCodesRequest)(nil),       // 29: activity.GenerateAttendanceCodesRequest
+	(*GenerateAttendanceCodesResponse)(nil),      // 30: activity.GenerateAttendanceCodesResponse
+	(*ResetAttendanceCodeRequest)(nil),           // 31: activity.ResetAttendanceCodeRequest
+	(*ResetAttendanceCodeResponse)(nil),          // 32: activity.ResetAttendanceCodeResponse
+	(*GetActivityAttendanceCodesRequest)(nil),    // 33: activity.GetActivityAttendanceCodesRequest
+	(*GetActivityAttendanceCodesResponse)(nil),   // 34: activity.GetActivityAttendanceCodesResponse
 }
 var file_internal_api_activities_proto_depIdxs = []int32{
 	2,  // 0: activity.ActivityListResponse.list:type_name -> activity.ActivityItem
@@ -2365,22 +2892,28 @@ var file_internal_api_activities_proto_depIdxs = []int32{
 	23, // 12: activity.ActivityService.DeleteActivity:input_type -> activity.DeleteActivityRequest
 	25, // 13: activity.ActivityService.CancelActivity:input_type -> activity.CancelActivityRequest
 	27, // 14: activity.ActivityService.FinishActivity:input_type -> activity.FinishActivityRequest
-	11, // 15: activity.ActivityService.ActivitySupplementAttendance:input_type -> activity.ActivitySupplementAttendanceRequest
-	1,  // 16: activity.ActivityService.ActivityList:output_type -> activity.ActivityListResponse
-	4,  // 17: activity.ActivityService.ActivitySignup:output_type -> activity.ActivitySignupResponse
-	6,  // 18: activity.ActivityService.ActivityCancel:output_type -> activity.ActivityCancelResponse
-	8,  // 19: activity.ActivityService.ActivityCheckIn:output_type -> activity.ActivityCheckInResponse
-	10, // 20: activity.ActivityService.ActivityCheckOut:output_type -> activity.ActivityCheckOutResponse
-	14, // 21: activity.ActivityService.ActivityDetail:output_type -> activity.ActivityDetailResponse
-	17, // 22: activity.ActivityService.MyActivities:output_type -> activity.MyActivitiesResponse
-	20, // 23: activity.ActivityService.CreateActivity:output_type -> activity.CreateActivityResponse
-	22, // 24: activity.ActivityService.UpdateActivity:output_type -> activity.UpdateActivityResponse
-	24, // 25: activity.ActivityService.DeleteActivity:output_type -> activity.DeleteActivityResponse
-	26, // 26: activity.ActivityService.CancelActivity:output_type -> activity.CancelActivityResponse
-	28, // 27: activity.ActivityService.FinishActivity:output_type -> activity.FinishActivityResponse
-	12, // 28: activity.ActivityService.ActivitySupplementAttendance:output_type -> activity.ActivitySupplementAttendanceResponse
-	16, // [16:29] is the sub-list for method output_type
-	3,  // [3:16] is the sub-list for method input_type
+	29, // 15: activity.ActivityService.GenerateAttendanceCodes:input_type -> activity.GenerateAttendanceCodesRequest
+	31, // 16: activity.ActivityService.ResetAttendanceCode:input_type -> activity.ResetAttendanceCodeRequest
+	33, // 17: activity.ActivityService.GetActivityAttendanceCodes:input_type -> activity.GetActivityAttendanceCodesRequest
+	11, // 18: activity.ActivityService.ActivitySupplementAttendance:input_type -> activity.ActivitySupplementAttendanceRequest
+	1,  // 19: activity.ActivityService.ActivityList:output_type -> activity.ActivityListResponse
+	4,  // 20: activity.ActivityService.ActivitySignup:output_type -> activity.ActivitySignupResponse
+	6,  // 21: activity.ActivityService.ActivityCancel:output_type -> activity.ActivityCancelResponse
+	8,  // 22: activity.ActivityService.ActivityCheckIn:output_type -> activity.ActivityCheckInResponse
+	10, // 23: activity.ActivityService.ActivityCheckOut:output_type -> activity.ActivityCheckOutResponse
+	14, // 24: activity.ActivityService.ActivityDetail:output_type -> activity.ActivityDetailResponse
+	17, // 25: activity.ActivityService.MyActivities:output_type -> activity.MyActivitiesResponse
+	20, // 26: activity.ActivityService.CreateActivity:output_type -> activity.CreateActivityResponse
+	22, // 27: activity.ActivityService.UpdateActivity:output_type -> activity.UpdateActivityResponse
+	24, // 28: activity.ActivityService.DeleteActivity:output_type -> activity.DeleteActivityResponse
+	26, // 29: activity.ActivityService.CancelActivity:output_type -> activity.CancelActivityResponse
+	28, // 30: activity.ActivityService.FinishActivity:output_type -> activity.FinishActivityResponse
+	30, // 31: activity.ActivityService.GenerateAttendanceCodes:output_type -> activity.GenerateAttendanceCodesResponse
+	32, // 32: activity.ActivityService.ResetAttendanceCode:output_type -> activity.ResetAttendanceCodeResponse
+	34, // 33: activity.ActivityService.GetActivityAttendanceCodes:output_type -> activity.GetActivityAttendanceCodesResponse
+	12, // 34: activity.ActivityService.ActivitySupplementAttendance:output_type -> activity.ActivitySupplementAttendanceResponse
+	19, // [19:35] is the sub-list for method output_type
+	3,  // [3:19] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -2397,7 +2930,7 @@ func file_internal_api_activities_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_api_activities_proto_rawDesc), len(file_internal_api_activities_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

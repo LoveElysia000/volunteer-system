@@ -191,6 +191,51 @@ func FinishActivity(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+// GenerateAttendanceCodes 生成签到码/签退码（组织侧）
+func GenerateAttendanceCodes(ctx context.Context, c *app.RequestContext) {
+	var req api.GenerateAttendanceCodesRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewActivityService(ctx, c).GenerateAttendanceCodes(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+// ResetAttendanceCode 重置签到码/签退码（组织侧）
+func ResetAttendanceCode(ctx context.Context, c *app.RequestContext) {
+	var req api.ResetAttendanceCodeRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewActivityService(ctx, c).ResetAttendanceCode(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+// GetActivityAttendanceCodes 查询活动签到码/签退码（组织侧）
+func GetActivityAttendanceCodes(ctx context.Context, c *app.RequestContext) {
+	var req api.GetActivityAttendanceCodesRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewActivityService(ctx, c).GetActivityAttendanceCodes(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 // ActivitySupplementAttendance 活动签到签退补录（组织侧）
 func ActivitySupplementAttendance(ctx context.Context, c *app.RequestContext) {
 	var req api.ActivitySupplementAttendanceRequest

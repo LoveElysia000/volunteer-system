@@ -21,7 +21,10 @@ func RegisterActivityRouter(r *route.RouterGroup) {
 	r.POST("/activities/create", handler.CreateActivity)
 	r.PUT("/activities/:id", handler.UpdateActivity)
 	r.DELETE("/activities/:id", handler.DeleteActivity)
-	r.POST("/activities/:id/cancel", handler.CancelActivity)
-	r.POST("/activities/:id/finish", handler.FinishActivity)
+	r.POST("/activities/cancel/:id", handler.CancelActivity)
+	r.POST("/activities/finish/:id", handler.FinishActivity)
+	r.POST("/activities/attendance-codes/generate/:id", handler.GenerateAttendanceCodes)
+	r.POST("/activities/attendance-codes/reset/:id", handler.ResetAttendanceCode)
+	r.GET("/activities/attendance-codes/:id", handler.GetActivityAttendanceCodes)
 	r.POST("/activities/supplement-attendance", handler.ActivitySupplementAttendance)
 }

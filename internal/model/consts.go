@@ -75,6 +75,10 @@ const (
 	ActivityCheckOutPending int32 = 0 // 未签退
 	ActivityCheckOutDone    int32 = 1 // 已签退
 
+	// 活动码类型（签到码/签退码）
+	AttendanceCodeTypeCheckIn  int32 = 1 // 签到码
+	AttendanceCodeTypeCheckOut int32 = 2 // 签退码
+
 	// 工时结算状态（activity_signups.work_hour_status）
 	WorkHourStatusPending int32 = 0 // 未结算
 	WorkHourStatusGranted int32 = 1 // 已发放
@@ -127,4 +131,9 @@ func ResolveAuditResult(auditStatus int32) int32 {
 	default:
 		return 0
 	}
+}
+
+// IsValidAttendanceCodeType returns whether code type is valid.
+func IsValidAttendanceCodeType(codeType int32) bool {
+	return codeType == AttendanceCodeTypeCheckIn || codeType == AttendanceCodeTypeCheckOut
 }

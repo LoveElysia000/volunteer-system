@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,14 @@ import (
 )
 
 var log = logger.GetLogger()
+
+const (
+	volunteerCheckoutEarliestWindow = 30 * time.Minute
+	attendanceCodeLength            = 6
+	attendanceCodeDigits            = "23456789"
+	attendanceCodeLetters           = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+	attendanceCodeCharset           = attendanceCodeDigits + attendanceCodeLetters
+)
 
 type ActivityService struct {
 	Service
@@ -88,6 +97,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("活动报名失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 	volunteerID, err := s.getVolunteerIDByAccountID(userID)
@@ -179,6 +189,7 @@ func (s *ActivityService) hasPendingSignupCreateAudit(activityID, volunteerID, u
 	}
 	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
 	if err != nil {
+		log.Error("活动报名前检查失败: 查询审核记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, activityID, userID, volunteerID)
 		return false, err
 	}
 
@@ -204,6 +215,7 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("取消报名失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 	volunteerID, err := s.getVolunteerIDByAccountID(userID)
@@ -261,6 +273,7 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("活动详情查询失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -318,6 +331,7 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("我的活动列表查询失败: 获取当前用户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
 		return nil, err
 	}
 	volunteerID, err := s.getVolunteerIDByAccountID(userID)
@@ -418,6 +432,7 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("创建活动失败: 获取当前用户ID异常: %v, org_id=%d", err, req.OrgId)
 		return nil, err
 	}
 
@@ -444,10 +459,12 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	// 解析时间
 	startTime, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
 	if err != nil {
+		log.Error("创建活动失败: 解析开始时间异常: %v, org_id=%d user_id=%d start_time=%s", err, req.OrgId, userID, req.StartTime)
 		return nil, errors.New("开始时间格式错误")
 	}
 	endTime, err := time.Parse("2006-01-02 15:04:05", req.EndTime)
 	if err != nil {
+		log.Error("创建活动失败: 解析结束时间异常: %v, org_id=%d user_id=%d end_time=%s", err, req.OrgId, userID, req.EndTime)
 		return nil, errors.New("结束时间格式错误")
 	}
 
@@ -492,6 +509,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("更新活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -526,6 +544,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.StartTime != "" {
 		startTime, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
 		if err != nil {
+			log.Error("更新活动失败: 解析开始时间异常: %v, activity_id=%d user_id=%d start_time=%s", err, req.Id, userID, req.StartTime)
 			return nil, errors.New("开始时间格式错误")
 		}
 		activity.StartTime = startTime
@@ -533,6 +552,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.EndTime != "" {
 		endTime, err := time.Parse("2006-01-02 15:04:05", req.EndTime)
 		if err != nil {
+			log.Error("更新活动失败: 解析结束时间异常: %v, activity_id=%d user_id=%d end_time=%s", err, req.Id, userID, req.EndTime)
 			return nil, errors.New("结束时间格式错误")
 		}
 		activity.EndTime = endTime
@@ -586,6 +606,7 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("删除活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -638,6 +659,7 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 	// 获取当前用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("取消活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
@@ -683,11 +705,13 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 func (s *ActivityService) FinishActivity(req *api.FinishActivityRequest) (*api.FinishActivityResponse, error) {
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("完结活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
 
 	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
 	if err != nil {
+		log.Error("完结活动失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusFinished {
@@ -706,14 +730,227 @@ func (s *ActivityService) FinishActivity(req *api.FinishActivityRequest) (*api.F
 	return &api.FinishActivityResponse{Message: "完结活动成功"}, nil
 }
 
-// ActivityCheckIn 活动签到（志愿者侧）
-func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api.ActivityCheckInResponse, error) {
-	if req.ActivityId <= 0 {
+// GenerateAttendanceCodes 生成签到码/签退码（组织侧，初次生成同时生成两个码）
+func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCodesRequest) (*api.GenerateAttendanceCodesResponse, error) {
+	if req.Id <= 0 {
+		return nil, errors.New("活动ID不能为空")
+	}
+	if req.CheckInValidMinutes < 0 || req.CheckOutValidMinutes < 0 {
+		return nil, errors.New("有效时长不能为负数")
+	}
+
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("生成签到签退码失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		return nil, err
+	}
+
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
+	if err != nil {
+		log.Error("生成签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+	if activity.Status == model.ActivityStatusCanceled {
+		return nil, errors.New("已取消活动不能生成签到签退码")
+	}
+	if activity.Status == model.ActivityStatusFinished {
+		return nil, errors.New("已结束活动不能生成签到签退码")
+	}
+
+	checkInCode, err := generateRandomAttendanceCode(attendanceCodeLength)
+	if err != nil {
+		log.Error("生成签到签退码失败: 生成签到码异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+	checkOutCode, err := generateRandomAttendanceCode(attendanceCodeLength)
+	if err != nil {
+		log.Error("生成签到签退码失败: 生成签退码异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+
+	now := time.Now()
+	var checkInExpireAt *time.Time
+	if req.CheckInValidMinutes > 0 {
+		expireAt := now.Add(time.Duration(req.CheckInValidMinutes) * time.Minute)
+		checkInExpireAt = &expireAt
+	}
+	var checkOutExpireAt *time.Time
+	if req.CheckOutValidMinutes > 0 {
+		expireAt := now.Add(time.Duration(req.CheckOutValidMinutes) * time.Minute)
+		checkOutExpireAt = &expireAt
+	}
+	// 初次生成会同时刷新两个码及对应过期时间，并统一推进版本号。
+	updates := map[string]any{
+		"check_in_code":              checkInCode,
+		"check_in_code_hash":         "",
+		"check_in_code_expire_at":    checkInExpireAt,
+		"check_out_code":             checkOutCode,
+		"check_out_code_hash":        "",
+		"check_out_code_expire_at":   checkOutExpireAt,
+		"attendance_code_version":    gorm.Expr("attendance_code_version + 1"),
+		"attendance_code_updated_at": now,
+	}
+	if err := s.repo.UpdateActivityAttendanceCodeByID(s.repo.DB, req.Id, updates); err != nil {
+		log.Error("生成签到签退码失败: 更新活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+
+	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, req.Id)
+	if err != nil {
+		log.Error("生成签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+
+	resp := &api.GenerateAttendanceCodesResponse{
+		Success:                 true,
+		CheckInCode:             checkInCode,
+		CheckOutCode:            checkOutCode,
+		AttendanceCodeVersion:   codeInfo.AttendanceCodeVersion,
+		AttendanceCodeUpdatedAt: util.FormatDateTimePtr(codeInfo.AttendanceCodeUpdatedAt),
+		CheckInExpireAt:         util.FormatDateTimePtr(codeInfo.CheckInCodeExpireAt),
+		CheckOutExpireAt:        util.FormatDateTimePtr(codeInfo.CheckOutCodeExpireAt),
+	}
+
+	log.Info("生成签到签退码成功: activity_id=%d user_id=%d version=%d", req.Id, userID, resp.AttendanceCodeVersion)
+	return resp, nil
+}
+
+// ResetAttendanceCode 重置签到码/签退码（组织侧，单次仅重置一种码）
+func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeRequest) (*api.ResetAttendanceCodeResponse, error) {
+	if req.Id <= 0 {
+		return nil, errors.New("活动ID不能为空")
+	}
+	if !model.IsValidAttendanceCodeType(req.CodeType) {
+		return nil, errors.New("重置码类型不合法")
+	}
+	if req.ValidMinutes < 0 {
+		return nil, errors.New("有效时长不能为负数")
+	}
+
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("重置签到签退码失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		return nil, err
+	}
+
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
+	if err != nil {
+		log.Error("重置签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+	if activity.Status == model.ActivityStatusCanceled {
+		return nil, errors.New("已取消活动不能重置签到签退码")
+	}
+	if activity.Status == model.ActivityStatusFinished {
+		return nil, errors.New("已结束活动不能重置签到签退码")
+	}
+
+	code, err := generateRandomAttendanceCode(attendanceCodeLength)
+	if err != nil {
+		log.Error("重置签到签退码失败: 生成随机码异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+		return nil, err
+	}
+
+	now := time.Now()
+	var expireAt *time.Time
+	if req.ValidMinutes > 0 {
+		value := now.Add(time.Duration(req.ValidMinutes) * time.Minute)
+		expireAt = &value
+	}
+	updates := map[string]any{
+		"attendance_code_version":    gorm.Expr("attendance_code_version + 1"),
+		"attendance_code_updated_at": now,
+	}
+	// 单次只更新一种码，避免误覆盖另一种码的当前值与过期时间。
+	switch req.CodeType {
+	case model.AttendanceCodeTypeCheckIn:
+		updates["check_in_code"] = code
+		updates["check_in_code_hash"] = ""
+		updates["check_in_code_expire_at"] = expireAt
+	case model.AttendanceCodeTypeCheckOut:
+		updates["check_out_code"] = code
+		updates["check_out_code_hash"] = ""
+		updates["check_out_code_expire_at"] = expireAt
+	default:
+		return nil, errors.New("重置码类型不合法")
+	}
+
+	if err := s.repo.UpdateActivityAttendanceCodeByID(s.repo.DB, req.Id, updates); err != nil {
+		log.Error("重置签到签退码失败: 更新活动码字段异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+		return nil, err
+	}
+
+	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, req.Id)
+	if err != nil {
+		log.Error("重置签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+		return nil, err
+	}
+
+	resp := &api.ResetAttendanceCodeResponse{
+		Success:                 true,
+		CodeType:                req.CodeType,
+		Code:                    code,
+		AttendanceCodeVersion:   codeInfo.AttendanceCodeVersion,
+		AttendanceCodeUpdatedAt: util.FormatDateTimePtr(codeInfo.AttendanceCodeUpdatedAt),
+	}
+	// 返回被重置的码对应过期时间，方便前端直接展示。
+	if req.CodeType == model.AttendanceCodeTypeCheckIn {
+		resp.ExpireAt = util.FormatDateTimePtr(codeInfo.CheckInCodeExpireAt)
+	} else {
+		resp.ExpireAt = util.FormatDateTimePtr(codeInfo.CheckOutCodeExpireAt)
+	}
+
+	log.Info("重置签到签退码成功: activity_id=%d user_id=%d code_type=%d version=%d", req.Id, userID, req.CodeType, resp.AttendanceCodeVersion)
+	return resp, nil
+}
+
+// GetActivityAttendanceCodes 查询活动签到码/签退码（组织侧）
+func (s *ActivityService) GetActivityAttendanceCodes(req *api.GetActivityAttendanceCodesRequest) (*api.GetActivityAttendanceCodesResponse, error) {
+	if req.Id <= 0 {
 		return nil, errors.New("活动ID不能为空")
 	}
 
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("查询活动签到签退码失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		return nil, err
+	}
+
+	if _, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID); err != nil {
+		log.Error("查询活动签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+
+	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, req.Id)
+	if err != nil {
+		log.Error("查询活动签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+
+	resp := &api.GetActivityAttendanceCodesResponse{
+		Success:                 true,
+		CheckInCode:             codeInfo.CheckInCode,
+		CheckOutCode:            codeInfo.CheckOutCode,
+		CheckInExpireAt:         util.FormatDateTimePtr(codeInfo.CheckInCodeExpireAt),
+		CheckOutExpireAt:        util.FormatDateTimePtr(codeInfo.CheckOutCodeExpireAt),
+		AttendanceCodeVersion:   codeInfo.AttendanceCodeVersion,
+		AttendanceCodeUpdatedAt: util.FormatDateTimePtr(codeInfo.AttendanceCodeUpdatedAt),
+	}
+	return resp, nil
+}
+
+// ActivityCheckIn 活动签到（志愿者侧）
+func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api.ActivityCheckInResponse, error) {
+	if req.ActivityId <= 0 {
+		return nil, errors.New("活动ID不能为空")
+	}
+	if strings.TrimSpace(req.CheckInCode) == "" {
+		return nil, errors.New("签到码不能为空")
+	}
+
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("活动签到失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 	volunteerID, err := s.getVolunteerIDByAccountID(userID)
@@ -727,10 +964,15 @@ func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
+		log.Error("活动签到失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许签到")
+	}
+	if err := s.validateCheckInCode(req.ActivityId, req.CheckInCode); err != nil {
+		log.Error("活动签到失败: 校验签到码异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		return nil, err
 	}
 
 	var checkInTime time.Time
@@ -779,9 +1021,13 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 	if req.ActivityId <= 0 {
 		return nil, errors.New("活动ID不能为空")
 	}
+	if strings.TrimSpace(req.CheckOutCode) == "" {
+		return nil, errors.New("签退码不能为空")
+	}
 
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("活动签退失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 	volunteerID, err := s.getVolunteerIDByAccountID(userID)
@@ -795,15 +1041,44 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
+		log.Error("活动签退失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许签退")
 	}
+	if err := s.validateCheckOutCode(req.ActivityId, req.CheckOutCode); err != nil {
+		log.Error("活动签退失败: 校验签退码异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		return nil, err
+	}
 
 	var checkOutTime time.Time
 	var grantedHours float64
+	// 事务外预检查：尽早失败，减少不必要的行锁持有时间。
+	preSignup, err := s.repo.GetSignup(s.repo.DB, req.ActivityId, volunteerID)
+	if err != nil {
+		log.Error("活动签退失败: 预检查报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		return nil, err
+	}
+
+	if preSignup == nil {
+		return nil, errors.New("报名记录不存在")
+	}
+	if preSignup.Status != model.ActivitySignupStatusSuccess {
+		return nil, errors.New("当前报名状态不允许签退")
+	}
+	if preSignup.CheckInStatus != model.ActivityCheckInDone || preSignup.CheckInTime == nil {
+		return nil, errors.New("未签到，无法签退")
+	}
+
+	// 签退时间校验
+	now := time.Now()
+	if now.Before(activity.EndTime.Add(-volunteerCheckoutEarliestWindow)) {
+		return nil, errors.New("未到签退开始时间，还不能签退")
+	}
+
 	err = s.withTransaction(func(tx *gorm.DB) error {
+		// 事务内二次校验：防止预检查与加锁之间的并发状态变化。
 		signup, err := s.repo.GetSignupForUpdate(tx, req.ActivityId, volunteerID)
 		if err != nil {
 			return err
@@ -826,7 +1101,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 			return nil
 		}
 
-		now := time.Now()
+		now = time.Now()
 		if now.Before(*signup.CheckInTime) {
 			now = *signup.CheckInTime
 		}
@@ -909,6 +1184,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 	}
 	checkOutAt, err := util.ParseDateTime(checkOutText)
 	if err != nil {
+		log.Error("活动补录失败: 解析签退时间异常: %v, activity_id=%d volunteer_id=%d check_out_time=%s", err, req.ActivityId, req.VolunteerId, checkOutText)
 		return nil, errors.New("签退时间格式错误")
 	}
 
@@ -918,6 +1194,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 	if checkInText != "" {
 		checkInAt, err = util.ParseDateTime(checkInText)
 		if err != nil {
+			log.Error("活动补录失败: 解析签到时间异常: %v, activity_id=%d volunteer_id=%d check_in_time=%s", err, req.ActivityId, req.VolunteerId, checkInText)
 			return nil, errors.New("签到时间格式错误")
 		}
 		hasCheckInInput = true
@@ -925,11 +1202,13 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
+		log.Error("活动补录失败: 获取当前用户ID异常: %v, activity_id=%d volunteer_id=%d", err, req.ActivityId, req.VolunteerId)
 		return nil, err
 	}
 
 	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, userID)
 	if err != nil {
+		log.Error("活动补录失败: 校验活动归属异常: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, req.VolunteerId, userID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusCanceled {
@@ -1063,6 +1342,7 @@ func (s *ActivityService) getVolunteerIDByAccountID(accountID int64) (int64, err
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return 0, errors.New("志愿者信息不存在")
 		}
+		log.Error("查询志愿者ID失败: 查询志愿者信息异常: %v, account_id=%d", err, accountID)
 		return 0, err
 	}
 	if volunteer == nil || volunteer.ID <= 0 {
@@ -1077,6 +1357,7 @@ func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, account
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
+		log.Error("校验活动归属失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, activityID, accountID)
 		return nil, err
 	}
 
@@ -1085,6 +1366,7 @@ func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, account
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("组织信息不存在")
 		}
+		log.Error("校验活动归属失败: 查询组织异常: %v, activity_id=%d account_id=%d", err, activityID, accountID)
 		return nil, err
 	}
 
@@ -1092,4 +1374,124 @@ func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, account
 		return nil, errors.New("无权操作此活动")
 	}
 	return activity, nil
+}
+
+// validateCheckInCode 查询并校验活动的签到码。
+func (s *ActivityService) validateCheckInCode(activityID int64, inputCode string) error {
+	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, activityID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("活动不存在")
+		}
+		log.Error("校验签到码失败: 查询活动签到码异常: %v, activity_id=%d", err, activityID)
+		return err
+	}
+
+	return validateAttendanceCodeValue(
+		inputCode,
+		codeInfo.CheckInCode,
+		codeInfo.CheckInCodeExpireAt,
+		"签到码错误或已过期",
+	)
+}
+
+// validateCheckOutCode 查询并校验活动的签退码。
+func (s *ActivityService) validateCheckOutCode(activityID int64, inputCode string) error {
+	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, activityID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("活动不存在")
+		}
+		log.Error("校验签退码失败: 查询活动签退码异常: %v, activity_id=%d", err, activityID)
+		return err
+	}
+
+	return validateAttendanceCodeValue(
+		inputCode,
+		codeInfo.CheckOutCode,
+		codeInfo.CheckOutCodeExpireAt,
+		"签退码错误或已过期",
+	)
+}
+
+// validateAttendanceCodeValue 统一处理码存在性、过期性与值匹配校验。
+func validateAttendanceCodeValue(inputCode, expectedCode string, expireAt *time.Time, errMsg string) error {
+	normalizedInputCode := strings.TrimSpace(inputCode)
+	normalizedExpectedCode := strings.TrimSpace(expectedCode)
+	if normalizedExpectedCode == "" {
+		return errors.New(errMsg)
+	}
+	if expireAt != nil && time.Now().After(*expireAt) {
+		return errors.New(errMsg)
+	}
+	if normalizedInputCode != normalizedExpectedCode {
+		return errors.New(errMsg)
+	}
+	return nil
+}
+
+// generateRandomAttendanceCode 生成固定长度码，且至少包含 1 位数字与 1 位字母。
+func generateRandomAttendanceCode(length int) (string, error) {
+	if length < 2 {
+		return "", errors.New("无效的签到签退码长度")
+	}
+
+	digitPos, err := randomIndex(length)
+	if err != nil {
+		return "", err
+	}
+	letterPos, err := randomIndex(length)
+	if err != nil {
+		return "", err
+	}
+	for letterPos == digitPos {
+		letterPos, err = randomIndex(length)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	chars := []byte(attendanceCodeCharset)
+	digits := []byte(attendanceCodeDigits)
+	letters := []byte(attendanceCodeLetters)
+
+	result := make([]byte, length)
+	// 先固定一个数字位和一个字母位，确保复杂度下限。
+	digitIdx, err := randomIndex(len(digits))
+	if err != nil {
+		return "", err
+	}
+	letterIdx, err := randomIndex(len(letters))
+	if err != nil {
+		return "", err
+	}
+	result[digitPos] = digits[digitIdx]
+	result[letterPos] = letters[letterIdx]
+
+	for i := range result {
+		if i == digitPos || i == letterPos {
+			continue
+		}
+		charIdx, idxErr := randomIndex(len(chars))
+		if idxErr != nil {
+			return "", idxErr
+		}
+		result[i] = chars[charIdx]
+	}
+	return string(result), nil
+}
+
+// randomIndex 返回 [0, n) 的随机下标。
+// 注意：使用 byte % n 的方式在 n 不是 256 的因数时会产生分布偏差（低位出现概率略高）。
+// 当前场景中 n=32（字母数）和 n=24（数字+字母数）都能整除 256，故无影响。
+func randomIndex(n int) (int, error) {
+	if n <= 0 {
+		return 0, errors.New("随机范围无效")
+	}
+	randomByte := make([]byte, 1)
+	if _, err := rand.Read(randomByte); err != nil {
+		log.Error("生成签到签退码失败: 读取随机字节异常: %v", err)
+		return 0, err
+	}
+	return int(randomByte[0]) % n, nil
 }

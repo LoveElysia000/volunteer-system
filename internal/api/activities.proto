@@ -85,14 +85,14 @@ service ActivityService {
   // 删除活动
   rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse) {
     option (google.api.http) = {
-      delete: "/api/activities/{id}"
+      delete: "/api/activities/:id"
     };
   }
 
   // 取消活动
   rpc CancelActivity(CancelActivityRequest) returns (CancelActivityResponse) {
     option (google.api.http) = {
-      post: "/api/activities/{id}/cancel"
+      post: "/api/activities/cancel/:id"
       body: "*"
     };
   }
@@ -100,8 +100,31 @@ service ActivityService {
   // 完结活动
   rpc FinishActivity(FinishActivityRequest) returns (FinishActivityResponse) {
     option (google.api.http) = {
-      post: "/api/activities/{id}/finish"
+      post: "/api/activities/finish/:id"
       body: "*"
+    };
+  }
+
+  // 生成签到码/签退码（组织侧）
+  rpc GenerateAttendanceCodes(GenerateAttendanceCodesRequest) returns (GenerateAttendanceCodesResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/attendance-codes/generate/:id"
+      body: "*"
+    };
+  }
+
+  // 重置签到码/签退码（组织侧）
+  rpc ResetAttendanceCode(ResetAttendanceCodeRequest) returns (ResetAttendanceCodeResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/attendance-codes/reset/:id"
+      body: "*"
+    };
+  }
+
+  // 查询活动签到码/签退码（组织侧）
+  rpc GetActivityAttendanceCodes(GetActivityAttendanceCodesRequest) returns (GetActivityAttendanceCodesResponse) {
+    option (google.api.http) = {
+      get: "/api/activities/attendance-codes/:id"
     };
   }
 
@@ -187,6 +210,8 @@ message ActivityCancelResponse {
 message ActivityCheckInRequest {
   // 活动ID 必填 @gotags: json:"activityId,required"
   int64 activityId = 1;
+  // 签到码 必填 @gotags: json:"checkInCode,required"
+  string checkInCode = 2;
 }
 
 message ActivityCheckInResponse {
@@ -199,6 +224,8 @@ message ActivityCheckInResponse {
 message ActivityCheckOutRequest {
   // 活动ID 必填 @gotags: json:"activityId,required"
   int64 activityId = 1;
+  // 签退码 必填 @gotags: json:"checkOutCode,required"
+  string checkOutCode = 2;
 }
 
 message ActivityCheckOutResponse {
@@ -450,4 +477,82 @@ message FinishActivityRequest {
 message FinishActivityResponse {
   // 消息
   string message = 1;
+}
+
+// GenerateAttendanceCodesRequest 生成签到码/签退码请求
+message GenerateAttendanceCodesRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+  // 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"
+  int32 checkInValidMinutes = 2;
+  // 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"
+  int32 checkOutValidMinutes = 3;
+}
+
+// GenerateAttendanceCodesResponse 生成签到码/签退码响应
+message GenerateAttendanceCodesResponse {
+  // 是否成功
+  bool success = 1;
+  // 本次生成的签到码
+  string checkInCode = 2;
+  // 本次生成的签退码
+  string checkOutCode = 3;
+  // 当前码版本号
+  int64 attendanceCodeVersion = 4;
+  // 码更新时间
+  string attendanceCodeUpdatedAt = 5;
+  // 签到码过期时间（为空表示不过期）
+  string checkInExpireAt = 6;
+  // 签退码过期时间（为空表示不过期）
+  string checkOutExpireAt = 7;
+}
+
+// ResetAttendanceCodeRequest 重置签到码/签退码请求
+message ResetAttendanceCodeRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+  // 重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"
+  int32 codeType = 2;
+  // 码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"
+  int32 validMinutes = 3;
+}
+
+// ResetAttendanceCodeResponse 重置签到码/签退码响应
+message ResetAttendanceCodeResponse {
+  // 是否成功
+  bool success = 1;
+  // 重置码类型（1-签到码，2-签退码）
+  int32 codeType = 2;
+  // 本次重置后的码
+  string code = 3;
+  // 本次重置后的码过期时间（为空表示不过期）
+  string expireAt = 4;
+  // 当前码版本号
+  int64 attendanceCodeVersion = 5;
+  // 码更新时间
+  string attendanceCodeUpdatedAt = 6;
+}
+
+// GetActivityAttendanceCodesRequest 查询活动签到码/签退码请求
+message GetActivityAttendanceCodesRequest {
+  // 活动ID 必填 @gotags: path:"id,required"
+  int64 id = 1;
+}
+
+// GetActivityAttendanceCodesResponse 查询活动签到码/签退码响应
+message GetActivityAttendanceCodesResponse {
+  // 是否成功
+  bool success = 1;
+  // 当前签到码
+  string checkInCode = 2;
+  // 当前签退码
+  string checkOutCode = 3;
+  // 签到码过期时间（为空表示不过期）
+  string checkInExpireAt = 4;
+  // 签退码过期时间（为空表示不过期）
+  string checkOutExpireAt = 5;
+  // 当前码版本号
+  int64 attendanceCodeVersion = 6;
+  // 码更新时间
+  string attendanceCodeUpdatedAt = 7;
 }
