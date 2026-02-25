@@ -40,6 +40,14 @@ func newActivity(db *gorm.DB, opts ...gen.DOOption) activity {
 	_activity.MaxPeople = field.NewInt32(tableName, "max_people")
 	_activity.CurrentPeople = field.NewInt32(tableName, "current_people")
 	_activity.Status = field.NewInt32(tableName, "status")
+	_activity.CheckInCode = field.NewString(tableName, "check_in_code")
+	_activity.CheckInCodeHash = field.NewString(tableName, "check_in_code_hash")
+	_activity.CheckInCodeExpireAt = field.NewTime(tableName, "check_in_code_expire_at")
+	_activity.CheckOutCode = field.NewString(tableName, "check_out_code")
+	_activity.CheckOutCodeHash = field.NewString(tableName, "check_out_code_hash")
+	_activity.CheckOutCodeExpireAt = field.NewTime(tableName, "check_out_code_expire_at")
+	_activity.AttendanceCodeVersion = field.NewInt64(tableName, "attendance_code_version")
+	_activity.AttendanceCodeUpdatedAt = field.NewTime(tableName, "attendance_code_updated_at")
 	_activity.CreatedAt = field.NewTime(tableName, "created_at")
 	_activity.UpdatedAt = field.NewTime(tableName, "updated_at")
 
@@ -52,22 +60,30 @@ func newActivity(db *gorm.DB, opts ...gen.DOOption) activity {
 type activity struct {
 	activityDo activityDo
 
-	ALL           field.Asterisk
-	ID            field.Int64   // 主键ID
-	OrgID         field.Int64   // 发布组织ID (关联organizations.id)
-	Title         field.String  // 活动标题
-	Description   field.String  // 活动描述/副标题
-	CoverURL      field.String  // 活动封面图URL
-	StartTime     field.Time    // 开始时间
-	EndTime       field.Time    // 结束时间
-	Location      field.String  // 地点名称
-	Address       field.String  // 详细地址
-	Duration      field.Float64 // 预估工时(小时)
-	MaxPeople     field.Int32   // 最大招募人数 (0表示不限)
-	CurrentPeople field.Int32   // 当前已报名人数(冗余字段)
-	Status        field.Int32   // 状态: 1-报名中, 2-已结束, 3-已取消
-	CreatedAt     field.Time    // 创建时间
-	UpdatedAt     field.Time    // 更新时间
+	ALL                     field.Asterisk
+	ID                      field.Int64   // 主键ID
+	OrgID                   field.Int64   // 发布组织ID (关联organizations.id)
+	Title                   field.String  // 活动标题
+	Description             field.String  // 活动描述/副标题
+	CoverURL                field.String  // 活动封面图URL
+	StartTime               field.Time    // 开始时间
+	EndTime                 field.Time    // 结束时间
+	Location                field.String  // 地点名称
+	Address                 field.String  // 详细地址
+	Duration                field.Float64 // 预估工时(小时)
+	MaxPeople               field.Int32   // 最大招募人数 (0表示不限)
+	CurrentPeople           field.Int32   // 当前已报名人数(冗余字段)
+	Status                  field.Int32   // 状态: 1-报名中, 2-已结束, 3-已取消
+	CheckInCode             field.String  // 签到码
+	CheckInCodeHash         field.String  // 签到码哈希
+	CheckInCodeExpireAt     field.Time    // 签到码过期时间
+	CheckOutCode            field.String  // 签退码
+	CheckOutCodeHash        field.String  // 签退码哈希
+	CheckOutCodeExpireAt    field.Time    // 签退码过期时间
+	AttendanceCodeVersion   field.Int64   // 签到签退码版本号（每次重置+1）
+	AttendanceCodeUpdatedAt field.Time    // 签到签退码最后更新时间
+	CreatedAt               field.Time    // 创建时间
+	UpdatedAt               field.Time    // 更新时间
 
 	fieldMap map[string]field.Expr
 }
@@ -97,6 +113,14 @@ func (a *activity) updateTableName(table string) *activity {
 	a.MaxPeople = field.NewInt32(table, "max_people")
 	a.CurrentPeople = field.NewInt32(table, "current_people")
 	a.Status = field.NewInt32(table, "status")
+	a.CheckInCode = field.NewString(table, "check_in_code")
+	a.CheckInCodeHash = field.NewString(table, "check_in_code_hash")
+	a.CheckInCodeExpireAt = field.NewTime(table, "check_in_code_expire_at")
+	a.CheckOutCode = field.NewString(table, "check_out_code")
+	a.CheckOutCodeHash = field.NewString(table, "check_out_code_hash")
+	a.CheckOutCodeExpireAt = field.NewTime(table, "check_out_code_expire_at")
+	a.AttendanceCodeVersion = field.NewInt64(table, "attendance_code_version")
+	a.AttendanceCodeUpdatedAt = field.NewTime(table, "attendance_code_updated_at")
 	a.CreatedAt = field.NewTime(table, "created_at")
 	a.UpdatedAt = field.NewTime(table, "updated_at")
 
@@ -123,7 +147,7 @@ func (a *activity) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *activity) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 15)
+	a.fieldMap = make(map[string]field.Expr, 23)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["org_id"] = a.OrgID
 	a.fieldMap["title"] = a.Title
@@ -137,6 +161,14 @@ func (a *activity) fillFieldMap() {
 	a.fieldMap["max_people"] = a.MaxPeople
 	a.fieldMap["current_people"] = a.CurrentPeople
 	a.fieldMap["status"] = a.Status
+	a.fieldMap["check_in_code"] = a.CheckInCode
+	a.fieldMap["check_in_code_hash"] = a.CheckInCodeHash
+	a.fieldMap["check_in_code_expire_at"] = a.CheckInCodeExpireAt
+	a.fieldMap["check_out_code"] = a.CheckOutCode
+	a.fieldMap["check_out_code_hash"] = a.CheckOutCodeHash
+	a.fieldMap["check_out_code_expire_at"] = a.CheckOutCodeExpireAt
+	a.fieldMap["attendance_code_version"] = a.AttendanceCodeVersion
+	a.fieldMap["attendance_code_updated_at"] = a.AttendanceCodeUpdatedAt
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt
 }

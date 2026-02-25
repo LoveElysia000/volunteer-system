@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -768,6 +769,18 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 		return nil, err
 	}
 
+	// Keep deterministic hashes for volunteer-side validation while still returning plain codes to org users.
+	checkInCodeHash, err := util.HashSensitiveField(strings.TrimSpace(checkInCode))
+	if err != nil {
+		log.Error("generate attendance codes failed: hash check-in code error: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+	checkOutCodeHash, err := util.HashSensitiveField(strings.TrimSpace(checkOutCode))
+	if err != nil {
+		log.Error("generate attendance codes failed: hash check-out code error: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		return nil, err
+	}
+
 	now := time.Now()
 	var checkInExpireAt *time.Time
 	if req.CheckInValidMinutes > 0 {
@@ -782,10 +795,10 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 	// 初次生成会同时刷新两个码及对应过期时间，并统一推进版本号。
 	updates := map[string]any{
 		"check_in_code":              checkInCode,
-		"check_in_code_hash":         "",
+		"check_in_code_hash":         checkInCodeHash,
 		"check_in_code_expire_at":    checkInExpireAt,
 		"check_out_code":             checkOutCode,
-		"check_out_code_hash":        "",
+		"check_out_code_hash":        checkOutCodeHash,
 		"check_out_code_expire_at":   checkOutExpireAt,
 		"attendance_code_version":    gorm.Expr("attendance_code_version + 1"),
 		"attendance_code_updated_at": now,
@@ -851,6 +864,12 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 		return nil, err
 	}
 
+	codeHash, err := util.HashSensitiveField(strings.TrimSpace(code))
+	if err != nil {
+		log.Error("reset attendance code failed: hash code error: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+		return nil, err
+	}
+
 	now := time.Now()
 	var expireAt *time.Time
 	if req.ValidMinutes > 0 {
@@ -865,11 +884,11 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 	switch req.CodeType {
 	case model.AttendanceCodeTypeCheckIn:
 		updates["check_in_code"] = code
-		updates["check_in_code_hash"] = ""
+		updates["check_in_code_hash"] = codeHash
 		updates["check_in_code_expire_at"] = expireAt
 	case model.AttendanceCodeTypeCheckOut:
 		updates["check_out_code"] = code
-		updates["check_out_code_hash"] = ""
+		updates["check_out_code_hash"] = codeHash
 		updates["check_out_code_expire_at"] = expireAt
 	default:
 		return nil, errors.New("重置码类型不合法")
@@ -1055,6 +1074,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 	var checkOutTime time.Time
 	var grantedHours float64
 	// 事务外预检查：尽早失败，减少不必要的行锁持有时间。
+	// Fast-fail before entering transaction to shorten lock hold time.
 	preSignup, err := s.repo.GetSignup(s.repo.DB, req.ActivityId, volunteerID)
 	if err != nil {
 		log.Error("活动签退失败: 预检查报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
@@ -1077,6 +1097,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		return nil, errors.New("未到签退开始时间，还不能签退")
 	}
 
+	// Re-check under row lock to prevent races between pre-check and final write.
 	err = s.withTransaction(func(tx *gorm.DB) error {
 		// 事务内二次校验：防止预检查与加锁之间的并发状态变化。
 		signup, err := s.repo.GetSignupForUpdate(tx, req.ActivityId, volunteerID)
@@ -1093,6 +1114,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 			return errors.New("未签到，无法签退")
 		}
 
+		// Idempotent return for repeated checkout requests.
 		if signup.CheckOutStatus == model.ActivityCheckOutDone {
 			if signup.CheckOutTime != nil {
 				checkOutTime = *signup.CheckOutTime
@@ -1106,6 +1128,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 			now = *signup.CheckInTime
 		}
 		checkOutTime = now
+		// Centralized helper keeps cap and rounding rules consistent across endpoints.
 		grantedHours = util.CalcGrantedHours(activity.Duration, *signup.CheckInTime, now)
 
 		volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
@@ -1224,6 +1247,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 	var finalCheckOut time.Time
 	var grantedHours float64
 
+	// Keep signup status, work-hour log and volunteer aggregate in one atomic transaction.
 	err = s.withTransaction(func(tx *gorm.DB) error {
 		signup, err := s.repo.GetSignupForUpdate(tx, req.ActivityId, req.VolunteerId)
 		if err != nil {
@@ -1237,6 +1261,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 		}
 
 		// 已签退场景直接视为幂等成功，返回已有结果。
+		// Idempotent branch: already checked out means we return existing settlement result.
 		if signup.CheckOutStatus == model.ActivityCheckOutDone {
 			if signup.CheckInTime != nil {
 				finalCheckIn = *signup.CheckInTime
@@ -1267,6 +1292,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 			return errors.New("签退时间不能早于签到时间")
 		}
 		finalCheckOut = checkOutAt
+		// Reuse the same calculator as normal checkout to avoid divergent hour results.
 		grantedHours = util.CalcGrantedHours(activity.Duration, finalCheckIn, finalCheckOut)
 
 		volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
@@ -1390,6 +1416,7 @@ func (s *ActivityService) validateCheckInCode(activityID int64, inputCode string
 	return validateAttendanceCodeValue(
 		inputCode,
 		codeInfo.CheckInCode,
+		codeInfo.CheckInCodeHash,
 		codeInfo.CheckInCodeExpireAt,
 		"签到码错误或已过期",
 	)
@@ -1409,22 +1436,38 @@ func (s *ActivityService) validateCheckOutCode(activityID int64, inputCode strin
 	return validateAttendanceCodeValue(
 		inputCode,
 		codeInfo.CheckOutCode,
+		codeInfo.CheckOutCodeHash,
 		codeInfo.CheckOutCodeExpireAt,
 		"签退码错误或已过期",
 	)
 }
 
 // validateAttendanceCodeValue 统一处理码存在性、过期性与值匹配校验。
-func validateAttendanceCodeValue(inputCode, expectedCode string, expireAt *time.Time, errMsg string) error {
+func validateAttendanceCodeValue(inputCode, expectedCode, expectedCodeHash string, expireAt *time.Time, errMsg string) error {
 	normalizedInputCode := strings.TrimSpace(inputCode)
 	normalizedExpectedCode := strings.TrimSpace(expectedCode)
-	if normalizedExpectedCode == "" {
-		return errors.New(errMsg)
-	}
+	normalizedExpectedCodeHash := strings.TrimSpace(expectedCodeHash)
 	if expireAt != nil && time.Now().After(*expireAt) {
 		return errors.New(errMsg)
 	}
-	if normalizedInputCode != normalizedExpectedCode {
+
+	// 优先使用哈希字段校验；保留明文字段回退以兼容历史数据。
+	if normalizedExpectedCodeHash != "" {
+		// Prefer hashed comparison when hash exists; plaintext fallback is for legacy rows only.
+		inputCodeHash, err := util.HashSensitiveField(normalizedInputCode)
+		if err != nil {
+			return err
+		}
+		if subtle.ConstantTimeCompare([]byte(inputCodeHash), []byte(normalizedExpectedCodeHash)) != 1 {
+			return errors.New(errMsg)
+		}
+		return nil
+	}
+
+	if normalizedExpectedCode == "" {
+		return errors.New(errMsg)
+	}
+	if subtle.ConstantTimeCompare([]byte(normalizedInputCode), []byte(normalizedExpectedCode)) != 1 {
 		return errors.New(errMsg)
 	}
 	return nil

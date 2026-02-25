@@ -12,7 +12,9 @@ import (
 type ActivityAttendanceCode struct {
 	ID                      int64      `gorm:"column:id"`
 	CheckInCode             string     `gorm:"column:check_in_code"`
+	CheckInCodeHash         string     `gorm:"column:check_in_code_hash"`
 	CheckOutCode            string     `gorm:"column:check_out_code"`
+	CheckOutCodeHash        string     `gorm:"column:check_out_code_hash"`
 	CheckInCodeExpireAt     *time.Time `gorm:"column:check_in_code_expire_at"`
 	CheckOutCodeExpireAt    *time.Time `gorm:"column:check_out_code_expire_at"`
 	AttendanceCodeVersion   int64      `gorm:"column:attendance_code_version"`
@@ -86,7 +88,7 @@ func (r *Repository) GetActivityAttendanceCodeByID(db *gorm.DB, id int64) (*Acti
 	err := db.WithContext(r.ctx).
 		Table("activities").
 		Select(
-			"id, check_in_code, check_out_code, check_in_code_expire_at, check_out_code_expire_at, attendance_code_version, attendance_code_updated_at",
+			"id, check_in_code, check_in_code_hash, check_out_code, check_out_code_hash, check_in_code_expire_at, check_out_code_expire_at, attendance_code_version, attendance_code_updated_at",
 		).
 		Where("id = ?", id).
 		First(&codeInfo).Error
