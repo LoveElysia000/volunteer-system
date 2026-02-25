@@ -6,6 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/cloudwego/hertz v0.10.3
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.4.0
 	github.com/redis/go-redis/v9 v9.5.1
@@ -31,7 +32,6 @@ require (
 	github.com/cloudwego/netpoll v0.7.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect

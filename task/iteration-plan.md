@@ -9,6 +9,31 @@
 | Iteration 3 | 2026-03-02 ~ 2026-03-06 | 工时与活动结果闭环（P0/P1） |
 | Iteration 4 | 2026-03-09 ~ 2026-03-20 | 数据导入导出 + 证书生成（P1） |
 
+## 实现状态标记（截至 2026-02-25）
+
+状态说明：`✅ 已实现` `🟡 部分实现` `❌ 未实现`
+
+| 条目 | 状态 | 说明 |
+| --- | --- | --- |
+| Iteration 1-1 `MyProfile` 完整链路 | ✅ | router/handler/service 已落地 |
+| Iteration 1-2 志愿者详情 path 参数命名修正 | ✅ | 当前路由与 proto 参数一致 |
+| Iteration 1-3 组织列表与创建同路径冲突修复 | ✅ | 已拆分为 `/organizations/list` 与 `/organizations/create` |
+| Iteration 1-4 `organizations.status` 与 `sys_accounts.status` 一致性 | 🟡 | 组织状态已实现，但未见与账号状态联动更新 |
+| Iteration 1-5 移除 `organizations.audit_status` 依赖 | ✅ | 模型与服务侧已切换，不再依赖该字段 |
+| Iteration 2-1 扩展审核目标（志愿者/组织/活动报名） | 🟡 | 志愿者与活动报名已覆盖，组织资质审核未完整落地 |
+| Iteration 2-2 活动报名“创建审核记录 -> 审批后生效” | ✅ | 已按审核流程实现 |
+| Iteration 2-3 审核列表（状态/关键词/分页）与权限 | 🟡 | 状态/分页可用，关键词与权限收敛未完全闭环 |
+| Iteration 2-4 审核记录统一落库与状态映射 | 🟡 | 核心映射已落地，但审核目标覆盖不完整 |
+| Iteration 3-1 `work_hour_logs` model/repo/service/router | ✅ | 全链路已实现 |
+| Iteration 3-2 签到/签退与活动状态联动 | ✅ | 签到签退接口及状态流转已实现 |
+| Iteration 3-3 工时发放与回写志愿者统计 | ✅ | 已回写 `total_hours`、`service_count` |
+| Iteration 3-4 工时作废/重算幂等 | ✅ | 作废、重算和幂等键均已实现 |
+| Iteration 4（导入导出 + 证书） | ❌ | 未发现对应模块与接口实现 |
+| DoD-1 接口/路由/Proto/OpenAPI 一致 | 🟡 | 多数模块一致，仍有局部模型与最新 DDL 不一致 |
+| DoD-2 核心流程集成测试 | ❌ | 未发现核心流程集成测试用例 |
+| DoD-3 迁移脚本可回放且与模型一致 | 🟡 | 迁移脚本存在，但部分新字段未同步到生成模型 |
+| DoD-4 关键变更回归清单并通过验证 | ❌ | 未发现回归清单与验证记录 |
+
 ---
 
 ## 2. Iteration 1（2026-02-16 ~ 2026-02-20）
