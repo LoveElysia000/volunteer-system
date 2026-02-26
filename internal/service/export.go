@@ -21,43 +21,6 @@ const (
 	exportMaxRows  = 50000
 )
 
-// ExportFile 导出文件内容
-type ExportFile struct {
-	FileName    string
-	ContentType string
-	Content     []byte
-}
-
-type volunteerExportRow struct {
-	VolunteerID  int64   `csv:"志愿者ID"`
-	RealName     string  `csv:"姓名"`
-	Gender       string  `csv:"性别"`
-	Mobile       string  `csv:"手机号"`
-	Email        string  `csv:"邮箱"`
-	Organization string  `csv:"所属组织"`
-	TotalHours   float64 `csv:"累计工时"`
-	ServiceCount int32   `csv:"服务次数"`
-	Status       string  `csv:"志愿者状态"`
-	AuditStatus  string  `csv:"实名状态"`
-	CreatedAt    string  `csv:"创建时间"`
-}
-
-type activityExportRow struct {
-	ActivityID    int64   `csv:"活动ID"`
-	Title         string  `csv:"标题"`
-	Description   string  `csv:"描述"`
-	StartTime     string  `csv:"开始时间"`
-	EndTime       string  `csv:"结束时间"`
-	Location      string  `csv:"地点"`
-	Address       string  `csv:"地址"`
-	Duration      float64 `csv:"预估工时"`
-	MaxPeople     int32   `csv:"最大人数"`
-	CurrentPeople int32   `csv:"当前人数"`
-	Status        string  `csv:"活动状态"`
-	Organization  string  `csv:"发布组织"`
-	CreatedAt     string  `csv:"创建时间"`
-}
-
 type ExportService struct {
 	Service
 }
@@ -76,14 +39,9 @@ func NewExportService(ctx context.Context, c *app.RequestContext) *ExportService
 }
 
 // ExportVolunteers 导出志愿者
-func (s *ExportService) ExportVolunteers(req *api.ExportVolunteersRequest) (*ExportFile, error) {
+func (s *ExportService) ExportVolunteers(req *api.ExportVolunteersRequest) (*model.ExportFile, error) {
 	if req == nil {
 		return nil, errors.New("请求不能为空")
-	}
-
-	format, err := normalizeExportFormat(req.Format)
-	if err != nil {
-		return nil, err
 	}
 
 	orgID, err := s.getCurrentOrgID()
@@ -91,7 +49,7 @@ func (s *ExportService) ExportVolunteers(req *api.ExportVolunteersRequest) (*Exp
 		return nil, err
 	}
 
-	rows := make([]volunteerExportRow, 0, 256)
+	rows := make([]model.VolunteerExportRow, 0, 256)
 	offset := 0
 
 	for {
@@ -116,10 +74,7 @@ func (s *ExportService) ExportVolunteers(req *api.ExportVolunteersRequest) (*Exp
 				}
 			}
 
-			// 安全优先：默认脱敏导出手机号。
-			mobile = util.GetMobileMask(mobile)
-
-			rows = append(rows, volunteerExportRow{
+			rows = append(rows, model.VolunteerExportRow{
 				VolunteerID:  rec.VolunteerID,
 				RealName:     rec.RealName,
 				Gender:       volunteerGenderText(rec.Gender),
@@ -140,27 +95,22 @@ func (s *ExportService) ExportVolunteers(req *api.ExportVolunteersRequest) (*Exp
 		offset += exportPageSize
 	}
 
-	content, contentType, err := buildExportContent(format, rows)
+	content, err := util.MarshalXLSX(rows)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ExportFile{
-		FileName:    fmt.Sprintf("volunteers-export-%s.%s", time.Now().Format("20060102150405"), format),
-		ContentType: contentType,
+	return &model.ExportFile{
+		FileName:    fmt.Sprintf("volunteers-export-%s.xlsx", time.Now().Format("20060102150405")),
+		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		Content:     content,
 	}, nil
 }
 
 // ExportActivities 导出活动
-func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*ExportFile, error) {
+func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*model.ExportFile, error) {
 	if req == nil {
 		return nil, errors.New("请求不能为空")
-	}
-
-	format, err := normalizeExportFormat(req.Format)
-	if err != nil {
-		return nil, err
 	}
 
 	var startFrom *time.Time
@@ -190,7 +140,7 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*Exp
 		return nil, err
 	}
 
-	rows := make([]activityExportRow, 0, 256)
+	rows := make([]model.ActivityExportRow, 0, 256)
 	offset := 0
 
 	for {
@@ -208,7 +158,7 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*Exp
 				continue
 			}
 
-			rows = append(rows, activityExportRow{
+			rows = append(rows, model.ActivityExportRow{
 				ActivityID:    rec.ActivityID,
 				Title:         rec.Title,
 				Description:   rec.Description,
@@ -231,44 +181,16 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*Exp
 		offset += exportPageSize
 	}
 
-	content, contentType, err := buildExportContent(format, rows)
+	content, err := util.MarshalXLSX(rows)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ExportFile{
-		FileName:    fmt.Sprintf("activities-export-%s.%s", time.Now().Format("20060102150405"), format),
-		ContentType: contentType,
+	return &model.ExportFile{
+		FileName:    fmt.Sprintf("activities-export-%s.xlsx", time.Now().Format("20060102150405")),
+		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		Content:     content,
 	}, nil
-}
-
-func buildExportContent(format string, rows interface{}) ([]byte, string, error) {
-	switch format {
-	case "csv":
-		content, err := util.MarshalCSV(rows)
-		if err != nil {
-			return nil, "", err
-		}
-		return content, "text/csv; charset=utf-8", nil
-	case "xlsx":
-		return nil, "", errors.New("当前版本暂不支持 xlsx 导出")
-	default:
-		return nil, "", errors.New("不支持的导出格式")
-	}
-}
-
-func normalizeExportFormat(format string) (string, error) {
-	value := strings.ToLower(strings.TrimSpace(format))
-	if value == "" {
-		return "csv", nil
-	}
-	switch value {
-	case "csv", "xlsx":
-		return value, nil
-	default:
-		return "", errors.New("导出格式仅支持 csv/xlsx")
-	}
 }
 
 func (s *ExportService) getCurrentOrgID() (int64, error) {

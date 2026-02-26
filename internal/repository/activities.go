@@ -1,25 +1,11 @@
 package repository
 
 import (
-	"time"
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-// ActivityAttendanceCode 活动签到签退码字段映射（不依赖生成 model 字段）。
-type ActivityAttendanceCode struct {
-	ID                      int64      `gorm:"column:id"`
-	CheckInCode             string     `gorm:"column:check_in_code"`
-	CheckInCodeHash         string     `gorm:"column:check_in_code_hash"`
-	CheckOutCode            string     `gorm:"column:check_out_code"`
-	CheckOutCodeHash        string     `gorm:"column:check_out_code_hash"`
-	CheckInCodeExpireAt     *time.Time `gorm:"column:check_in_code_expire_at"`
-	CheckOutCodeExpireAt    *time.Time `gorm:"column:check_out_code_expire_at"`
-	AttendanceCodeVersion   int64      `gorm:"column:attendance_code_version"`
-	AttendanceCodeUpdatedAt *time.Time `gorm:"column:attendance_code_updated_at"`
-}
 
 // GetActivitiesByStatus 根据状态查询活动列表
 func (r *Repository) GetActivitiesByStatus(db *gorm.DB, status int32, limit, offset int) ([]*model.Activity, int64, error) {
@@ -80,22 +66,6 @@ func (r *Repository) GetActivityByIDForUpdate(db *gorm.DB, id int64) (*model.Act
 		return nil, err
 	}
 	return &activity, nil
-}
-
-// GetActivityAttendanceCodeByID 查询活动签到签退码相关字段。
-func (r *Repository) GetActivityAttendanceCodeByID(db *gorm.DB, id int64) (*ActivityAttendanceCode, error) {
-	var codeInfo ActivityAttendanceCode
-	err := db.WithContext(r.ctx).
-		Table("activities").
-		Select(
-			"id, check_in_code, check_in_code_hash, check_out_code, check_out_code_hash, check_in_code_expire_at, check_out_code_expire_at, attendance_code_version, attendance_code_updated_at",
-		).
-		Where("id = ?", id).
-		First(&codeInfo).Error
-	if err != nil {
-		return nil, err
-	}
-	return &codeInfo, nil
 }
 
 // UpdateActivityAttendanceCodeByID 更新活动签到签退码相关字段。

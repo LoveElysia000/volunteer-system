@@ -34,6 +34,7 @@ type ActivityService struct {
 	Service
 }
 
+// NewActivityService 创建活动服务实例，并注入请求上下文与仓储依赖。
 func NewActivityService(ctx context.Context, c *app.RequestContext) *ActivityService {
 	if ctx == nil {
 		ctx = context.Background()
@@ -221,6 +222,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 	return &api.ActivitySignupResponse{Success: true}, nil
 }
 
+// hasPendingSignupCreateAudit 检查当前用户是否已有同活动同志愿者的待审核报名创建记录。
 func (s *ActivityService) hasPendingSignupCreateAudit(activityID, volunteerID, userID int64) (bool, error) {
 	// 仅查询“活动报名 + 新增 + 待审核”的记录，再从快照中匹配 activity_id/volunteer_id。
 	queryMap := map[string]any{
@@ -837,39 +839,16 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 		return nil, errors.New("已结束活动不能生成签到签退码")
 	}
 
-	checkInCode, err := generateRandomAttendanceCode(attendanceCodeLength)
+	now := time.Now()
+	checkInCode, checkInCodeHash, checkInExpireAt, err := generateAttendanceCodeForWrite(now, req.CheckInValidMinutes)
 	if err != nil {
 		log.Error("生成签到签退码失败: 生成签到码异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
 	}
-	checkOutCode, err := generateRandomAttendanceCode(attendanceCodeLength)
+	checkOutCode, checkOutCodeHash, checkOutExpireAt, err := generateAttendanceCodeForWrite(now, req.CheckOutValidMinutes)
 	if err != nil {
 		log.Error("生成签到签退码失败: 生成签退码异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
-	}
-
-	// Keep deterministic hashes for volunteer-side validation while still returning plain codes to org users.
-	checkInCodeHash, err := util.HashSensitiveField(strings.TrimSpace(checkInCode))
-	if err != nil {
-		log.Error("generate attendance codes failed: hash check-in code error: %v, activity_id=%d user_id=%d", err, req.Id, userID)
-		return nil, err
-	}
-	checkOutCodeHash, err := util.HashSensitiveField(strings.TrimSpace(checkOutCode))
-	if err != nil {
-		log.Error("generate attendance codes failed: hash check-out code error: %v, activity_id=%d user_id=%d", err, req.Id, userID)
-		return nil, err
-	}
-
-	now := time.Now()
-	var checkInExpireAt *time.Time
-	if req.CheckInValidMinutes > 0 {
-		expireAt := now.Add(time.Duration(req.CheckInValidMinutes) * time.Minute)
-		checkInExpireAt = &expireAt
-	}
-	var checkOutExpireAt *time.Time
-	if req.CheckOutValidMinutes > 0 {
-		expireAt := now.Add(time.Duration(req.CheckOutValidMinutes) * time.Minute)
-		checkOutExpireAt = &expireAt
 	}
 	// 初次生成会同时刷新两个码及对应过期时间，并统一推进版本号。
 	updates := map[string]any{
@@ -887,7 +866,7 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 		return nil, err
 	}
 
-	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, req.Id)
+	codeInfo, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
 	if err != nil {
 		log.Error("生成签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
@@ -937,24 +916,13 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 		return nil, errors.New("已结束活动不能重置签到签退码")
 	}
 
-	code, err := generateRandomAttendanceCode(attendanceCodeLength)
+	now := time.Now()
+	code, codeHash, expireAt, err := generateAttendanceCodeForWrite(now, req.ValidMinutes)
 	if err != nil {
 		log.Error("重置签到签退码失败: 生成随机码异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
 		return nil, err
 	}
 
-	codeHash, err := util.HashSensitiveField(strings.TrimSpace(code))
-	if err != nil {
-		log.Error("reset attendance code failed: hash code error: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
-		return nil, err
-	}
-
-	now := time.Now()
-	var expireAt *time.Time
-	if req.ValidMinutes > 0 {
-		value := now.Add(time.Duration(req.ValidMinutes) * time.Minute)
-		expireAt = &value
-	}
 	updates := map[string]any{
 		"attendance_code_version":    gorm.Expr("attendance_code_version + 1"),
 		"attendance_code_updated_at": now,
@@ -978,7 +946,7 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 		return nil, err
 	}
 
-	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, req.Id)
+	codeInfo, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
 	if err != nil {
 		log.Error("重置签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
 		return nil, err
@@ -1014,25 +982,20 @@ func (s *ActivityService) GetActivityAttendanceCodes(req *api.GetActivityAttenda
 		return nil, err
 	}
 
-	if _, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID); err != nil {
-		log.Error("查询活动签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
-		return nil, err
-	}
-
-	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, req.Id)
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
 	if err != nil {
-		log.Error("查询活动签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("查询活动签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
 	}
 
 	resp := &api.GetActivityAttendanceCodesResponse{
 		Success:                 true,
-		CheckInCode:             codeInfo.CheckInCode,
-		CheckOutCode:            codeInfo.CheckOutCode,
-		CheckInExpireAt:         util.FormatDateTimePtr(codeInfo.CheckInCodeExpireAt),
-		CheckOutExpireAt:        util.FormatDateTimePtr(codeInfo.CheckOutCodeExpireAt),
-		AttendanceCodeVersion:   codeInfo.AttendanceCodeVersion,
-		AttendanceCodeUpdatedAt: util.FormatDateTimePtr(codeInfo.AttendanceCodeUpdatedAt),
+		CheckInCode:             activity.CheckInCode,
+		CheckOutCode:            activity.CheckOutCode,
+		CheckInExpireAt:         util.FormatDateTimePtr(activity.CheckInCodeExpireAt),
+		CheckOutExpireAt:        util.FormatDateTimePtr(activity.CheckOutCodeExpireAt),
+		AttendanceCodeVersion:   activity.AttendanceCodeVersion,
+		AttendanceCodeUpdatedAt: util.FormatDateTimePtr(activity.AttendanceCodeUpdatedAt),
 	}
 	return resp, nil
 }
@@ -1068,7 +1031,7 @@ func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api
 	if activity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许签到")
 	}
-	if err := s.validateCheckInCode(req.ActivityId, req.CheckInCode); err != nil {
+	if err := validateAttendanceCodeForActivity(activity, req.CheckInCode, model.AttendanceCodeTypeCheckIn); err != nil {
 		log.Error("活动签到失败: 校验签到码异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
 		return nil, err
 	}
@@ -1145,7 +1108,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 	if activity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许签退")
 	}
-	if err := s.validateCheckOutCode(req.ActivityId, req.CheckOutCode); err != nil {
+	if err := validateAttendanceCodeForActivity(activity, req.CheckOutCode, model.AttendanceCodeTypeCheckOut); err != nil {
 		log.Error("活动签退失败: 校验签退码异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
 		return nil, err
 	}
@@ -1207,59 +1170,20 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 			now = *signup.CheckInTime
 		}
 		checkOutTime = now
-		// Centralized helper keeps cap and rounding rules consistent across endpoints.
-		grantedHours = util.CalcGrantedHours(activity.Duration, *signup.CheckInTime, now)
-
-		volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
-		if err != nil {
-			return err
-		}
-		beforeHours := volunteer.TotalHours
-		beforeCount := int64(volunteer.ServiceCount)
-		afterHours := util.RoundHours(beforeHours + grantedHours)
-		afterCount := beforeCount + 1
-		if afterHours < 0 || afterCount < 0 {
-			return errors.New("志愿者统计字段异常")
-		}
-
-		newVersion := signup.WorkHourVersion + 1
-		workHourLog := &model.WorkHourLog{
-			VolunteerID:        signup.VolunteerID,
-			ActivityID:         signup.ActivityID,
-			SignupID:           signup.ID,
-			OperationType:      model.WorkHourOperationGrant,
-			HoursDelta:         grantedHours,
-			ServiceCountDelta:  1,
-			BeforeTotalHours:   beforeHours,
-			AfterTotalHours:    afterHours,
-			BeforeServiceCount: beforeCount,
-			AfterServiceCount:  afterCount,
-			WorkHourVersion:    newVersion,
-			IdempotencyKey:     fmt.Sprintf("checkout:%d:%d", signup.ID, newVersion),
-			RefLogID:           signup.LastWorkHourLogID,
-			Reason:             "签到签退自动结算",
-			OperatorID:         userID,
-		}
-		if err := s.repo.CreateWorkHourLog(tx, workHourLog); err != nil {
-			return err
-		}
-
-		if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]interface{}{
-			"total_hours":   afterHours,
-			"service_count": int32(afterCount),
-		}); err != nil {
-			return err
-		}
-
-		return s.repo.UpdateActivitySignupByID(tx, signup.ID, map[string]any{
-			"check_out_status":      model.ActivityCheckOutDone,
-			"check_out_time":        now,
-			"work_hour_status":      model.WorkHourStatusGranted,
-			"work_hour_version":     newVersion,
-			"last_work_hour_log_id": workHourLog.ID,
-			"granted_hours":         grantedHours,
-			"granted_at":            now,
-		})
+		nextVersion := signup.WorkHourVersion + 1
+		idempotencyKey := fmt.Sprintf("checkout:%d:%d", signup.ID, nextVersion)
+		grantedHours, err = s.settleSignupWorkHours(
+			tx,
+			activity,
+			signup,
+			*signup.CheckInTime,
+			checkOutTime,
+			userID,
+			idempotencyKey,
+			"签到签退自动结算",
+			false,
+		)
+		return err
 	})
 	if err != nil {
 		log.Error("活动签退失败: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, volunteerID, userID)
@@ -1371,61 +1295,20 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 			return errors.New("签退时间不能早于签到时间")
 		}
 		finalCheckOut = checkOutAt
-		// Reuse the same calculator as normal checkout to avoid divergent hour results.
-		grantedHours = util.CalcGrantedHours(activity.Duration, finalCheckIn, finalCheckOut)
-
-		volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
-		if err != nil {
-			return err
-		}
-		beforeHours := volunteer.TotalHours
-		beforeCount := int64(volunteer.ServiceCount)
-		afterHours := util.RoundHours(beforeHours + grantedHours)
-		afterCount := beforeCount + 1
-		if afterHours < 0 || afterCount < 0 {
-			return errors.New("志愿者统计字段异常")
-		}
-
-		newVersion := signup.WorkHourVersion + 1
-		workHourLog := &model.WorkHourLog{
-			VolunteerID:        signup.VolunteerID,
-			ActivityID:         signup.ActivityID,
-			SignupID:           signup.ID,
-			OperationType:      model.WorkHourOperationGrant,
-			HoursDelta:         grantedHours,
-			ServiceCountDelta:  1,
-			BeforeTotalHours:   beforeHours,
-			AfterTotalHours:    afterHours,
-			BeforeServiceCount: beforeCount,
-			AfterServiceCount:  afterCount,
-			WorkHourVersion:    newVersion,
-			IdempotencyKey:     fmt.Sprintf("org-supplement:%d:%d:%d", signup.ID, newVersion, finalCheckOut.Unix()),
-			RefLogID:           signup.LastWorkHourLogID,
-			Reason:             reason,
-			OperatorID:         userID,
-		}
-		if err := s.repo.CreateWorkHourLog(tx, workHourLog); err != nil {
-			return err
-		}
-
-		if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]interface{}{
-			"total_hours":   afterHours,
-			"service_count": int32(afterCount),
-		}); err != nil {
-			return err
-		}
-
-		return s.repo.UpdateActivitySignupByID(tx, signup.ID, map[string]any{
-			"check_in_status":       model.ActivityCheckInDone,
-			"check_in_time":         finalCheckIn,
-			"check_out_status":      model.ActivityCheckOutDone,
-			"check_out_time":        finalCheckOut,
-			"work_hour_status":      model.WorkHourStatusGranted,
-			"work_hour_version":     newVersion,
-			"last_work_hour_log_id": workHourLog.ID,
-			"granted_hours":         grantedHours,
-			"granted_at":            finalCheckOut,
-		})
+		nextVersion := signup.WorkHourVersion + 1
+		idempotencyKey := fmt.Sprintf("org-supplement:%d:%d:%d", signup.ID, nextVersion, finalCheckOut.Unix())
+		grantedHours, err = s.settleSignupWorkHours(
+			tx,
+			activity,
+			signup,
+			finalCheckIn,
+			finalCheckOut,
+			userID,
+			idempotencyKey,
+			reason,
+			true,
+		)
+		return err
 	})
 	if err != nil {
 		log.Error("活动补录失败: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, req.VolunteerId, userID)
@@ -1441,6 +1324,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 	}, nil
 }
 
+// getVolunteerIDByAccountID 根据账号ID查询并返回对应志愿者ID。
 func (s *ActivityService) getVolunteerIDByAccountID(accountID int64) (int64, error) {
 	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, accountID)
 	if err != nil {
@@ -1456,6 +1340,7 @@ func (s *ActivityService) getVolunteerIDByAccountID(accountID int64) (int64, err
 	return volunteer.ID, nil
 }
 
+// ensureActivityOperableByCurrentOrg 校验活动存在、组织存在且当前组织对该活动有操作权限。
 func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, accountID int64) (*model.Activity, error) {
 	activity, err := s.repo.GetActivityByID(s.repo.DB, activityID)
 	if err != nil {
@@ -1481,44 +1366,114 @@ func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, account
 	return activity, nil
 }
 
-// validateCheckInCode 查询并校验活动的签到码。
-func (s *ActivityService) validateCheckInCode(activityID int64, inputCode string) error {
-	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, activityID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("活动不存在")
-		}
-		log.Error("校验签到码失败: 查询活动签到码异常: %v, activity_id=%d", err, activityID)
-		return err
+// settleSignupWorkHours 统一完成签退结算：计算工时、写流水、更新志愿者统计及报名记录。
+func (s *ActivityService) settleSignupWorkHours(
+	tx *gorm.DB,
+	activity *model.Activity,
+	signup *model.ActivitySignup,
+	checkInTime time.Time,
+	checkOutTime time.Time,
+	operatorID int64,
+	idempotencyKey string,
+	reason string,
+	syncCheckIn bool,
+) (float64, error) {
+	if activity == nil || signup == nil {
+		return 0, errors.New("报名记录不存在")
+	}
+	if checkOutTime.Before(checkInTime) {
+		return 0, errors.New("签退时间不能早于签到时间")
 	}
 
-	return validateAttendanceCodeValue(
-		inputCode,
-		codeInfo.CheckInCode,
-		codeInfo.CheckInCodeHash,
-		codeInfo.CheckInCodeExpireAt,
-		"签到码错误或已过期",
-	)
+	grantedHours := util.CalcGrantedHours(activity.Duration, checkInTime, checkOutTime)
+	volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
+	if err != nil {
+		return 0, err
+	}
+
+	beforeHours := volunteer.TotalHours
+	beforeCount := int64(volunteer.ServiceCount)
+	afterHours := util.RoundHours(beforeHours + grantedHours)
+	afterCount := beforeCount + 1
+	if afterHours < 0 || afterCount < 0 {
+		return 0, errors.New("志愿者统计字段异常")
+	}
+
+	newVersion := signup.WorkHourVersion + 1
+	workHourLog := &model.WorkHourLog{
+		VolunteerID:        signup.VolunteerID,
+		ActivityID:         signup.ActivityID,
+		SignupID:           signup.ID,
+		OperationType:      model.WorkHourOperationGrant,
+		HoursDelta:         grantedHours,
+		ServiceCountDelta:  1,
+		BeforeTotalHours:   beforeHours,
+		AfterTotalHours:    afterHours,
+		BeforeServiceCount: beforeCount,
+		AfterServiceCount:  afterCount,
+		WorkHourVersion:    newVersion,
+		IdempotencyKey:     idempotencyKey,
+		RefLogID:           signup.LastWorkHourLogID,
+		Reason:             reason,
+		OperatorID:         operatorID,
+	}
+	if err := s.repo.CreateWorkHourLog(tx, workHourLog); err != nil {
+		return 0, err
+	}
+
+	if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
+		"total_hours":   afterHours,
+		"service_count": int32(afterCount),
+	}); err != nil {
+		return 0, err
+	}
+
+	signupUpdates := map[string]any{
+		"check_out_status":      model.ActivityCheckOutDone,
+		"check_out_time":        checkOutTime,
+		"work_hour_status":      model.WorkHourStatusGranted,
+		"work_hour_version":     newVersion,
+		"last_work_hour_log_id": workHourLog.ID,
+		"granted_hours":         grantedHours,
+		"granted_at":            checkOutTime,
+	}
+	if syncCheckIn {
+		signupUpdates["check_in_status"] = model.ActivityCheckInDone
+		signupUpdates["check_in_time"] = checkInTime
+	}
+	if err := s.repo.UpdateActivitySignupByID(tx, signup.ID, signupUpdates); err != nil {
+		return 0, err
+	}
+
+	return grantedHours, nil
 }
 
-// validateCheckOutCode 查询并校验活动的签退码。
-func (s *ActivityService) validateCheckOutCode(activityID int64, inputCode string) error {
-	codeInfo, err := s.repo.GetActivityAttendanceCodeByID(s.repo.DB, activityID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("活动不存在")
-		}
-		log.Error("校验签退码失败: 查询活动签退码异常: %v, activity_id=%d", err, activityID)
-		return err
+// validateAttendanceCodeForActivity 根据码类型校验活动签到码或签退码是否匹配且未过期。
+func validateAttendanceCodeForActivity(activity *model.Activity, inputCode string, codeType int32) error {
+	if activity == nil {
+		return errors.New("活动不存在")
 	}
 
-	return validateAttendanceCodeValue(
-		inputCode,
-		codeInfo.CheckOutCode,
-		codeInfo.CheckOutCodeHash,
-		codeInfo.CheckOutCodeExpireAt,
-		"签退码错误或已过期",
-	)
+	switch codeType {
+	case model.AttendanceCodeTypeCheckIn:
+		return validateAttendanceCodeValue(
+			inputCode,
+			activity.CheckInCode,
+			activity.CheckInCodeHash,
+			activity.CheckInCodeExpireAt,
+			"签到码错误或已过期",
+		)
+	case model.AttendanceCodeTypeCheckOut:
+		return validateAttendanceCodeValue(
+			inputCode,
+			activity.CheckOutCode,
+			activity.CheckOutCodeHash,
+			activity.CheckOutCodeExpireAt,
+			"签退码错误或已过期",
+		)
+	default:
+		return errors.New("码类型不合法")
+	}
 }
 
 // validateAttendanceCodeValue 统一处理码存在性、过期性与值匹配校验。
@@ -1552,7 +1507,30 @@ func validateAttendanceCodeValue(inputCode, expectedCode, expectedCodeHash strin
 	return nil
 }
 
+// generateAttendanceCodeForWrite 生成随机码、哈希值和过期时间，用于写入活动码字段。
+func generateAttendanceCodeForWrite(now time.Time, validMinutes int32) (string, string, *time.Time, error) {
+	code, err := generateRandomAttendanceCode(attendanceCodeLength)
+	if err != nil {
+		return "", "", nil, err
+	}
+	codeHash, err := util.HashSensitiveField(strings.TrimSpace(code))
+	if err != nil {
+		return "", "", nil, err
+	}
+	return code, codeHash, buildAttendanceCodeExpireAt(now, validMinutes), nil
+}
+
+// buildAttendanceCodeExpireAt 根据有效分钟数计算过期时间；<=0 表示不过期。
+func buildAttendanceCodeExpireAt(now time.Time, validMinutes int32) *time.Time {
+	if validMinutes <= 0 {
+		return nil
+	}
+	expireAt := now.Add(time.Duration(validMinutes) * time.Minute)
+	return &expireAt
+}
+
 // generateRandomAttendanceCode 生成固定长度码，且至少包含 1 位数字与 1 位字母。
+
 func generateRandomAttendanceCode(length int) (string, error) {
 	if length < 2 {
 		return "", errors.New("无效的签到签退码长度")
