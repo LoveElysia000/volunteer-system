@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package exportapi;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+service ExportService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  rpc ExportVolunteers(ExportVolunteersRequest) returns (ExportVolunteersResponse) {
+    option (google.api.http) = {
+      post: "/api/admin/export/volunteers"
+      body: "*"
+    };
+  }
+
+  rpc ExportActivities(ExportActivitiesRequest) returns (ExportActivitiesResponse) {
+    option (google.api.http) = {
+      post: "/api/admin/export/activities"
+      body: "*"
+    };
+  }
+}
+
+message ExportVolunteersRequest {
+  string format = 1; // csv/xlsx, default csv
+  repeated int64 idList = 2; // optional selected volunteer ids
+  bool maskSensitive = 3; // currently reserved, server exports masked mobile by default
+  string keyword = 4; // volunteer real_name keyword
+  int32 auditStatus = 5; // 0 means no filter
+  int32 status = 6; // 0 means no filter
+  int64 orgId = 7; // optional, server always uses current login org scope
+}
+
+message ExportVolunteersResponse {}
+
+message ExportActivitiesRequest {
+  string format = 1; // csv/xlsx, default csv
+  repeated int64 idList = 2; // optional selected activity ids
+  string keyword = 3; // activity title/description keyword
+  int32 status = 4; // 0 means no filter
+  string startFrom = 5; // format: 2006-01-02 15:04:05
+  string startTo = 6; // format: 2006-01-02 15:04:05
+  int64 orgId = 7; // optional, server always uses current login org scope
+}
+
+message ExportActivitiesResponse {}
+

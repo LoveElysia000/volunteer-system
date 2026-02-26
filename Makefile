@@ -36,7 +36,7 @@ ifeq ($(GOHOSTOS), windows)
     PLUGIN_OPENAPI := $(GOPATH_BIN)/protoc-gen-openapi.exe
 
     # 4. API 文件列表
-    API_PROTO_FILES = internal/api/activities.proto internal/api/login.proto internal/api/membership.proto internal/api/organization.proto internal/api/register.proto internal/api/volunteer.proto
+    API_PROTO_FILES = internal/api/activities.proto internal/api/login.proto internal/api/membership.proto internal/api/organization.proto internal/api/register.proto internal/api/volunteer.proto internal/api/export.proto
 
     # 5. Protoc 执行命令封装
     PROTOC_RUN = cmd /c ""$(PROTOC)" \
