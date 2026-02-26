@@ -218,10 +218,10 @@ func (r *Repository) DecrementActivityPeople(db *gorm.DB, activityID int64) erro
 	return nil
 }
 
-// GetUserSignupMap 查询用户的活动报名记录映射
-func (r *Repository) GetUserSignupMap(db *gorm.DB, volunteerID int64, activityIDs []int64) (map[int64]*model.ActivitySignup, error) {
+// ListUserSignupsByActivityIDs 查询用户在指定活动中的报名记录列表。
+func (r *Repository) ListUserSignupsByActivityIDs(db *gorm.DB, volunteerID int64, activityIDs []int64) ([]*model.ActivitySignup, error) {
 	if len(activityIDs) == 0 {
-		return make(map[int64]*model.ActivitySignup), nil
+		return []*model.ActivitySignup{}, nil
 	}
 
 	var signups []*model.ActivitySignup
@@ -235,13 +235,7 @@ func (r *Repository) GetUserSignupMap(db *gorm.DB, volunteerID int64, activityID
 	if err != nil {
 		return nil, err
 	}
-
-	signupMap := make(map[int64]*model.ActivitySignup)
-	for _, signup := range signups {
-		signupMap[signup.ActivityID] = signup
-	}
-
-	return signupMap, nil
+	return signups, nil
 }
 
 // CountActivitySignups 统计活动报名人数
@@ -287,12 +281,13 @@ func (r *Repository) GetMyActivities(db *gorm.DB, volunteerID int64, status int3
 	var signups []*model.ActivitySignup
 	var total int64
 
-	activeSignupStatuses := []int32{
+	visibleSignupStatuses := []int32{
 		model.ActivitySignupStatusPending,
 		model.ActivitySignupStatusSuccess,
+		model.ActivitySignupStatusRejected,
 	}
 	query := db.WithContext(r.ctx).
-		Where("volunteer_id = ? AND status IN ?", volunteerID, activeSignupStatuses)
+		Where("volunteer_id = ? AND status IN ?", volunteerID, visibleSignupStatuses)
 
 	// 状态筛选（通过关联的活动状态）
 	if status > 0 {
@@ -314,10 +309,10 @@ func (r *Repository) GetMyActivities(db *gorm.DB, volunteerID int64, status int3
 	return signups, total, nil
 }
 
-// GetActivitiesByIDs 批量获取活动信息
-func (r *Repository) GetActivitiesByIDs(db *gorm.DB, activityIDs []int64) (map[int64]*model.Activity, error) {
+// ListActivitiesByIDs 批量获取活动信息列表。
+func (r *Repository) ListActivitiesByIDs(db *gorm.DB, activityIDs []int64) ([]*model.Activity, error) {
 	if len(activityIDs) == 0 {
-		return make(map[int64]*model.Activity), nil
+		return []*model.Activity{}, nil
 	}
 
 	var activities []*model.Activity
@@ -327,40 +322,24 @@ func (r *Repository) GetActivitiesByIDs(db *gorm.DB, activityIDs []int64) (map[i
 	if err != nil {
 		return nil, err
 	}
-
-	activityMap := make(map[int64]*model.Activity)
-	for _, act := range activities {
-		activityMap[act.ID] = act
-	}
-
-	return activityMap, nil
+	return activities, nil
 }
 
-// GetOrgNamesByIDs 批量获取组织名称
-func (r *Repository) GetOrgNamesByIDs(db *gorm.DB, orgIDs []int64) (map[int64]string, error) {
+// ListOrganizationsByIDs 批量获取组织列表（仅查询 id/org_name 字段）。
+func (r *Repository) ListOrganizationsByIDs(db *gorm.DB, orgIDs []int64) ([]*model.Organization, error) {
 	if len(orgIDs) == 0 {
-		return make(map[int64]string), nil
+		return []*model.Organization{}, nil
 	}
 
-	type OrgNameResult struct {
-		ID      int64  `gorm:"column:id"`
-		OrgName string `gorm:"column:org_name"`
-	}
-
-	var results []OrgNameResult
+	var organizations []*model.Organization
 	err := db.WithContext(r.ctx).Model(&model.Organization{}).
+		Select("id", "org_name").
 		Where("id IN ?", orgIDs).
-		Find(&results).Error
+		Find(&organizations).Error
 	if err != nil {
 		return nil, err
 	}
-
-	orgNameMap := make(map[int64]string)
-	for _, result := range results {
-		orgNameMap[result.ID] = result.OrgName
-	}
-
-	return orgNameMap, nil
+	return organizations, nil
 }
 
 // ========== 组织端活动管理 ==========

@@ -1325,7 +1325,11 @@ type MyActivityItem struct {
 	// 工时结算状态: 0-未结算, 1-已发放, 2-已作废
 	WorkHourStatus int32 `protobuf:"varint,19,opt,name=workHourStatus,proto3" json:"workHourStatus"`
 	// 本次发放工时
-	GrantedHours  float64 `protobuf:"fixed64,20,opt,name=grantedHours,proto3" json:"grantedHours"`
+	GrantedHours float64 `protobuf:"fixed64,20,opt,name=grantedHours,proto3" json:"grantedHours"`
+	// 报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
+	SignupStatus int32 `protobuf:"varint,21,opt,name=signupStatus,proto3" json:"signupStatus"`
+	// 报名审核驳回原因（无则为空）
+	AuditReason   string `protobuf:"bytes,22,opt,name=auditReason,proto3" json:"auditReason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1498,6 +1502,20 @@ func (x *MyActivityItem) GetGrantedHours() float64 {
 		return x.GrantedHours
 	}
 	return 0
+}
+
+func (x *MyActivityItem) GetSignupStatus() int32 {
+	if x != nil {
+		return x.SignupStatus
+	}
+	return 0
+}
+
+func (x *MyActivityItem) GetAuditReason() string {
+	if x != nil {
+		return x.AuditReason
+	}
+	return ""
 }
 
 // CreateActivityRequest 创建活动请求
@@ -2708,7 +2726,7 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"\x06status\x18\x03 \x01(\x05R\x06status\"Z\n" +
 	"\x14MyActivitiesResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12,\n" +
-	"\x04list\x18\x02 \x03(\v2\x18.activity.MyActivityItemR\x04list\"\xf0\x04\n" +
+	"\x04list\x18\x02 \x03(\v2\x18.activity.MyActivityItemR\x04list\"\xb6\x05\n" +
 	"\x0eMyActivityItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
 	"\x05orgId\x18\x02 \x01(\x03R\x05orgId\x12\x18\n" +
@@ -2732,7 +2750,9 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"\x0echeckOutStatus\x18\x11 \x01(\x05R\x0echeckOutStatus\x12\"\n" +
 	"\fcheckOutTime\x18\x12 \x01(\tR\fcheckOutTime\x12&\n" +
 	"\x0eworkHourStatus\x18\x13 \x01(\x05R\x0eworkHourStatus\x12\"\n" +
-	"\fgrantedHours\x18\x14 \x01(\x01R\fgrantedHours\"\xa9\x02\n" +
+	"\fgrantedHours\x18\x14 \x01(\x01R\fgrantedHours\x12\"\n" +
+	"\fsignupStatus\x18\x15 \x01(\x05R\fsignupStatus\x12 \n" +
+	"\vauditReason\x18\x16 \x01(\tR\vauditReason\"\xa9\x02\n" +
 	"\x15CreateActivityRequest\x12\x14\n" +
 	"\x05orgId\x18\x01 \x01(\x03R\x05orgId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +

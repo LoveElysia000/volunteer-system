@@ -1,158 +1,106 @@
+# 志愿者信息变更审核设计（当前实现版）
 
----
+更新时间：2026-02-26  
+适用范围：`/Users/Ein/project2/volunteer-system`
 
-# 志愿者信息变更审核 - 数据库设计方案
-
-**版本**：V1.0
-**设计目标**：实现对敏感信息修改的审批流，确保主档案数据的真实性，并保留完整的变更历史以便追溯。
-
-## 实现状态标记（截至 2026-02-25）
+## 1. 实现状态
 
 状态说明：`✅ 已实现` `🟡 部分实现` `❌ 未实现`
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| 通用审核能力（`audit_records` + 审核通过/驳回接口） | ✅ | 已有通用审核链路，但并非本文的 `volunteer_audits` 专表方案 |
-| 本文专表 `volunteer_audits` | ❌ | 未发现建表脚本或模型/仓储实现 |
-| 志愿者信息修改“主表读、审核表写” | ❌ | 当前志愿者资料更新仍直接写 `volunteers` |
-| 志愿者信息变更 `before_json/after_json` 快照 | ❌ | 志愿者资料修改场景未落地该双快照 |
-| 管理员审核志愿者资料修改申请 | ❌ | 未发现对应申请列表与审批入口 |
-| 审核通过后按 `after_json` 回写主表 | ❌ | 未发现该事务闭环实现 |
-| 志愿者审核目标处理（替代实现） | 🟡 | 仅支持更新 `volunteers.audit_status`，不覆盖资料字段变更流程 |
+| 复用 `audit_records` 承载志愿者资料变更审核 | ✅ | 使用 `target_type=volunteer` + `operation_type=update` |
+| 志愿者资料变更提审接口 | ✅ | `POST /api/volunteers/profile-change/submit` |
+| 志愿者实名认证提审接口 | ✅ | `POST /api/volunteers/real-name/submit` |
+| 审核通过按场景回写主表 | ✅ | `profile_update` / `real_name_verify` 分开处理 |
+| 审核驳回副作用处理 | ✅ | 实名认证驳回会回写 `volunteers.audit_status=rejected` |
+| `volunteer_audits` 专表方案 | ❌ | 当前不采用，避免重复模型和迁移成本 |
+| 多目标统一待审列表（管理员） | 🟡 | 现有主要是成员待审列表，志愿者变更列表待补 |
 
-## 1. 核心设计思路
+## 2. 核心方案
 
-### 1.1 为什么不能直接修改主表？
+### 2.1 为什么不新增 `volunteer_audits`
 
-如果在审核通过前就直接修改 `volunteers` 表，会导致“非法数据”在前台展示。例如：用户乱填了一个名字，管理员还没看，页面上就已经显示这个乱填的名字了。
+当前系统已有通用审核主线（`audit_records` + 审批接口），继续复用可以：
 
-### 1.2 解决方案：读写分离策略
+1. 降低迁移和维护成本（不新增表、不新增一套状态流转）。
+2. 统一审核落库、审批、审计逻辑。
+3. 通过快照 `scene` 字段区分同一 `target_type` 下的不同业务语义。
 
-* **读数据（Read）**：前端展示永远读取 `volunteers` 主表（始终展示当前合法的旧数据）。
-* **写数据（Write）**：用户修改申请写入 `volunteer_audits` 审核表（暂存新数据）。
-* **同步（Sync）**：只有审核通过的瞬间，系统才将审核表中的数据覆盖到主表。
+### 2.2 审核快照格式
 
-### 1.3 关键特性：双重快照 (Before & After)
+`old_content` / `new_content` 统一存 JSON 字符串，更新类审核使用以下封装：
 
-为了辅助管理员决策和防止误操作，每一条审核记录必须同时保存：
-
-* **变更前数据 (`before_json`)**：用于对比和回滚。
-* **变更后数据 (`after_json`)**：用户的修改目标。
-
----
-
-## 2. 数据库表结构 (SQL)
-
-请执行以下 SQL 建立审核流水表。
-
-```sql
-CREATE TABLE `volunteer_audits` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `volunteer_id` BIGINT UNSIGNED NOT NULL COMMENT '申请人ID (关联 volunteers.id)',
-  
-  -- ==========================================
-  -- 1. 核心数据区 (采用 JSON 存储以适应不同字段的修改)
-  -- ==========================================
-  `before_json` JSON DEFAULT NULL COMMENT '变更前的数据快照 (用于对比/回滚)',
-  `after_json` JSON NOT NULL COMMENT '变更后的新数据 (拟修改内容)',
-  
-  -- 示例数据结构:
-  -- before_json: {"real_name": "张三", "mobile": "13800000000"}
-  -- after_json:  {"real_name": "张三丰", "mobile": "13911111111"}
-  
-  -- ==========================================
-  -- 2. 审核流程状态
-  -- ==========================================
-  `status` TINYINT UNSIGNED DEFAULT '0' COMMENT '状态: 0-待审核, 1-已通过, 2-已驳回, 3-已撤销',
-  `reject_reason` VARCHAR(255) DEFAULT NULL COMMENT '驳回原因 (仅在 status=2 时有值)',
-  
-  -- ==========================================
-  -- 3. 审计追踪
-  -- ==========================================
-  `auditor_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '操作人/管理员ID',
-  `audit_time` TIMESTAMP NULL COMMENT '审核完成时间',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请提交时间',
-  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  -- ==========================================
-  -- 4. 索引优化
-  -- ==========================================
-  KEY `idx_volunteer` (`volunteer_id`) COMMENT '查询某人的修改历史',
-  KEY `idx_status` (`status`) COMMENT '后台查询待审核列表'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='志愿者信息变更审核流水表';
-
+```json
+{
+  "scene": "volunteer_profile_update",
+  "data": {
+    "real_name": "张三"
+  }
+}
 ```
 
----
+或：
 
-## 3. 业务流程与数据流转图解
-
-### 阶段一：提交申请 (User Submit)
-
-用户在前端修改个人信息（例如改名）。
-
-1. **后端动作**：
-* 查询 `volunteers` 表当前数据，存入 `before_json`。
-* 获取前端提交的新数据，存入 `after_json`。
-* **SQL 操作**：
-
-
-```sql
-INSERT INTO volunteer_audits (volunteer_id, before_json, after_json, status)
-VALUES (55, '{"real_name": "张三"}', '{"real_name": "张三丰"}', 0);
-
+```json
+{
+  "scene": "volunteer_real_name_verify",
+  "data": {
+    "real_name": "张三",
+    "id_card": "110101199001011234"
+  }
+}
 ```
 
+## 3. 场景定义
 
-2. **结果**：主表数据未变，审核表增加一条 `status=0` 的记录。
+在 `internal/model/consts.go`：
 
-### 阶段二：管理员审核 (Admin Review)
+1. `AuditSceneVolunteerProfileUpdate = "volunteer_profile_update"`
+2. `AuditSceneVolunteerRealNameVerify = "volunteer_real_name_verify"`
 
-管理员在后台看到一条申请。
+## 4. 业务流程
 
-* **界面展示**：
-* 原值：张三
-* 新值：**张三丰**
-* *管理员心理活动*：“哦，这是合理的改名，不是乱填。” -> **点击【通过】**
+### 4.1 资料变更提审
 
+1. 志愿者调用 `POST /api/volunteers/profile-change/submit`。
+2. 服务端读取当前 `volunteers` 主档，构建 old/new 快照（仅包含变更字段）。
+3. 创建 `audit_records` 待审核记录（`operation_type=update`，`scene=volunteer_profile_update`）。
+4. 审核通过后，根据 `new_content.data` 回写主表字段。
 
+### 4.2 实名认证提审
 
-### 阶段三：数据生效 (Apply Changes)
+1. 志愿者调用 `POST /api/volunteers/real-name/submit`。
+2. 服务端校验 `realName/idCard` 并构建 old/new 快照。
+3. 事务内写入审核记录，并将 `volunteers.audit_status` 置为 `pending`。
+4. 审核通过：回写 `real_name/id_card`，并置 `audit_status=approved`。
+5. 审核驳回：置 `audit_status=rejected`。
 
-这是最关键的一步，必须使用**数据库事务 (`Transaction`)** 保证原子性。
+### 4.3 审批执行分发
 
-* **后端逻辑**：
-1. 解析 `after_json` 字段。
-2. 更新 `volunteers` 主表。
-3. 更新 `volunteer_audits` 状态为“已通过”。
+`internal/service/audit.go` 中 `applyVolunteerAuditApproval` 使用 `switch`：
 
+1. `scene=volunteer_profile_update`：解析资料变更 payload 回写。
+2. `scene=volunteer_real_name_verify`：解析实名认证 payload 回写。
+3. 非 update 历史记录：保留兼容逻辑，仅更新 `audit_status`。
 
-* **SQL 操作 (事务中执行)**：
-```sql
--- 1. 更新主表
-UPDATE volunteers SET real_name = '张三丰' WHERE id = 55;
+## 5. 快照与序列化规范
 
--- 2. 完结审核单
-UPDATE volunteer_audits 
-SET status = 1, auditor_id = 999, audit_time = NOW() 
-WHERE id = 2024;
+1. 所有审核快照最终都序列化为 JSON 字符串存入 `audit_records`。
+2. 创建/删除类审核优先使用 model 结构快照。
+3. 更新类审核使用 patch/payload（按需字段）快照。
+4. 统一由 `internal/service/audit_snapshot*.go` 负责构建与解析，减少重复逻辑。
 
-```
+## 6. 关键代码落点
 
+1. `/Users/Ein/project2/volunteer-system/internal/service/audit_snapshot.go`
+2. `/Users/Ein/project2/volunteer-system/internal/service/audit_snapshot_volunteer_update.go`
+3. `/Users/Ein/project2/volunteer-system/internal/service/volunteer.go`
+4. `/Users/Ein/project2/volunteer-system/internal/service/audit.go`
+5. `/Users/Ein/project2/volunteer-system/internal/api/volunteer.proto`
 
+## 7. 后续建议
 
----
-
-## 4. 方案优势总结
-
-| 维度 | 方案优势 |
-| --- | --- |
-| **灵活性** | **JSON字段**意味着如果你明天想审核“性别”或“民族”，不需要修改数据库表结构，代码改一下即可。 |
-| **安全性** | **Before/After快照**让管理员能清晰对比变化，防止恶意篡改；同时也提供了数据回滚的能力。 |
-| **业务连续性** | 在审核期间，志愿者依然可以使用旧身份正常报名活动，不会因为“审核中”而被系统锁定。 |
-| **审计合规** | 每一笔修改都有迹可循（谁申请的、改了什么、谁批的、什么时候批的），符合政务/公益平台的合规要求。 |
-
-## 5. 开发建议
-
-1. **锁定机制**：建议限制用户在“待审核”状态下不能再次提交新的申请。即：`SELECT count(1) FROM volunteer_audits WHERE volunteer_id = ? AND status = 0`，如果有值，提示用户“您有正在审核中的申请，请耐心等待”。
-2. **自动驳回**：如果用户改的新值和旧值一模一样（before == after），后端可以直接拦截，或者自动审核通过（视业务而定）。
+1. 补管理员端“志愿者资料/实名”待审核列表接口，避免只能按审核 ID 操作。
+2. 在管理端列表中直接展示 `old/new` 对比摘要（减少审核成本）。
+3. 补充该链路集成测试：提审、审批通过、审批驳回、重复提审拦截。

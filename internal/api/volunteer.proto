@@ -39,6 +39,22 @@ service VolunteerService {
       body: "*"
     };
   }
+
+  // 提交志愿者资料变更申请（走审核流）
+  rpc VolunteerProfileChangeSubmit(VolunteerProfileChangeSubmitRequest) returns (VolunteerProfileChangeSubmitResponse) {
+    option (google.api.http) = {
+      post: "/api/volunteers/profile-change/submit"
+      body: "*"
+    };
+  }
+
+  // 提交志愿者实名认证申请（走审核流）
+  rpc VolunteerRealNameSubmit(VolunteerRealNameSubmitRequest) returns (VolunteerRealNameSubmitResponse) {
+    option (google.api.http) = {
+      post: "/api/volunteers/real-name/submit"
+      body: "*"
+    };
+  }
 }
 
 // VolunteerListRequest 志愿者列表请求（管理员端）
@@ -159,6 +175,44 @@ message VolunteerUpdateRequest {
 
 // VolunteerUpdateResponse 更新志愿者响应
 message VolunteerUpdateResponse {}
+
+// VolunteerProfileChangeSubmitRequest 志愿者资料变更提审请求
+message VolunteerProfileChangeSubmitRequest {
+  // 真实姓名 可选 @gotags: json:"realName"
+  optional string realName = 1;
+  // 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
+  optional int32 gender = 2;
+  // 出生日期 可选 @gotags: json:"birthday"
+  optional string birthday = 3;
+  // 头像URL 可选 @gotags: json:"avatarUrl"
+  optional string avatarUrl = 4;
+  // 个人简介 可选 @gotags: json:"introduction"
+  optional string introduction = 5;
+}
+
+// VolunteerProfileChangeSubmitResponse 志愿者资料变更提审响应
+message VolunteerProfileChangeSubmitResponse {
+  // 审核记录ID
+  int64 auditId = 1;
+  // 审核状态: 1-待审核
+  int32 status = 2;
+}
+
+// VolunteerRealNameSubmitRequest 志愿者实名认证提审请求
+message VolunteerRealNameSubmitRequest {
+  // 真实姓名 @gotags: json:"realName"
+  string realName = 1;
+  // 身份证号 @gotags: json:"idCard"
+  string idCard = 2;
+}
+
+// VolunteerRealNameSubmitResponse 志愿者实名认证提审响应
+message VolunteerRealNameSubmitResponse {
+  // 审核记录ID
+  int64 auditId = 1;
+  // 审核状态: 1-待审核
+  int32 status = 2;
+}
 
 // BaseVolunteer 基础志愿者信息（用于其他服务引用）
 message BaseVolunteer {

@@ -27,6 +27,10 @@ const (
 	// 审核类型（当前仅支持志愿者加入组织审核）
 	AuditTypeVolunteerJoinOrganization int32 = AuditTargetMember // 志愿者加入组织
 
+	// 审核场景（用于 target_type 相同时进一步区分业务语义）
+	AuditSceneVolunteerProfileUpdate  = "volunteer_profile_update"   // 志愿者资料更新
+	AuditSceneVolunteerRealNameVerify = "volunteer_real_name_verify" // 志愿者实名认证
+
 	// 成员状态
 	MemberStatusPending  int32 = 1 // 待审核
 	MemberStatusActive   int32 = 2 // 正式成员（已通过）

@@ -66,6 +66,55 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 		return nil, err
 	}
 
+	// 获取当前账号身份，用于动态返回 is_registered。
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("活动列表查询失败: 获取当前用户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
+		return nil, err
+	}
+
+	signupMap := make(map[int64]*model.ActivitySignup)
+	if len(activities) > 0 {
+		account, findErr := s.repo.FindByID(s.repo.DB, userID)
+		if findErr != nil {
+			if errors.Is(findErr, gorm.ErrRecordNotFound) {
+				log.Warn("活动列表查询失败: 账号不存在, user_id=%d", userID)
+				return nil, errors.New("账号不存在")
+			}
+			log.Error("活动列表查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
+			return nil, findErr
+		}
+
+		// 仅志愿者账号需要计算报名态；组织账号统一返回 false。
+		if account.IdentityType == model.RegisterTypeVolunteerCode {
+			volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)
+			if getVolunteerErr != nil {
+				log.Error("活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", getVolunteerErr, userID)
+				return nil, getVolunteerErr
+			}
+
+			activityIDs := make([]int64, 0, len(activities))
+			for _, act := range activities {
+				if act == nil {
+					continue
+				}
+				activityIDs = append(activityIDs, act.ID)
+			}
+
+			signups, listErr := s.repo.ListUserSignupsByActivityIDs(s.repo.DB, volunteerID, activityIDs)
+			if listErr != nil {
+				log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", listErr, userID, volunteerID)
+				return nil, listErr
+			}
+			for _, signup := range signups {
+				if signup == nil {
+					continue
+				}
+				signupMap[signup.ActivityID] = signup
+			}
+		}
+	}
+
 	// 组装返回数据
 	resp := &api.ActivityListResponse{
 		Total: int32(total),
@@ -85,6 +134,7 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 			MaxPeople:     act.MaxPeople,
 			CurrentPeople: act.CurrentPeople,
 			Status:        act.Status,
+			IsRegistered:  signupMap[act.ID] != nil,
 			IsFull:        act.MaxPeople > 0 && act.CurrentPeople >= act.MaxPeople,
 		}
 		resp.List = append(resp.List, item)
@@ -152,24 +202,15 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		VolunteerID: volunteerID,
 		Status:      model.ActivitySignupStatusPending,
 	}
-	newContent, err := json.Marshal(signupSnapshot)
+	record, err := buildPendingCreateAuditRecordByModel(
+		model.AuditTargetSignup,
+		userID,
+		signupSnapshot,
+		time.Now(),
+	)
 	if err != nil {
-		log.Error("活动报名失败: 序列化报名快照异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		log.Error("活动报名失败: 构建审核记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
 		return nil, err
-	}
-
-	record := &model.AuditRecord{
-		TargetType:    model.AuditTargetSignup,
-		TargetID:      0,
-		CreatorID:     userID,
-		AuditorID:     0,
-		OldContent:    "{}",
-		NewContent:    string(newContent),
-		AuditResult:   0,
-		RejectReason:  "",
-		AuditTime:     time.Now(),
-		OperationType: model.OperationTypeCreate,
-		Status:        model.AuditStatusPending,
 	}
 	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
 		log.Error("活动报名失败: 创建审核记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
@@ -352,30 +393,66 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 
 	// 提取活动ID列表
 	activityIDs := make([]int64, 0, len(signups))
+	signupIDs := make([]int64, 0, len(signups))
 	for _, signup := range signups {
 		activityIDs = append(activityIDs, signup.ActivityID)
+		signupIDs = append(signupIDs, signup.ID)
 	}
 
 	// 批量获取活动信息
-	activityMap, err := s.repo.GetActivitiesByIDs(s.repo.DB, activityIDs)
+	activitiesList, err := s.repo.ListActivitiesByIDs(s.repo.DB, activityIDs)
 	if err != nil {
 		log.Error("我的活动列表查询失败: 批量查询活动异常: %v, user_id=%d volunteer_id=%d activity_count=%d", err, userID, volunteerID, len(activityIDs))
 		return nil, err
 	}
+	activityMap := make(map[int64]*model.Activity, len(activitiesList))
+	for _, act := range activitiesList {
+		if act == nil {
+			continue
+		}
+		activityMap[act.ID] = act
+	}
 
 	// 提取组织ID列表
-	orgIDs := make([]int64, 0, len(activityMap))
-	for _, act := range activityMap {
+	orgIDs := make([]int64, 0, len(activitiesList))
+	for _, act := range activitiesList {
+		if act == nil {
+			continue
+		}
 		if act.OrgID > 0 {
 			orgIDs = append(orgIDs, act.OrgID)
 		}
 	}
 
 	// 批量获取组织名称
-	orgNameMap, err := s.repo.GetOrgNamesByIDs(s.repo.DB, orgIDs)
+	organizations, err := s.repo.ListOrganizationsByIDs(s.repo.DB, orgIDs)
 	if err != nil {
 		log.Error("我的活动列表查询失败: 批量查询组织名称异常: %v, user_id=%d volunteer_id=%d org_count=%d", err, userID, volunteerID, len(orgIDs))
 		return nil, err
+	}
+	orgNameMap := make(map[int64]string, len(organizations))
+	for _, org := range organizations {
+		if org == nil {
+			continue
+		}
+		orgNameMap[org.ID] = org.OrgName
+	}
+
+	// 批量查询报名驳回记录，并在 service 层按 signup_id 聚合最近一条驳回原因。
+	rejectAuditRecords, err := s.repo.ListSignupRejectAuditRecords(s.repo.DB, signupIDs)
+	if err != nil {
+		log.Error("我的活动列表查询失败: 查询报名驳回原因异常: %v, user_id=%d volunteer_id=%d signup_count=%d", err, userID, volunteerID, len(signupIDs))
+		return nil, err
+	}
+	auditReasonMap := make(map[int64]string, len(rejectAuditRecords))
+	for _, record := range rejectAuditRecords {
+		if record == nil || record.TargetID <= 0 {
+			continue
+		}
+		if _, exists := auditReasonMap[record.TargetID]; exists {
+			continue
+		}
+		auditReasonMap[record.TargetID] = record.RejectReason
 	}
 
 	// 组装返回数据
@@ -419,6 +496,8 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 			CheckOutTime:   checkOutTime,
 			WorkHourStatus: signup.WorkHourStatus,
 			GrantedHours:   signup.GrantedHours,
+			SignupStatus:   signup.Status,
+			AuditReason:    auditReasonMap[signup.ID],
 		}
 		resp.List = append(resp.List, item)
 	}

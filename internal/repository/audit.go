@@ -1,20 +1,10 @@
 package repository
 
 import (
-	"time"
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
 )
-
-type PendingVolunteerJoinOrgAuditTarget struct {
-	TargetType int32     `gorm:"column:target_type"`
-	TargetID   int64     `gorm:"column:target_id"`
-	Status     int32     `gorm:"column:status"`
-	Title      string    `gorm:"column:title"`
-	SubTitle   string    `gorm:"column:sub_title"`
-	CreatedAt  time.Time `gorm:"column:created_at"`
-}
 
 // CreateAuditRecord inserts an audit record.
 func (r *Repository) CreateAuditRecord(db *gorm.DB, record *model.AuditRecord) error {
@@ -68,4 +58,23 @@ func (r *Repository) UpdateAuditRecordByID(db *gorm.DB, id int64, updates map[st
 		Model(&model.AuditRecord{}).
 		Where("id = ?", id).
 		Updates(updates).Error
+}
+
+// ListSignupRejectAuditRecords 批量查询报名审核驳回记录（按 audit_time/id 倒序）。
+func (r *Repository) ListSignupRejectAuditRecords(db *gorm.DB, signupIDs []int64) ([]*model.AuditRecord, error) {
+	if len(signupIDs) == 0 {
+		return []*model.AuditRecord{}, nil
+	}
+
+	var records []*model.AuditRecord
+	err := db.WithContext(r.ctx).
+		Model(&model.AuditRecord{}).
+		Where("target_type = ? AND target_id IN ? AND status = ? AND reject_reason <> ''",
+			model.AuditTargetSignup, signupIDs, model.AuditStatusRejected).
+		Order("audit_time DESC, id DESC").
+		Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
 }

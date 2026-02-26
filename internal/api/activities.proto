@@ -375,6 +375,10 @@ message MyActivityItem {
   int32 workHourStatus = 19;
   // 本次发放工时
   double grantedHours = 20;
+  // 报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
+  int32 signupStatus = 21;
+  // 报名审核驳回原因（无则为空）
+  string auditReason = 22;
 }
 
 // ========== 组织端活动管理 ==========

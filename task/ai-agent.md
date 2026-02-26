@@ -1,311 +1,279 @@
+# 环保志愿者平台：独立 AI 助手模块集成方案（重写版）
+
+## 1. 背景与目标
+
+当前文档以“文案生成、推荐”等零散能力为主，不利于后续扩展与统一治理。
+本次改造目标是：将 AI 能力从业务细节中抽离，建设一个可复用、可审计、可扩展的独立 AI 助手模块（Assistant Domain），由该模块统一对外提供智能服务。
+
+### 1.1 目标
+
+1. 建立统一入口：所有 AI 能力统一走 `/api/assistant/*`。
+2. 建立统一会话模型：支持“多轮对话 + 业务工具调用 + 历史追踪”。
+3. 建立统一安全与审计：权限校验、敏感信息脱敏、调用日志留痕。
+4. 保持业务可演进：后续新增 AI 场景无需改动核心业务模块结构。
+
+### 1.2 非目标（当前阶段不做）
+
+1. 不引入复杂 Agent 框架（LangGraph / AutoGen 等）。
+2. 不做多模型动态路由编排（先单主模型 + 可切换 Provider）。
+3. 不做向量数据库集群（先 MySQL + 可选 Redis 缓存，后续再升级）。
 
 ---
 
-# 环保志愿者平台 AI 功能集成实施计划
+## 2. 模块定位（从“功能补丁”到“独立子系统”）
 
-## 实现状态标记（截至 2026-02-25）
+AI 助手模块独立为新领域，不挂靠在 `activities` 或其他单一业务模块下。
 
-状态说明：`✅ 已实现` `🟡 部分实现` `❌ 未实现`
+### 2.1 模块职责
 
-| 模块 | 状态 | 说明 |
-| --- | --- | --- |
-| P1 基础设施（AI SDK、`pkg/ai`、配置项） | ❌ | 未发现 `pkg/ai`、AI 配置结构、SDK 依赖接入 |
-| P2 文案助手（`/ai` 文案生成接口） | ❌ | 未发现 AI service/handler/router 与相关接口 |
-| P3 数据改造（`activities.embedding_vector`） | ❌ | 未发现 DDL、模型字段与持久化实现 |
-| P4 推荐引擎（Embedding + 相似度推荐） | ❌ | 未发现推荐 service、路由与算法落地 |
-| 存量数据向量回填任务 | ❌ | 未发现对应任务脚本或批处理逻辑 |
+1. 会话管理：创建会话、上下文裁剪、历史查询。
+2. LLM 调用：统一封装 Provider（OpenAI/DeepSeek/其他兼容接口）。
+3. 工具调用（Tool Calling）：AI 通过受控工具访问业务能力。
+4. 输出治理：统一响应结构、错误码、审计日志。
 
-## 📅 项目阶段规划
+### 2.2 对外能力（MVP）
 
-| 阶段 | 重点任务 | 目标产出 | 预计耗时 |
-| --- | --- | --- | --- |
-| **P1: 基础设施** | 引入 AI SDK，封装通用客户端 | `pkg/ai` 基础包完成 | 0.5 天 |
-| **P2: 文案助手** | 实现组织方发布活动时的文案生成 | `/ai/generate-desc` 接口上线 | 1 天 |
-| **P3: 数据改造** | 数据库支持向量存储，存量数据清洗 | `activities` 表结构变更 | 0.5 天 |
-| **P4: 推荐引擎** | 实现基于 Embedding 的相似度匹配 | `/activities/recommend` 接口上线 | 1-2 天 |
+1. 智能问答：平台使用说明、活动相关咨询。
+2. 活动发布助手：生成活动草案（标题、简介、流程、风险提示）。
+3. 组织运营助手：根据组织近期活动给出优化建议。
 
 ---
 
-## 🛠️ 第一阶段：基础设施建设 (Infrastructure)
+## 3. 总体架构（贴合当前项目分层）
 
-### 1. 依赖安装
-
-在项目根目录执行：
-
-```bash
-go get github.com/sashabaranov/go-openai
-
+```text
+Client
+  -> /api/assistant/* (router)
+      -> handler/assistant.go
+          -> service/assistant_service.go
+              -> service/assistant_tool_service.go
+              -> pkg/ai/client.go
+              -> repository/assistant_repo.go
+                  -> MySQL / Redis
 ```
 
-### 2. 配置文件更新
+### 3.1 分层说明
 
-编辑 `config/config.yaml`，增加 AI 服务配置：
+1. `router`：只做路由注册与鉴权接入。
+2. `handler`：参数校验、统一响应包装。
+3. `service`：对话编排、工具执行、上下文窗口管理。
+4. `repository`：会话、消息、调用日志持久化。
+5. `pkg/ai`：AI SDK 客户端封装（含超时、重试、限流控制）。
+
+---
+
+## 4. 数据模型设计（新增）
+
+建议新增以下表（DDL 版本建议：`sql/ddl/ddl_v1.3.0.sql`）。
+
+### 4.1 `ai_sessions`
+
+- `id` bigint pk
+- `user_id` bigint not null
+- `scene` varchar(32) not null（`general`/`activity_draft`/`ops_advisor`）
+- `title` varchar(128)
+- `status` tinyint（1=active,2=archived）
+- `created_at` / `updated_at`
+
+### 4.2 `ai_messages`
+
+- `id` bigint pk
+- `session_id` bigint not null
+- `role` varchar(16)（`system`/`user`/`assistant`/`tool`）
+- `content` longtext
+- `token_in` int
+- `token_out` int
+- `latency_ms` int
+- `created_at`
+
+### 4.3 `ai_tool_calls`
+
+- `id` bigint pk
+- `session_id` bigint not null
+- `tool_name` varchar(64)
+- `tool_input` json
+- `tool_output` json
+- `success` tinyint
+- `error_msg` varchar(255)
+- `created_at`
+
+### 4.4 `ai_usage_daily`
+
+- `id` bigint pk
+- `biz_date` date
+- `user_id` bigint
+- `request_count` int
+- `token_in_total` bigint
+- `token_out_total` bigint
+- `estimated_cost` decimal(12,4)
+
+---
+
+## 5. API 设计（独立助手入口）
+
+统一前缀：`/api/assistant`
+
+### 5.1 创建会话
+
+- `POST /api/assistant/sessions`
+- 入参：`scene`, `title(optional)`
+- 出参：`session_id`
+
+### 5.2 对话交互
+
+- `POST /api/assistant/chat`
+- 入参：`session_id`, `message`, `stream(optional)`
+- 出参：`reply`, `tool_calls`, `usage`
+
+### 5.3 历史消息
+
+- `GET /api/assistant/sessions/:id/messages`
+- 出参：消息列表（按时间升序）
+
+### 5.4 快捷能力（可选）
+
+- `POST /api/assistant/actions/activity-draft`
+- 用于前端“生成活动草案”按钮，内部仍走统一会话机制。
+
+---
+
+## 6. 工具调用设计（受控能力开放）
+
+AI 不直接访问数据库，必须通过受控工具层调用业务服务。
+
+### 6.1 首批工具
+
+1. `activity_search`
+- 功能：检索活动（按关键词、时间范围、状态）。
+- 权限：登录用户可用，仅返回可见字段。
+
+2. `activity_stats`
+- 功能：统计组织活动数量、参与人数、完结率。
+- 权限：组织管理员及以上。
+
+3. `activity_draft_generate`
+- 功能：根据主题/目标人群/地点生成发布草案。
+- 权限：组织成员（含管理员）。
+
+### 6.2 工具执行约束
+
+1. 每轮最多 3 次工具调用。
+2. 单工具超时 3 秒，失败可重试 1 次。
+3. 工具返回统一 JSON Schema，防止模型误解结构。
+
+---
+
+## 7. 配置设计（新增 `ai` 配置块）
+
+需在 `config/config.go` 增加 `AIConfig`，并在 `config/config.yaml` 增加配置项：
 
 ```yaml
 ai:
-  provider: "openai" # 或 deepseek
-  api_key: "sk-xxxxxxxxxxxxxxxx"
-  base_url: "https://api.openai.com/v1" # 国内模型请填对应 BaseUrl
-  model_chat: "gpt-3.5-turbo"           # 或 deepseek-chat
-  model_embedding: "text-embedding-ada-002"
-
+  enabled: true
+  provider: "openai"        # openai / deepseek / compatible
+  api_key: "${AI_API_KEY:}"
+  base_url: "https://api.openai.com/v1"
+  chat_model: "gpt-4o-mini"
+  embedding_model: "text-embedding-3-small"
+  request_timeout_ms: 15000
+  max_retries: 2
+  max_context_messages: 20
+  daily_user_quota: 200
 ```
 
-### 3. 封装 AI 客户端 (`pkg/ai/client.go`)
-
-封装一个单例客户端，用于统一管理调用。
-
-```go
-package ai
-
-import (
-    "context"
-    openai "github.com/sashabaranov/go-openai"
-)
-
-type Client struct {
-    c *openai.Client
-}
-
-// NewClient 初始化 AI 客户端
-func NewClient(apiKey, baseURL string) *Client {
-    cfg := openai.DefaultConfig(apiKey)
-    if baseURL != "" {
-        cfg.BaseURL = baseURL
-    }
-    return &Client{c: openai.NewClientWithConfig(cfg)}
-}
-
-// Chat 生成文本（用于文案）
-func (a *Client) Chat(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
-    resp, err := a.c.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-        Model: openai.GPT3Dot5Turbo,
-        Messages: []openai.ChatCompletionMessage{
-            {Role: openai.ChatMessageRoleSystem, Content: systemPrompt},
-            {Role: openai.ChatMessageRoleUser, Content: userPrompt},
-        },
-    })
-    if err != nil {
-        return "", err
-    }
-    return resp.Choices[0].Message.Content, nil
-}
-
-// GetEmbedding 生成向量（用于推荐）
-func (a *Client) GetEmbedding(ctx context.Context, text string) ([]float32, error) {
-    resp, err := a.c.CreateEmbeddings(ctx, openai.EmbeddingRequest{
-        Input: []string{text},
-        Model: openai.AdaEmbeddingV2,
-    })
-    if err != nil {
-        return nil, err
-    }
-    return resp.Data[0].Embedding, nil
-}
-
-```
+说明：`api_key` 必须走环境变量，不落库、不写日志。
 
 ---
 
-## 🚀 第二阶段：活动文案辅助生成 (Copywriting)
+## 8. 代码落地清单（按当前仓库结构）
 
-### 1. 业务逻辑设计
+### 8.1 新增文件
 
-* **输入**：活动标题、类型（如植树）、核心关键词。
-* **Prompt 策略**：设定 AI 为“资深公益策划师”，要求语气热情、结构清晰。
-* **输出**：一段 200-300 字的格式化文案。
+1. `pkg/ai/client.go`
+2. `pkg/ai/types.go`
+3. `internal/router/assistant.go`
+4. `internal/handler/assistant.go`
+5. `internal/service/assistant_service.go`
+6. `internal/service/assistant_tool_service.go`
+7. `internal/repository/assistant.go`
+8. `sql/ddl/ddl_v1.3.0.sql`
+9. `internal/api/assistant.proto`（如继续使用 proto 驱动接口）
 
-### 2. Service 层实现 (`internal/service/ai_service.go`)
+### 8.2 修改文件
 
-```go
-func (s *AIService) GenerateActivityCopy(ctx context.Context, title, actType, keywords string) (string, error) {
-    systemPrompt := `你是一名经验丰富的环保公益活动策划师。请根据用户提供的活动信息，撰写一段吸引人的活动详情介绍。
-    要求：
-    1. 语气热情、积极向上。
-    2. 包含【活动背景】、【活动内容】、【期待您的加入】三个部分。
-    3. 字数控制在 300 字以内。`
-
-    userPrompt := fmt.Sprintf("活动标题：%s\n活动类型：%s\n关键词：%s", title, actType, keywords)
-
-    return s.aiClient.Chat(ctx, systemPrompt, userPrompt)
-}
-
-```
-
-### 3. Handler 层接入 (`internal/handler/ai_handler.go`)
-
-```go
-// POST /api/v1/ai/activity-copy
-func GenerateCopy(ctx context.Context, c *app.RequestContext) {
-    var req struct {
-        Title    string `json:"title"`
-        Type     string `json:"type"`
-        Keywords string `json:"keywords"`
-    }
-    if err := c.BindAndValidate(&req); err != nil {
-        c.JSON(400, utils.ErrorResponse(err))
-        return
-    }
-
-    content, err := aiService.GenerateActivityCopy(ctx, req.Title, req.Type, req.Keywords)
-    if err != nil {
-        c.JSON(500, utils.ErrorResponse(err))
-        return
-    }
-
-    c.JSON(200, utils.SuccessResponse(map[string]string{"content": content}))
-}
-
-```
+1. `config/config.go`（新增 `AIConfig`）
+2. `config/config.yaml` / `config/config.yaml.example`（新增 `ai` 节）
+3. `internal/router/router.go`（注册 `RegisterAssistantRouter`）
+4. `internal/service/service.go`（按需注入 assistant service 依赖）
 
 ---
 
-## 🧠 第三阶段：智能推荐系统 (Recommendation)
+## 9. 分阶段实施计划（以“模块上线”为核心）
 
-此阶段无需引入向量数据库（如 Milvus），直接利用 **MySQL 8.0+ 的 JSON 存储** + **Go 内存计算**，适合 10 万级以下数据量，轻量高效。
+### Phase A（1 天）：基础能力可用
 
-### 1. 数据库变更 (Schema Change)
+1. 完成配置、`pkg/ai`、基础 chat 接口。
+2. 支持创建会话 + 单轮对话。
+3. 完成最小日志与错误处理。
 
-执行 SQL 脚本，为活动表增加向量字段：
+验收：能通过 `/api/assistant/chat` 返回稳定答案。
 
-```sql
-ALTER TABLE activities 
-ADD COLUMN embedding_vector JSON COMMENT 'AI特征向量(1536维)';
+### Phase B（1~2 天）：会话与审计完善
 
-```
+1. 落地 `ai_sessions` / `ai_messages`。
+2. 支持历史查询、上下文裁剪。
+3. 增加 usage 统计与限流。
 
-### 2. GORM 模型调整 (`internal/model/activity.go`)
+验收：多轮对话可追踪，可复盘。
 
-使用 GORM 的 `serializer` 自动处理 JSON 序列化。
+### Phase C（1~2 天）：工具调用接入业务
 
-```go
-type Activity struct {
-    gorm.Model
-    Title       string
-    Description string
-    // ... 其他字段
-    
-    // 新增字段：不需要手动解析 JSON，GORM 会自动处理
-    EmbeddingVector []float32 `gorm:"type:json;serializer:json" json:"-"` 
-}
+1. 接入 `activity_search`、`activity_stats`、`activity_draft_generate`。
+2. 模型可通过工具返回结构化事实，再组织自然语言回答。
 
-```
+验收：AI 助手可以完成“查活动 + 给建议 + 生成草案”闭环。
 
-### 3. 核心逻辑：发布活动时生成向量 (Write Path)
+### Phase D（0.5~1 天）：质量与上线
 
-修改 `CreateActivity` 逻辑。
+1. 压测、超时与降级策略验证。
+2. 补充 OpenAPI 文档与示例。
+3. 灰度发布并观察指标。
 
-```go
-// internal/service/activity_service.go
-
-func (s *ActivityService) CreateActivity(ctx context.Context, act *model.Activity) error {
-    // 1. 拼接用于向量化的文本 (标题 + 描述权重最高)
-    inputText := fmt.Sprintf("%s。%s", act.Title, act.Description)
-    
-    // 2. 调用 AI 生成向量
-    // 注意：实际生产中建议放入消息队列异步处理，防止阻塞 HTTP 响应
-    vector, err := s.aiClient.GetEmbedding(ctx, inputText)
-    if err == nil {
-        act.EmbeddingVector = vector
-    }
-    
-    // 3. 存入 MySQL
-    return s.dao.CreateActivity(act)
-}
-
-```
-
-### 4. 核心逻辑：获取推荐 (Read Path)
-
-使用余弦相似度（Cosine Similarity）算法。
-
-**工具函数 (`pkg/utils/math.go`)**:
-
-```go
-func CosineSimilarity(a, b []float32) float64 {
-    if len(a) != len(b) || len(a) == 0 { return 0 }
-    var dot, normA, normB float64
-    for i := range a {
-        dot += float64(a[i] * b[i])
-        normA += float64(a[i] * a[i])
-        normB += float64(b[i] * b[i])
-    }
-    if normA == 0 || normB == 0 { return 0 }
-    return dot / (math.Sqrt(normA) * math.Sqrt(normB))
-}
-
-```
-
-**推荐 Service (`internal/service/recommend_service.go`)**:
-
-```go
-func (s *RecommendService) RecommendActivities(ctx context.Context, userId uint) ([]*model.Activity, error) {
-    // 1. 获取用户画像（可以是用户填写的兴趣标签，或者是用户过去参加过的活动标题拼接）
-    userProfile := s.dao.GetUserInterestTags(userId) // e.g., "植树 海洋保护 周末"
-    
-    // 2. 生成用户当前的兴趣向量
-    userVector, _ := s.aiClient.GetEmbedding(ctx, userProfile)
-    
-    // 3. 拉取所有已发布的活动（只查 ID 和 向量 以减少内存消耗）
-    // 性能优化：如果数据量大，加上 Where("created_at > ?", lastMonth)
-    var candidates []model.Activity
-    s.db.Select("id", "title", "embedding_vector").Where("status = ?", "published").Find(&candidates)
-    
-    // 4. 内存计算相似度
-    type Result struct {
-        Act   *model.Activity
-        Score float64
-    }
-    var results []Result
-    
-    for i := range candidates {
-        if len(candidates[i].EmbeddingVector) == 0 { continue }
-        score := utils.CosineSimilarity(userVector, candidates[i].EmbeddingVector)
-        results = append(results, Result{Act: &candidates[i], Score: score})
-    }
-    
-    // 5. 排序并取 Top 10
-    sort.Slice(results, func(i, j int) bool {
-        return results[i].Score > results[j].Score
-    })
-    
-    // 6. 组装最终返回数据 (根据ID回查完整详情)
-    // ...
-    return topActivities, nil
-}
-
-```
+验收：达到上线阈值并可灰度放量。
 
 ---
 
-## 📈 部署与优化建议
+## 10. 安全、合规与稳定性要求
 
-### 1. 环境变量安全
+1. 权限隔离：工具调用前必须做业务权限校验，不信任模型指令。
+2. Prompt 注入防护：系统提示词中禁止执行越权请求，工具层二次拦截。
+3. 敏感信息保护：对手机号、身份证、邮箱做脱敏再入日志。
+4. 限流熔断：按用户 + IP 双限流，外部模型异常时快速降级。
+5. 可观测性：记录 `request_id`、模型耗时、token、工具成功率。
 
-不要将 API Key 提交到 Git。在生产环境中，使用 Docker 环境变量注入：
+---
 
-```bash
-docker run -e AI_API_KEY="sk-xxxx" my-volunteer-app
+## 11. 与原“零碎功能”方案的关系
 
-```
+1. 文案生成：升级为 `activity_draft_generate` 工具，不再单独散落。
+2. 推荐能力：先作为助手工具中的“建议生成”能力，向量检索可后置接入。
+3. 旧接口兼容：若已存在 `/ai/generate-desc`，保留一段过渡期，内部转发到助手模块。
 
-### 2. 存量数据处理
+---
 
-项目上线后，数据库里旧的活动没有向量数据。需要编写一个 `Task` 脚本：
+## 12. 验收标准（上线门槛）
 
-1. 遍历 `activities` 表中 `embedding_vector` 为 NULL 的记录。
-2. 循环调用 Embedding API。
-3. 更新数据库。
+1. 功能可用：会话、聊天、历史、至少 2 个工具调用稳定可用。
+2. 质量达标：P95 响应时间 < 3s（不含超长输出场景）。
+3. 可治理：调用日志完整，异常可追踪到用户与请求。
+4. 可扩展：新增助手场景无需改动核心路由与 SDK 封装。
 
-### 3. 成本控制
+---
 
-Embedding 接口非常便宜，但 Chat 接口（文案生成）较贵。
+## 13. 下一步开发顺序（建议）
 
-* **缓存**：对于相同的输入参数，将 AI 的生成结果存入 Redis (TTL 24小时)，避免重复扣费。
+1. 先落地 `pkg/ai` + `assistant chat` 基础链路。
+2. 再补数据库表与会话持久化。
+3. 最后接业务工具与前端入口。
 
-### 4. 国内网络问题
-
-如果服务器在国内，OpenAI 的 API 会超时。建议：
-
-* 使用 **DeepSeek (深度求索)** 或 **阿里通义千问** 的 API（它们兼容 OpenAI SDK，只需换 BaseURL 和 Key）。
-* 或者配置 HTTP 代理。
+这样可以最短路径上线“可用的独立 AI 助手”，并在后续迭代中持续增强。

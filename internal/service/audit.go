@@ -20,6 +20,7 @@ type AuditService struct {
 	Service
 }
 
+// NewAuditService 创建审核服务并初始化上下文与仓储依赖。
 func NewAuditService(ctx context.Context, c *app.RequestContext) *AuditService {
 	if ctx == nil {
 		ctx = context.Background()
@@ -35,7 +36,7 @@ func NewAuditService(ctx context.Context, c *app.RequestContext) *AuditService {
 
 type ApprovalHandler func(*gorm.DB, *model.AuditRecord) error
 
-// VolunteerJoinOrgAuditList returns pending audits for volunteer join organization requests.
+// VolunteerJoinOrgAuditList 查询志愿者加入组织的待审核列表并补充展示信息。
 func (s *AuditService) VolunteerJoinOrgAuditList(req *api.PendingVolunteerJoinOrgAuditListRequest) (*api.PendingVolunteerJoinOrgAuditListResponse, error) {
 	if req == nil {
 		log.Warn("待审核列表查询失败: 请求为空")
@@ -125,7 +126,7 @@ func (s *AuditService) VolunteerJoinOrgAuditList(req *api.PendingVolunteerJoinOr
 	return resp, nil
 }
 
-// AuditApproval approves one audit target.
+// AuditApproval 审核通过指定记录并执行对应审核目标的通过逻辑。
 func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditApprovalResponse, error) {
 	var resp api.AuditApprovalResponse
 	if req == nil {
@@ -199,7 +200,7 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 	return &resp, nil
 }
 
-// AuditRejection rejects one audit target.
+// AuditRejection 驳回指定审核记录并落库驳回结果。
 func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.AuditRejectionResponse, error) {
 	var resp api.AuditRejectionResponse
 	if req == nil {
@@ -237,15 +238,22 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 		return nil, err
 	}
 
-	updates := map[string]any{
-		"auditor_id":    auditorID,
-		"audit_result":  model.ResolveAuditResult(model.AuditStatusRejected),
-		"reject_reason": reason,
-		"audit_time":    time.Now(),
-		"status":        model.AuditStatusRejected,
-	}
-	if err := s.repo.UpdateAuditRecordByID(s.repo.DB, record.ID, updates); err != nil {
-		log.Error("审核驳回失败: 更新审核记录异常: %v, record_id=%d", err, record.ID)
+	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
+		if err := s.applyAuditRejectionSideEffects(tx, record); err != nil {
+			return err
+		}
+
+		updates := map[string]any{
+			"auditor_id":    auditorID,
+			"audit_result":  model.ResolveAuditResult(model.AuditStatusRejected),
+			"reject_reason": reason,
+			"audit_time":    time.Now(),
+			"status":        model.AuditStatusRejected,
+		}
+		return s.repo.UpdateAuditRecordByID(tx, record.ID, updates)
+	})
+	if err != nil {
+		log.Error("审核驳回失败: 事务执行异常: %v, record_id=%d", err, record.ID)
 		return nil, err
 	}
 	log.Info("审核驳回成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", record.ID, record.TargetType, record.TargetID, auditorID)
@@ -253,16 +261,75 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 	return &resp, nil
 }
 
+// applyVolunteerAuditApproval 处理志愿者目标的审核通过并回写志愿者信息。
 func (s *AuditService) applyVolunteerAuditApproval(tx *gorm.DB, record *model.AuditRecord) error {
 	volunteer, err := s.repo.FindVolunteerByID(tx, record.TargetID)
 	if err != nil {
 		return err
 	}
+
+	updates := map[string]any{}
+	if record.OperationType != model.OperationTypeUpdate {
+		return errors.New("志愿者审核仅支持更新操作")
+	}
+
+	scene, err := resolveVolunteerUpdateAuditScene(record.NewContent)
+	if err != nil {
+		return err
+	}
+
+	switch scene {
+	case model.AuditSceneVolunteerProfileUpdate:
+		// 资料变更审核：按 new_content 回写主表。
+		newPayload, parseErr := unmarshalVolunteerProfileChangeAuditPayload(record.NewContent)
+		if parseErr != nil {
+			return parseErr
+		}
+		updates, err = newPayload.BuildVolunteerUpdates()
+		if err != nil {
+			return err
+		}
+	case model.AuditSceneVolunteerRealNameVerify:
+		newPayload, parseErr := unmarshalVolunteerRealNameVerifyAuditPayload(record.NewContent)
+		if parseErr != nil {
+			return parseErr
+		}
+		updates, err = newPayload.BuildVolunteerApprovalUpdates()
+		if err != nil {
+			return err
+		}
+		updates["audit_status"] = model.VolunteerAuditStatusApproved
+	default:
+		return errors.New("不支持的志愿者审核场景")
+	}
+
+	return s.repo.UpdateVolunteer(tx, volunteer.ID, updates)
+}
+
+// applyAuditRejectionSideEffects 处理审核驳回后的附加副作用。
+func (s *AuditService) applyAuditRejectionSideEffects(tx *gorm.DB, record *model.AuditRecord) error {
+	if record.TargetType != model.AuditTargetVolunteer || record.OperationType != model.OperationTypeUpdate {
+		return nil
+	}
+
+	scene, err := resolveVolunteerUpdateAuditScene(record.NewContent)
+	if err != nil {
+		return err
+	}
+	if scene != model.AuditSceneVolunteerRealNameVerify {
+		return nil
+	}
+
+	volunteer, err := s.repo.FindVolunteerByID(tx, record.TargetID)
+	if err != nil {
+		return err
+	}
 	return s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
-		"audit_status": model.VolunteerAuditStatusApproved,
+		"audit_status": model.VolunteerAuditStatusRejected,
 	})
 }
 
+// applyMemberAuditApproval 处理组织成员目标的审核通过逻辑。
 func (s *AuditService) applyMemberAuditApproval(tx *gorm.DB, record *model.AuditRecord) error {
 	var member model.OrgMember
 	if strings.TrimSpace(record.NewContent) != "" {
@@ -351,6 +418,7 @@ func (s *AuditService) applyMemberAuditApproval(tx *gorm.DB, record *model.Audit
 	}
 }
 
+// applySignupAuditApproval 处理活动报名目标的审核通过并同步报名状态。
 func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.AuditRecord) error {
 	if record.OperationType == model.OperationTypeCreate && record.TargetID <= 0 {
 		if strings.TrimSpace(record.NewContent) == "" {
@@ -404,7 +472,7 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 	return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusSuccess)
 }
 
-// AuditRecordDetail returns one audit record.
+// AuditRecordDetail 查询并返回单条审核记录详情。
 func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*api.AuditRecordDetailResponse, error) {
 	if req == nil {
 		return nil, errors.New("请求不能为空")
@@ -447,6 +515,7 @@ func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*ap
 	}, nil
 }
 
+// getAuditOperatorID 获取审核操作人 ID 并校验其审核权限。
 func (s *AuditService) getAuditOperatorID() (int64, error) {
 	auditorID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
@@ -471,6 +540,7 @@ func (s *AuditService) getAuditOperatorID() (int64, error) {
 	return auditorID, nil
 }
 
+// ensureAuditRecordPending 校验审核记录是否处于待处理状态。
 func ensureAuditRecordPending(record *model.AuditRecord) error {
 	if !model.IsValidAuditTargetType(record.TargetType) {
 		return errors.New("审核目标类型不合法")
