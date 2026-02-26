@@ -3,8 +3,7 @@
 
 openapi: 3.0.3
 info:
-    title: ActivityService API
-    description: 活动管理服务端接口
+    title: ""
     version: 0.0.1
 paths:
     /api/activities:
@@ -337,6 +336,744 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.ActivitySupplementAttendanceResponse'
+    /api/audits/approval:
+        post:
+            tags:
+                - AuditService
+            description: 执行审核通过动作
+            operationId: AuditService_AuditApproval
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/audit.AuditApprovalRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.AuditApprovalResponse'
+    /api/audits/records/:id:
+        get:
+            tags:
+                - AuditService
+            description: 获取单条审核记录详情
+            operationId: AuditService_AuditRecordDetail
+            parameters:
+                - name: id
+                  in: query
+                  description: '审核记录 ID @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.AuditRecordDetailResponse'
+    /api/audits/rejection:
+        post:
+            tags:
+                - AuditService
+            description: 执行审核驳回动作
+            operationId: AuditService_AuditRejection
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/audit.AuditRejectionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.AuditRejectionResponse'
+    /api/audits/volunteer-join-org/pending:
+        post:
+            tags:
+                - AuditService
+            description: 获取志愿者加入组织待审核列表（支持关键词和分页筛选）
+            operationId: AuditService_PendingVolunteerJoinOrgAuditList
+            parameters:
+                - name: keyword
+                  in: query
+                  description: '标题/副标题关键词 @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  description: '页码（从 1 开始） @gotags: query:"page"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '每页条数 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: status
+                  in: query
+                  description: '审核状态 @gotags: query:"status"'
+                  schema:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.PendingVolunteerJoinOrgAuditListResponse'
+    /api/login:
+        post:
+            tags:
+                - AuthService
+            description: 用户登录
+            operationId: AuthService_Login
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.LoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.LoginResponse'
+    /api/logout:
+        post:
+            tags:
+                - AuthService
+            description: 用户登出
+            operationId: AuthService_Logout
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.LogoutRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.LogoutResponse'
+    /api/memberships/join:
+        post:
+            tags:
+                - MembershipService
+            description: 志愿者加入组织
+            operationId: MembershipService_VolunteerJoinOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/membership.VolunteerJoinRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.VolunteerJoinResponse'
+    /api/memberships/leave:
+        post:
+            tags:
+                - MembershipService
+            description: 志愿者退出组织
+            operationId: MembershipService_VolunteerLeaveOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/membership.VolunteerLeaveRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.VolunteerLeaveResponse'
+    /api/memberships/stats:
+        get:
+            tags:
+                - MembershipService
+            description: 成员统计信息
+            operationId: MembershipService_MembershipStats
+            parameters:
+                - name: organizationId
+                  in: query
+                  description: '组织ID 可选 @gotags: query:"organizationId"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.MembershipStatsResponse'
+    /api/memberships/status/update:
+        post:
+            tags:
+                - MembershipService
+            description: |-
+                todo 修改路由，不依赖ID
+                 更新成员状态（审核通过/拒绝等）
+            operationId: MembershipService_UpdateMemberStatus
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/membership.MemberStatusUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.MemberStatusUpdateResponse'
+    /api/organization/register:
+        post:
+            tags:
+                - RegisterService
+            description: 组织管理者注册接口
+            operationId: RegisterService_OrganizationRegister
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/register.OrganizationRegisterRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/register.RegisterResponse'
+    /api/organizations/:id:
+        get:
+            tags:
+                - OrganizationService
+            description: 组织详情
+            operationId: OrganizationService_OrganizationDetail
+            parameters:
+                - name: id
+                  in: query
+                  description: '组织ID 必填 @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationDetailResponse'
+        put:
+            tags:
+                - OrganizationService
+            description: 更新组织信息
+            operationId: OrganizationService_UpdateOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.OrganizationUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationUpdateResponse'
+        delete:
+            tags:
+                - OrganizationService
+            description: 删除组织
+            operationId: OrganizationService_DeleteOrganization
+            parameters:
+                - name: id
+                  in: query
+                  description: '组织ID 必填 @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.DeleteOrganizationResponse'
+    /api/organizations/:id/disable:
+        post:
+            tags:
+                - OrganizationService
+            description: 停用组织
+            operationId: OrganizationService_DisableOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.DisableOrganizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.DisableOrganizationResponse'
+    /api/organizations/:id/enable:
+        post:
+            tags:
+                - OrganizationService
+            description: 启用组织
+            operationId: OrganizationService_EnableOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.EnableOrganizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.EnableOrganizationResponse'
+    /api/organizations/bulk-delete:
+        post:
+            tags:
+                - OrganizationService
+            description: 批量删除组织
+            operationId: OrganizationService_BulkDeleteOrganizations
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.BulkDeleteOrganizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.BulkDeleteOrganizationResponse'
+    /api/organizations/create:
+        post:
+            tags:
+                - OrganizationService
+            description: 创建组织
+            operationId: OrganizationService_CreateOrganization
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.OrganizationCreateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationCreateResponse'
+    /api/organizations/list:
+        post:
+            tags:
+                - OrganizationService
+            description: 组织列表
+            operationId: OrganizationService_OrganizationList
+            parameters:
+                - name: keyword
+                  in: query
+                  description: '搜索关键字 可选 @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                - name: organizationType
+                  in: query
+                  description: '组织类型筛选 可选 @gotags: query:"organizationType"'
+                  schema:
+                    type: string
+                - name: region
+                  in: query
+                  description: '地区筛选 可选 @gotags: query:"region"'
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  description: '页码 必填 @gotags: query:"page,required"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationListResponse'
+    /api/organizations/search:
+        post:
+            tags:
+                - OrganizationService
+            description: 搜索组织
+            operationId: OrganizationService_SearchOrganizations
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.OrganizationSearchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationSearchResponse'
+    /api/organizations/{organizationId}/members:
+        get:
+            tags:
+                - MembershipService
+            description: 获取组织成员列表
+            operationId: MembershipService_GetOrganizationMembers
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: role
+                  in: query
+                  description: '角色筛选 可选 @gotags: query:"role"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: keyword
+                  in: query
+                  description: '搜索关键字 可选 @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  description: '页码 必填 @gotags: query:"page,required"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.OrganizationMembersResponse'
+    /api/refresh:
+        post:
+            tags:
+                - AuthService
+            description: 刷新令牌
+            operationId: AuthService_RefreshToken
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.RefreshTokenRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.RefreshTokenResponse'
+    /api/volunteer/register:
+        post:
+            tags:
+                - RegisterService
+            description: 志愿者注册接口
+            operationId: RegisterService_VolunteerRegister
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/register.VolunteerRegisterRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/register.RegisterResponse'
+    /api/volunteers/:id:
+        put:
+            tags:
+                - VolunteerService
+            description: 更新志愿者信息（志愿者端）
+            operationId: VolunteerService_VolunteerUpdate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerUpdateResponse'
+    /api/volunteers/detail/:id:
+        get:
+            tags:
+                - VolunteerService
+            description: 志愿者详情（管理员端）
+            operationId: VolunteerService_VolunteerDetail
+            parameters:
+                - name: id
+                  in: query
+                  description: '志愿者ID 必填 @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerDetailResponse'
+    /api/volunteers/list:
+        post:
+            tags:
+                - VolunteerService
+            description: 志愿者列表（管理员端）
+            operationId: VolunteerService_VolunteerList
+            parameters:
+                - name: keyword
+                  in: query
+                  description: '搜索关键字 可选 @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  description: '页码 必填 @gotags: query:"page,required"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerListResponse'
+    /api/volunteers/my/profile/:id:
+        get:
+            tags:
+                - VolunteerService
+            description: 我的个人信息（志愿者端）
+            operationId: VolunteerService_MyProfile
+            parameters:
+                - name: id
+                  in: query
+                  description: '志愿者ID @gotags: path:"id,required"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.MyProfileResponse'
+    /api/volunteers/profile-change/submit:
+        post:
+            tags:
+                - VolunteerService
+            description: 提交志愿者资料变更申请（走审核流）
+            operationId: VolunteerService_VolunteerProfileChangeSubmit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerProfileChangeSubmitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerProfileChangeSubmitResponse'
+    /api/volunteers/real-name/submit:
+        post:
+            tags:
+                - VolunteerService
+            description: 提交志愿者实名认证申请（走审核流）
+            operationId: VolunteerService_VolunteerRealNameSubmit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerRealNameSubmitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerRealNameSubmitResponse'
+    /api/volunteers/{volunteerId}/organizations:
+        get:
+            tags:
+                - MembershipService
+            description: 查询志愿者加入的组织
+            operationId: MembershipService_GetVolunteerOrganizations
+            parameters:
+                - name: volunteerId
+                  in: path
+                  description: '志愿者ID 必填 @gotags: path:"volunteerId,required"'
+                  required: true
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page
+                  in: query
+                  description: '页码 必填 @gotags: query:"page,required"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.VolunteerOrganizationsResponse'
+    /api/work-hours/list:
+        post:
+            tags:
+                - WorkHourService
+            description: 工时流水查询
+            operationId: WorkHourService_WorkHourLogList
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/workhour.WorkHourLogListRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/workhour.WorkHourLogListResponse'
+    /api/work-hours/recalculate:
+        post:
+            tags:
+                - WorkHourService
+            description: 工时重算
+            operationId: WorkHourService_RecalculateWorkHour
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/workhour.RecalculateWorkHourRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/workhour.RecalculateWorkHourResponse'
+    /api/work-hours/void:
+        post:
+            tags:
+                - WorkHourService
+            description: 工时作废
+            operationId: WorkHourService_VoidWorkHour
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/workhour.VoidWorkHourRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/workhour.VoidWorkHourResponse'
 components:
     schemas:
         activity.ActivityCancelRequest:
@@ -802,6 +1539,13 @@ components:
                     type: number
                     description: 本次发放工时
                     format: double
+                signupStatus:
+                    type: integer
+                    description: '报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消'
+                    format: int32
+                auditReason:
+                    type: string
+                    description: 报名审核驳回原因（无则为空）
         activity.ResetAttendanceCodeRequest:
             type: object
             properties:
@@ -883,5 +1627,1159 @@ components:
                     type: string
                     description: 消息
             description: UpdateActivityResponse 更新活动响应
+        api.LoginRequest:
+            type: object
+            properties:
+                loginType:
+                    type: string
+                    description: '登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"'
+                identifier:
+                    type: string
+                    description: '登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"'
+                password:
+                    type: string
+                    description: '密码 必填 @gotags: json:"password,required"'
+                identity:
+                    type: string
+                    description: '身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: json:"identity,required"'
+            description: LoginRequest 登录请求
+        api.LoginResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 登录是否成功
+                message:
+                    type: string
+                    description: 响应消息
+                accessToken:
+                    type: string
+                    description: 认证令牌
+                refreshToken:
+                    type: string
+                    description: 刷新令牌
+                expiresAt:
+                    type: string
+                    description: 令牌过期时间（Unix时间戳）
+                userInfo:
+                    allOf:
+                        - $ref: '#/components/schemas/api.UserInfo'
+                    description: 用户信息
+            description: LoginResponse 登录响应
+        api.LogoutRequest:
+            type: object
+            properties:
+                token:
+                    type: string
+                    description: '要注销的令牌 必填 @gotags: json:"token,required"'
+            description: LogoutRequest 登出请求
+        api.LogoutResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 登出是否成功
+                message:
+                    type: string
+                    description: 响应消息
+            description: LogoutResponse 登出响应
+        api.RefreshTokenRequest:
+            type: object
+            properties:
+                refreshToken:
+                    type: string
+                    description: '刷新令牌 必填 @gotags: json:"refreshToken,required"'
+            description: RefreshTokenRequest 刷新令牌请求
+        api.RefreshTokenResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 刷新是否成功
+                message:
+                    type: string
+                    description: 响应消息
+                token:
+                    type: string
+                    description: 新的访问令牌
+                refreshToken:
+                    type: string
+                    description: 新的刷新令牌
+                expiresAt:
+                    type: string
+                    description: 令牌过期时间（Unix时间戳）
+                userInfo:
+                    allOf:
+                        - $ref: '#/components/schemas/api.UserInfo'
+                    description: 用户信息
+            description: RefreshTokenResponse 刷新令牌响应
+        api.UserInfo:
+            type: object
+            properties:
+                userId:
+                    type: string
+                    description: 用户ID
+                username:
+                    type: string
+                    description: 用户名
+                email:
+                    type: string
+                    description: 邮箱
+                phone:
+                    type: string
+                    description: 手机号
+                displayName:
+                    type: string
+                    description: 显示名称
+                avatarUrl:
+                    type: string
+                    description: 头像URL
+                identity:
+                    type: string
+                    description: 身份类型
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: UserInfo 用户信息
+        audit.AuditApprovalRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '审核记录id @gotags: json:"id,required"'
+                reason:
+                    type: string
+                    description: '原因 @gotags: json:"reason"'
+            description: 执行审核请求参数
+        audit.AuditApprovalResponse:
+            type: object
+            properties: {}
+            description: 执行审核返回结果
+        audit.AuditRecordDetail:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 审核记录 ID
+                targetType:
+                    type: integer
+                    description: 审核目标类型
+                    format: int32
+                targetId:
+                    type: string
+                    description: 审核目标 ID
+                auditorId:
+                    type: string
+                    description: 审核人 ID
+                status:
+                    type: integer
+                    description: 审核状态
+                    format: int32
+                oldContent:
+                    type: string
+                    description: 审核前内容快照
+                newContent:
+                    type: string
+                    description: 审核后内容快照
+                auditResult:
+                    type: integer
+                    description: 审核结果
+                    format: int32
+                rejectReason:
+                    type: string
+                    description: 驳回原因
+                auditTime:
+                    type: string
+                    description: 审核时间
+                createdAt:
+                    type: string
+                    description: 记录创建时间
+            description: 审核记录详情
+        audit.AuditRecordDetailResponse:
+            type: object
+            properties:
+                record:
+                    allOf:
+                        - $ref: '#/components/schemas/audit.AuditRecordDetail'
+                    description: 审核记录详情
+            description: 审核记录详情查询结果
+        audit.AuditRejectionRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '审核记录id @gotags: json:"id,required"'
+                reason:
+                    type: string
+                    description: '原因 @gotags: json:"reason"'
+            description: 执行审核驳回请求参数
+        audit.AuditRejectionResponse:
+            type: object
+            properties: {}
+            description: 执行审核驳回返回结果
+        audit.PendingVolunteerJoinOrgAuditItem:
+            type: object
+            properties:
+                targetId:
+                    type: string
+                    description: 审核目标 ID（org_members.id）
+                status:
+                    type: integer
+                    description: 当前审核状态（业务侧约定枚举值）
+                    format: int32
+                title:
+                    type: string
+                    description: 主标题
+                subTitle:
+                    type: string
+                    description: 副标题
+                createdAt:
+                    type: string
+                    description: 创建时间（字符串时间格式由服务端统一约定）
+            description: 志愿者加入组织待审核对象摘要信息
+        audit.PendingVolunteerJoinOrgAuditListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    description: 总记录数
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/audit.PendingVolunteerJoinOrgAuditItem'
+                    description: 当前页数据
+            description: 志愿者加入组织待审核列表查询结果
+        membership.MemberInfo:
+            type: object
+            properties:
+                membershipId:
+                    type: string
+                    description: 成员关系ID
+                volunteerId:
+                    type: string
+                    description: 志愿者ID
+                volunteerName:
+                    type: string
+                    description: 志愿者姓名
+                volunteerCode:
+                    type: string
+                    description: 志愿者编号
+                organizationId:
+                    type: string
+                    description: 组织ID
+                organizationName:
+                    type: string
+                    description: 组织名称
+                status:
+                    type: integer
+                    description: 成员状态
+                    format: int32
+                role:
+                    type: integer
+                    description: 成员角色
+                    format: int32
+                position:
+                    type: string
+                    description: 申请职位
+                motivation:
+                    type: string
+                    description: 申请动机
+                expectedHours:
+                    type: string
+                    description: 期望工作时间
+                joinDate:
+                    type: string
+                    description: 加入时间
+                reviewDate:
+                    type: string
+                    description: 审核时间
+                reviewComment:
+                    type: string
+                    description: 审核意见
+                leaveDate:
+                    type: string
+                    description: 离开时间
+                leaveReason:
+                    type: string
+                    description: 离开原因
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: MemberInfo 成员信息
+        membership.MemberStatusUpdateRequest:
+            type: object
+            properties:
+                accountId:
+                    type: string
+                    description: '组织管理者ID 必填 @gotags: json:"accountId,required"'
+                membershipId:
+                    type: string
+                    description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
+                status:
+                    type: integer
+                    description: '成员状态 必填 @gotags: json:"status,required"'
+                    format: int32
+                reviewComment:
+                    type: string
+                    description: '审核意见 可选 @gotags: json:"reviewComment"'
+            description: MemberStatusUpdateRequest 更新成员状态请求
+        membership.MemberStatusUpdateResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: MemberStatusUpdateResponse 更新成员状态响应
+        membership.MembershipStatsResponse:
+            type: object
+            properties:
+                pendingCount:
+                    type: string
+                    description: 待审核成员数量
+                activeCount:
+                    type: string
+                    description: 活跃成员数量
+                inactiveCount:
+                    type: string
+                    description: 非活跃成员数量
+                suspendedCount:
+                    type: string
+                    description: 暂停成员数量
+                totalCount:
+                    type: string
+                    description: 总成员数量
+            description: MembershipStatsResponse 成员统计响应
+        membership.OrganizationMemberInfo:
+            type: object
+            properties:
+                membershipId:
+                    type: string
+                    description: 成员关系ID
+                organizationId:
+                    type: string
+                    description: 组织ID
+                organizationName:
+                    type: string
+                    description: 组织名称
+                organizationCode:
+                    type: string
+                    description: 组织代码
+                status:
+                    type: integer
+                    description: 成员状态
+                    format: int32
+                role:
+                    type: integer
+                    description: 成员角色
+                    format: int32
+                position:
+                    type: string
+                    description: 申请职位
+                joinDate:
+                    type: string
+                    description: 加入时间
+                reviewDate:
+                    type: string
+                    description: 审核时间
+                reviewComment:
+                    type: string
+                    description: 审核意见
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: OrganizationMemberInfo 组织成员信息（用于志愿者视角）
+        membership.OrganizationMembersResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/membership.MemberInfo'
+            description: OrganizationMembersResponse 获取组织成员响应
+        membership.VolunteerJoinRequest:
+            type: object
+            properties:
+                volunteerId:
+                    type: string
+                    description: '志愿者ID 必填 @gotags: json:"volunteerId,required"'
+                organizationId:
+                    type: string
+                    description: '组织ID 必填 @gotags: json:"organizationId,required"'
+            description: VolunteerJoinRequest 志愿者加入组织请求
+        membership.VolunteerJoinResponse:
+            type: object
+            properties:
+                membershipId:
+                    type: string
+                    description: 成员关系ID
+                status:
+                    type: integer
+                    description: 状态
+                    format: int32
+                message:
+                    type: string
+                    description: 消息
+            description: VolunteerJoinResponse 志愿者加入组织响应
+        membership.VolunteerLeaveRequest:
+            type: object
+            properties:
+                membershipId:
+                    type: string
+                    description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
+                reason:
+                    type: string
+                    description: '退出原因 可选 @gotags: json:"reason"'
+            description: VolunteerLeaveRequest 志愿者退出组织请求
+        membership.VolunteerLeaveResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: VolunteerLeaveResponse 志愿者退出组织响应
+        membership.VolunteerOrganizationsResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/membership.OrganizationMemberInfo'
+            description: VolunteerOrganizationsResponse 查询志愿者加入的组织响应
+        organization.BulkDeleteOrganizationRequest:
+            type: object
+            properties:
+                ids:
+                    type: array
+                    items:
+                        type: string
+                    description: '组织ID列表 必填 @gotags: json:"ids,required"'
+            description: BulkDeleteOrganizationRequest 批量删除组织请求
+        organization.BulkDeleteOrganizationResponse:
+            type: object
+            properties:
+                successCount:
+                    type: integer
+                    description: 成功删除的数量
+                    format: int32
+                failedCount:
+                    type: integer
+                    description: 失败的数量
+                    format: int32
+                message:
+                    type: string
+                    description: 消息
+            description: BulkDeleteOrganizationResponse 批量删除组织响应
+        organization.DeleteOrganizationResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: DeleteOrganizationResponse 删除组织响应
+        organization.DisableOrganizationRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '组织ID 必填 @gotags: path:"id,required"'
+                reason:
+                    type: string
+                    description: '停用原因 可选 @gotags: json:"reason"'
+            description: DisableOrganizationRequest 停用组织请求
+        organization.DisableOrganizationResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: DisableOrganizationResponse 停用组织响应
+        organization.EnableOrganizationRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '组织ID 必填 @gotags: path:"id,required"'
+                reason:
+                    type: string
+                    description: '启用原因 可选 @gotags: json:"reason"'
+            description: EnableOrganizationRequest 启用组织请求
+        organization.EnableOrganizationResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: EnableOrganizationResponse 启用组织响应
+        organization.OrganizationCreateRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: '组织名称 必填 @gotags: json:"name,required"'
+                organizationCode:
+                    type: string
+                    description: '组织代码 可选 @gotags: json:"organizationCode"'
+                contactPerson:
+                    type: string
+                    description: '联系人 必填 @gotags: json:"contactPerson,required"'
+                contactPhone:
+                    type: string
+                    description: '联系电话 必填 @gotags: json:"contactPhone,required"'
+                email:
+                    type: string
+                    description: '邮箱 可选 @gotags: json:"email"'
+                address:
+                    type: string
+                    description: '地址 可选 @gotags: json:"address"'
+                organizationType:
+                    type: string
+                    description: '组织类型 可选 @gotags: json:"organizationType"'
+                region:
+                    type: string
+                    description: '地区 可选 @gotags: json:"region"'
+                description:
+                    type: string
+                    description: '描述 可选 @gotags: json:"description"'
+                websiteUrl:
+                    type: string
+                    description: '网站地址 可选 @gotags: json:"websiteUrl"'
+                logoUrl:
+                    type: string
+                    description: 'Logo地址 可选 @gotags: json:"logoUrl"'
+            description: OrganizationCreateRequest 创建组织请求
+        organization.OrganizationCreateResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 组织ID
+                message:
+                    type: string
+                    description: 消息
+            description: OrganizationCreateResponse 创建组织响应
+        organization.OrganizationDetailResponse:
+            type: object
+            properties:
+                organization:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.OrganizationInfo'
+                    description: 组织信息
+            description: OrganizationDetailResponse 组织详情响应
+        organization.OrganizationInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                accountId:
+                    type: string
+                    description: 账户ID
+                name:
+                    type: string
+                    description: 组织名称
+                organizationCode:
+                    type: string
+                    description: 组织代码
+                contactPerson:
+                    type: string
+                    description: 联系人
+                contactPhone:
+                    type: string
+                    description: 联系电话
+                email:
+                    type: string
+                    description: 邮箱
+                address:
+                    type: string
+                    description: 地址
+                status:
+                    type: integer
+                    description: 状态 0-停用 1-正常
+                    format: int32
+                organizationType:
+                    type: string
+                    description: 组织类型
+                region:
+                    type: string
+                    description: 地区
+                description:
+                    type: string
+                    description: 描述
+                websiteUrl:
+                    type: string
+                    description: 网站地址
+                logoUrl:
+                    type: string
+                    description: Logo地址
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: OrganizationInfo 组织信息
+        organization.OrganizationListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                    description: 组织名称
+                organizationCode:
+                    type: string
+                    description: 组织代码
+                contactPerson:
+                    type: string
+                    description: 联系人
+                contactPhone:
+                    type: string
+                    description: 联系电话
+                email:
+                    type: string
+                    description: 邮箱
+                address:
+                    type: string
+                    description: 地址
+                status:
+                    type: integer
+                    description: 状态 0-停用 1-正常
+                    format: int32
+                organizationType:
+                    type: string
+                    description: 组织类型
+                region:
+                    type: string
+                    description: 地区
+                createdAt:
+                    type: string
+                    description: 创建时间
+            description: OrganizationListItem 组织列表项
+        organization.OrganizationListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/organization.OrganizationListItem'
+            description: OrganizationListResponse 组织列表响应
+        organization.OrganizationSearchRequest:
+            type: object
+            properties:
+                keyword:
+                    type: string
+                    description: '搜索关键字 可选 @gotags: json:"keyword"'
+                status:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '状态筛选 可选 @gotags: json:"status"'
+                organizationType:
+                    type: string
+                    description: '组织类型筛选 可选 @gotags: json:"organizationType"'
+                region:
+                    type: string
+                    description: '地区筛选 可选 @gotags: json:"region"'
+                startDate:
+                    type: string
+                    description: '创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"'
+                endDate:
+                    type: string
+                    description: '创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"'
+                page:
+                    type: integer
+                    description: '页码 必填 @gotags: json:"page,required"'
+                    format: int32
+                pageSize:
+                    type: integer
+                    description: '页大小 必填 @gotags: json:"pageSize,required"'
+                    format: int32
+            description: OrganizationSearchRequest 搜索组织请求
+        organization.OrganizationSearchResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/organization.OrganizationListItem'
+            description: OrganizationSearchResponse 搜索组织响应
+        organization.OrganizationUpdateRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '组织ID 必填 @gotags: path:"id,required"'
+                name:
+                    type: string
+                    description: '组织名称 可选 @gotags: json:"name"'
+                organizationCode:
+                    type: string
+                    description: '组织代码 可选 @gotags: json:"organizationCode"'
+                contactPerson:
+                    type: string
+                    description: '联系人 可选 @gotags: json:"contactPerson"'
+                contactPhone:
+                    type: string
+                    description: '联系电话 可选 @gotags: json:"contactPhone"'
+                email:
+                    type: string
+                    description: '邮箱 可选 @gotags: json:"email"'
+                address:
+                    type: string
+                    description: '地址 可选 @gotags: json:"address"'
+                organizationType:
+                    type: string
+                    description: '组织类型 可选 @gotags: json:"organizationType"'
+                region:
+                    type: string
+                    description: '地区 可选 @gotags: json:"region"'
+                description:
+                    type: string
+                    description: '描述 可选 @gotags: json:"description"'
+                websiteUrl:
+                    type: string
+                    description: '网站地址 可选 @gotags: json:"websiteUrl"'
+                logoUrl:
+                    type: string
+                    description: 'Logo地址 可选 @gotags: json:"logoUrl"'
+            description: OrganizationUpdateRequest 更新组织请求
+        organization.OrganizationUpdateResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: 消息
+            description: OrganizationUpdateResponse 更新组织响应
+        register.OrganizationRegisterRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: '联系人姓名 必填 @gotags: json:"name,required"'
+                phone:
+                    type: string
+                    description: '手机号 必填 @gotags: json:"phone,required"'
+                email:
+                    type: string
+                    description: '邮箱 必填 @gotags: json:"email,required"'
+                password:
+                    type: string
+                    description: '密码 必填 @gotags: json:"password,required"'
+                organizationName:
+                    type: string
+                    description: '组织名称 @gotags: json:"organizationName,required"'
+                code:
+                    type: string
+                    description: '统一社会信用代码/组织机构代码 @gotags: json:"code"'
+            description: 组织管理者注册请求
+        register.RegisterResponse:
+            type: object
+            properties: {}
+            description: RegisterResponse 统一注册响应
+        register.VolunteerRegisterRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: '名称 必填 @gotags: json:"name,required"'
+                phone:
+                    type: string
+                    description: '手机号 必填 @gotags: json:"phone,required"'
+                email:
+                    type: string
+                    description: '邮箱 必填 @gotags: json:"email,required"'
+                password:
+                    type: string
+                    description: '密码 必填 @gotags: json:"password,required"'
+                age:
+                    type: integer
+                    description: '年龄 @gotags: json:"age"'
+                    format: int32
+                gender:
+                    type: string
+                    description: '性别 @gotags: json:"gender"'
+                userName:
+                    type: string
+                    description: '用户名 @gotags: json:"username,required"'
+            description: VolunteerRegisterRequest 志愿者注册请求
+        volunteer.MyProfileResponse:
+            type: object
+            properties:
+                volunteer:
+                    allOf:
+                        - $ref: '#/components/schemas/volunteer.VolunteerInfo'
+                    description: 志愿者信息
+            description: MyProfileResponse 我的个人信息响应（志愿者端）
+        volunteer.VolunteerDetailResponse:
+            type: object
+            properties:
+                volunteer:
+                    allOf:
+                        - $ref: '#/components/schemas/volunteer.VolunteerInfo'
+                    description: 志愿者信息
+            description: VolunteerDetailResponse 志愿者详情响应（管理员端）
+        volunteer.VolunteerInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                accountId:
+                    type: string
+                    description: 账户ID
+                realName:
+                    type: string
+                    description: 真实姓名
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女'
+                    format: int32
+                birthday:
+                    type: string
+                    description: 出生日期
+                idCard:
+                    type: string
+                    description: 身份证号
+                avatarUrl:
+                    type: string
+                    description: 头像URL
+                introduction:
+                    type: string
+                    description: 个人简介
+                totalHours:
+                    type: number
+                    description: 累计服务时长(小时)
+                    format: double
+                serviceCount:
+                    type: integer
+                    description: 累计服务次数
+                    format: int32
+                creditScore:
+                    type: integer
+                    description: 信用分
+                    format: int32
+                auditStatus:
+                    type: integer
+                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
+                    format: int32
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+                status:
+                    type: integer
+                    description: 志愿者状态
+                    format: int32
+            description: VolunteerInfo 志愿者信息
+        volunteer.VolunteerListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                accountId:
+                    type: string
+                    description: 账户ID
+                realName:
+                    type: string
+                    description: 真实姓名
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女'
+                    format: int32
+                avatarUrl:
+                    type: string
+                    description: 头像URL
+                totalHours:
+                    type: number
+                    description: 累计服务时长(小时)
+                    format: double
+                serviceCount:
+                    type: integer
+                    description: 累计服务次数
+                    format: int32
+                creditScore:
+                    type: integer
+                    description: 信用分
+                    format: int32
+                auditStatus:
+                    type: integer
+                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
+                    format: int32
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+                status:
+                    type: integer
+                    description: 志愿者状态
+                    format: int32
+            description: VolunteerListItem 志愿者列表项
+        volunteer.VolunteerListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/volunteer.VolunteerListItem'
+            description: VolunteerListResponse 志愿者列表响应
+        volunteer.VolunteerProfileChangeSubmitRequest:
+            type: object
+            properties:
+                realName:
+                    type: string
+                    description: '真实姓名 可选 @gotags: json:"realName"'
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"'
+                    format: int32
+                birthday:
+                    type: string
+                    description: '出生日期 可选 @gotags: json:"birthday"'
+                avatarUrl:
+                    type: string
+                    description: '头像URL 可选 @gotags: json:"avatarUrl"'
+                introduction:
+                    type: string
+                    description: '个人简介 可选 @gotags: json:"introduction"'
+            description: VolunteerProfileChangeSubmitRequest 志愿者资料变更提审请求
+        volunteer.VolunteerProfileChangeSubmitResponse:
+            type: object
+            properties:
+                auditId:
+                    type: string
+                    description: 审核记录ID
+                status:
+                    type: integer
+                    description: '审核状态: 1-待审核'
+                    format: int32
+            description: VolunteerProfileChangeSubmitResponse 志愿者资料变更提审响应
+        volunteer.VolunteerRealNameSubmitRequest:
+            type: object
+            properties:
+                realName:
+                    type: string
+                    description: '真实姓名 @gotags: json:"realName"'
+                idCard:
+                    type: string
+                    description: '身份证号 @gotags: json:"idCard"'
+            description: VolunteerRealNameSubmitRequest 志愿者实名认证提审请求
+        volunteer.VolunteerRealNameSubmitResponse:
+            type: object
+            properties:
+                auditId:
+                    type: string
+                    description: 审核记录ID
+                status:
+                    type: integer
+                    description: '审核状态: 1-待审核'
+                    format: int32
+            description: VolunteerRealNameSubmitResponse 志愿者实名认证提审响应
+        volunteer.VolunteerUpdateRequest:
+            type: object
+            properties:
+                volunteerId:
+                    type: string
+                    description: '志愿者ID @gotags: path:"id,required"'
+                realName:
+                    type: string
+                    description: '真实姓名 可选 @gotags: json:"realName"'
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"'
+                    format: int32
+                birthday:
+                    type: string
+                    description: '出生日期 可选 @gotags: json:"birthday"'
+                avatarUrl:
+                    type: string
+                    description: '头像URL 可选 @gotags: json:"avatarUrl"'
+                introduction:
+                    type: string
+                    description: '个人简介 可选 @gotags: json:"introduction"'
+            description: VolunteerUpdateRequest 更新志愿者请求
+        volunteer.VolunteerUpdateResponse:
+            type: object
+            properties: {}
+            description: VolunteerUpdateResponse 更新志愿者响应
+        workhour.RecalculateWorkHourRequest:
+            type: object
+            properties:
+                signupId:
+                    type: string
+                    description: '报名ID 必填 @gotags: json:"signupId,required"'
+                hours:
+                    type: number
+                    description: '重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: json:"hours"'
+                    format: double
+                reason:
+                    type: string
+                    description: '重算原因 必填 @gotags: json:"reason,required"'
+                idempotencyKey:
+                    type: string
+                    description: '幂等键 必填 @gotags: json:"idempotencyKey,required"'
+        workhour.RecalculateWorkHourResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: 是否成功
+                workHourLogId:
+                    type: string
+                    description: 本次重算写入的工时流水ID
+                grantedHours:
+                    type: number
+                    description: 重算后发放工时
+                    format: double
+        workhour.VoidWorkHourRequest:
+            type: object
+            properties:
+                signupId:
+                    type: string
+                    description: '报名ID 必填 @gotags: json:"signupId,required"'
+                reason:
+                    type: string
+                    description: '作废原因 必填 @gotags: json:"reason,required"'
+                idempotencyKey:
+                    type: string
+                    description: '幂等键 必填 @gotags: json:"idempotencyKey,required"'
+        workhour.VoidWorkHourResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                workHourLogId:
+                    type: string
+        workhour.WorkHourLogItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 工时流水ID
+                volunteerId:
+                    type: string
+                    description: 志愿者ID（volunteers.id）
+                activityId:
+                    type: string
+                    description: 活动ID
+                signupId:
+                    type: string
+                    description: 报名ID
+                operationType:
+                    type: integer
+                    description: '操作类型: 1-发放,2-作废,3-重发'
+                    format: int32
+                hoursDelta:
+                    type: number
+                    description: 工时增量（作废时为负数）
+                    format: double
+                serviceCountDelta:
+                    type: string
+                    description: 服务次数增量
+                beforeTotalHours:
+                    type: number
+                    description: 变更前累计工时
+                    format: double
+                afterTotalHours:
+                    type: number
+                    description: 变更后累计工时
+                    format: double
+                beforeServiceCount:
+                    type: string
+                    description: 变更前累计服务次数
+                afterServiceCount:
+                    type: string
+                    description: 变更后累计服务次数
+                workHourVersion:
+                    type: string
+                    description: 工时结算版本号
+                refLogId:
+                    type: string
+                    description: 关联原流水ID（作废/重发场景）
+                reason:
+                    type: string
+                    description: 备注原因
+                operatorId:
+                    type: string
+                    description: 操作人账号ID
+                idempotencyKey:
+                    type: string
+                    description: 幂等键
+                createdAt:
+                    type: string
+                    description: 创建时间
+        workhour.WorkHourLogListRequest:
+            type: object
+            properties:
+                page:
+                    type: integer
+                    description: '页码 可选 @gotags: query:"page"'
+                    format: int32
+                pageSize:
+                    type: integer
+                    description: '页大小 可选 @gotags: query:"pageSize"'
+                    format: int32
+                activityId:
+                    type: string
+                    description: '活动ID 可选 @gotags: json:"activityId"'
+                signupId:
+                    type: string
+                    description: '报名ID 可选 @gotags: json:"signupId"'
+                operationType:
+                    type: integer
+                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"'
+                    format: int32
+        workhour.WorkHourLogListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/workhour.WorkHourLogItem'
 tags:
     - name: ActivityService
+      description: 活动管理服务端接口
+    - name: AuditService
+      description: 审核服务：提供待审核列表、执行审核、审核记录查询等接口
+    - name: AuthService
+      description: 登录服务定义
+    - name: MembershipService
+      description: 志愿者-组织关联关系管理服务端接口
+    - name: OrganizationService
+      description: 组织管理服务端接口
+    - name: RegisterService
+      description: 注册服务端接口
+    - name: VolunteerService
+      description: 志愿者管理服务端接口
+    - name: WorkHourService
+      description: 工时流水服务接口

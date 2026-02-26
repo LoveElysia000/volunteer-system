@@ -1,6 +1,6 @@
 # 志愿者端与管理员端接口清单（待补功能版）
 
-更新时间：2026-02-25
+更新时间：2026-02-26
 适用范围：`/Users/Ein/project2/volunteer-system`
 
 ## 1. 说明
@@ -21,6 +21,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ❌ 未实现 |
 | 新增 API | `GET /api/volunteers/home/summary` |
 | 请求参数 | 无（从 token 获取当前账号） |
 | 响应字段 | `nickname` `level` `stats.points` `stats.hours` `stats.activityCount` `monthlyGrowth` `needHoursToNextLevel` |
@@ -36,6 +37,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ✅ 已实现（`internal/service/activities.go` 动态计算 `isRegistered`） |
 | 现有 API | `POST /api/activities`（升级） |
 | 请求参数 | 保持现有分页/状态 |
 | 响应补强 | `ActivityItem.isRegistered` 必须按当前用户动态返回 |
@@ -51,6 +53,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ✅ 已实现（返回 `signupStatus`、`auditReason`） |
 | 现有 API | `POST /api/activities/my`（升级） |
 | 请求参数 | 保持现有 |
 | 响应补强 | 增加 `signupStatus` `auditReason`（驳回原因） |
@@ -66,12 +69,29 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ✅ 已实现（复用 `audit_records`，按 `scene=volunteer_profile_update` 区分） |
 | 新增 API | `POST /api/volunteers/profile-change/submit` |
 | 请求参数 | `realName` `gender` `birthday` `avatarUrl` `introduction`（按需） |
 | 响应字段 | `auditId` `status` |
 | 权限 | 仅志愿者本人 |
 | 依赖表 | 直接复用 `audit_records` |
 | 迁移建议 | 使用 `target_type=volunteer` + `operation_type=update` 区分资料变更审核；不新增专表 |
+| 代码落点 | `internal/api/volunteer.proto` `internal/service/volunteer.go` `internal/service/audit.go` |
+
+---
+
+### 2.5 志愿者实名认证提审
+
+| 项目 | 内容 |
+| --- | --- |
+| 优先级 | P0 |
+| 实现状态 | ✅ 已实现（复用 `audit_records`，`scene=volunteer_real_name_verify`） |
+| 新增 API | `POST /api/volunteers/real-name/submit` |
+| 请求参数 | `realName` `idCard` |
+| 响应字段 | `auditId` `status` |
+| 权限 | 仅志愿者本人 |
+| 依赖表 | `audit_records` `volunteers` |
+| 迁移建议 | 无新增表；审核提交时将 `volunteers.audit_status` 置为 `pending` |
 | 代码落点 | `internal/api/volunteer.proto` `internal/service/volunteer.go` `internal/service/audit.go` |
 
 ---

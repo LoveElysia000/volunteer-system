@@ -127,23 +127,15 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 		AppliedAt:   now,
 	}
 
-	newContent, err := json.Marshal(newMember)
+	record, err := buildPendingCreateAuditRecordByModel(
+		model.AuditTargetMember,
+		userID,
+		newMember,
+		now,
+	)
 	if err != nil {
-		log.Error("提交加入组织申请失败: 序列化新成员快照异常: %v, organization_id=%d volunteer_id=%d", err, orgID, volunteerID)
+		log.Error("提交加入组织申请失败: 构建审核记录异常: %v, organization_id=%d volunteer_id=%d", err, orgID, volunteerID)
 		return nil, err
-	}
-
-	record := &model.AuditRecord{
-		TargetType:    model.AuditTargetMember,
-		TargetID:      0,
-		AuditorID:     0,
-		OldContent:    "{}",
-		NewContent:    string(newContent),
-		AuditResult:   0,
-		RejectReason:  "",
-		AuditTime:     now,
-		OperationType: model.OperationTypeCreate,
-		Status:        model.AuditStatusPending,
 	}
 	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
 		log.Error("提交加入组织申请失败: 创建审核记录异常: %v, organization_id=%d volunteer_id=%d", err, orgID, volunteerID)
@@ -244,31 +236,19 @@ func (s *MembershipService) VolunteerLeaveOrganization(req *api.VolunteerLeaveRe
 		return nil, errors.New("该成员关系已有待审核申请")
 	}
 
-	oldContent, err := json.Marshal(member)
-	if err != nil {
-		log.Error("提交退出组织申请失败: 序列化旧成员快照异常: %v, membership_id=%d", err, member.ID)
-		return nil, err
-	}
-
 	newMember := *member
 	newMember.Status = model.MemberStatusLeft
-	newContent, err := json.Marshal(&newMember)
+	record, err := buildPendingDeleteAuditRecordByModel(
+		model.AuditTargetMember,
+		member.ID,
+		userID,
+		member,
+		&newMember,
+		time.Now(),
+	)
 	if err != nil {
-		log.Error("提交退出组织申请失败: 序列化新成员快照异常: %v, membership_id=%d", err, member.ID)
+		log.Error("提交退出组织申请失败: 构建审核记录异常: %v, membership_id=%d", err, member.ID)
 		return nil, err
-	}
-
-	record := &model.AuditRecord{
-		TargetType:    model.AuditTargetMember,
-		TargetID:      member.ID,
-		AuditorID:     0,
-		OldContent:    string(oldContent),
-		NewContent:    string(newContent),
-		AuditResult:   0,
-		RejectReason:  "",
-		AuditTime:     time.Now(),
-		OperationType: model.OperationTypeDelete,
-		Status:        model.AuditStatusPending,
 	}
 	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
 		log.Error("提交退出组织申请失败: 创建审核记录异常: %v, membership_id=%d", err, member.ID)

@@ -6,6 +6,7 @@ import (
 	"time"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
+	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
 
@@ -308,4 +309,162 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 
 	var resp api.VolunteerUpdateResponse
 	return &resp, nil
+}
+
+// VolunteerProfileChangeSubmit 提交志愿者资料变更申请（走审核流，不直接写主表）
+func (s *VolunteerService) VolunteerProfileChangeSubmit(req *api.VolunteerProfileChangeSubmitRequest) (*api.VolunteerProfileChangeSubmitResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("提交资料变更失败: 获取当前用户ID异常: %v", err)
+		return nil, err
+	}
+
+	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("志愿者信息不存在")
+		}
+		log.Error("提交资料变更失败: 查询志愿者信息异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+
+	hasPending, err := s.hasPendingVolunteerUpdateAuditByScene(volunteer.ID, userID, model.AuditSceneVolunteerProfileUpdate)
+	if err != nil {
+		log.Error("提交资料变更失败: 查询待审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+	if hasPending {
+		return nil, errors.New("您有正在审核中的申请，请耐心等待")
+	}
+
+	oldPayload, newPayload, err := buildVolunteerProfileChangeAuditPayloads(req, volunteer)
+	if err != nil {
+		return nil, err
+	}
+	if newPayload.IsEmpty() {
+		return nil, errors.New("没有需要变更的字段")
+	}
+
+	record, err := buildPendingUpdateAuditRecordByPatch(
+		model.AuditTargetVolunteer,
+		volunteer.ID,
+		userID,
+		model.AuditSceneVolunteerProfileUpdate,
+		oldPayload,
+		newPayload,
+		time.Now(),
+	)
+	if err != nil {
+		log.Error("提交资料变更失败: 构建审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
+		log.Error("提交资料变更失败: 创建审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+
+	return &api.VolunteerProfileChangeSubmitResponse{
+		AuditId: record.ID,
+		Status:  model.AuditStatusPending,
+	}, nil
+}
+
+// VolunteerRealNameSubmit 提交志愿者实名认证申请（走审核流，不直接写主表）。
+func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSubmitRequest) (*api.VolunteerRealNameSubmitResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("提交实名认证失败: 获取当前用户ID异常: %v", err)
+		return nil, err
+	}
+
+	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("志愿者信息不存在")
+		}
+		log.Error("提交实名认证失败: 查询志愿者信息异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+
+	hasPending, err := s.hasPendingVolunteerUpdateAuditByScene(volunteer.ID, userID, model.AuditSceneVolunteerRealNameVerify)
+	if err != nil {
+		log.Error("提交实名认证失败: 查询待审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+	if hasPending {
+		return nil, errors.New("您有正在审核中的实名认证申请，请耐心等待")
+	}
+
+	oldPayload, newPayload, err := buildVolunteerRealNameVerifyAuditPayloads(req, volunteer)
+	if err != nil {
+		return nil, err
+	}
+	record, err := buildPendingUpdateAuditRecordByPatch(
+		model.AuditTargetVolunteer,
+		volunteer.ID,
+		userID,
+		model.AuditSceneVolunteerRealNameVerify,
+		oldPayload,
+		newPayload,
+		time.Now(),
+	)
+	if err != nil {
+		log.Error("提交实名认证失败: 构建审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+	if err := s.repo.DB.Transaction(func(tx *gorm.DB) error {
+		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
+			return createErr
+		}
+		// 实名审核提交后标记为审核中。
+		return s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
+			"audit_status": model.VolunteerAuditStatusPending,
+		})
+	}); err != nil {
+		log.Error("提交实名认证失败: 事务执行异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+
+	return &api.VolunteerRealNameSubmitResponse{
+		AuditId: record.ID,
+		Status:  model.AuditStatusPending,
+	}, nil
+}
+
+func (s *VolunteerService) hasPendingVolunteerUpdateAuditByScene(volunteerID, creatorID int64, scene string) (bool, error) {
+	query := map[string]any{
+		"target_type = ?":    model.AuditTargetVolunteer,
+		"target_id = ?":      volunteerID,
+		"operation_type = ?": model.OperationTypeUpdate,
+		"status = ?":         model.AuditStatusPending,
+		"creator_id = ?":     creatorID,
+	}
+	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, query, 0, 0)
+	if err != nil {
+		return false, err
+	}
+
+	for _, record := range records {
+		if record == nil {
+			continue
+		}
+		recordScene, sceneErr := resolveVolunteerUpdateAuditScene(record.NewContent)
+		if sceneErr != nil {
+			// 非法快照视为占用同场景，避免重复提交造成脏数据扩散。
+			log.Warn("解析待审核记录场景失败: record_id=%d err=%v", record.ID, sceneErr)
+			return true, nil
+		}
+		if recordScene == scene {
+			return true, nil
+		}
+	}
+	return false, nil
 }

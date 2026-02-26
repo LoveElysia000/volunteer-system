@@ -64,3 +64,31 @@ func VolunteerUpdate(ctx context.Context, c *app.RequestContext) {
 	}
 	response.Success(c, data)
 }
+
+func VolunteerProfileChangeSubmit(ctx context.Context, c *app.RequestContext) {
+	var req api.VolunteerProfileChangeSubmitRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewVolunteerService(ctx, c).VolunteerProfileChangeSubmit(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+func VolunteerRealNameSubmit(ctx context.Context, c *app.RequestContext) {
+	var req api.VolunteerRealNameSubmitRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewVolunteerService(ctx, c).VolunteerRealNameSubmit(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
