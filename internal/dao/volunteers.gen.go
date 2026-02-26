@@ -36,6 +36,8 @@ func newVolunteer(db *gorm.DB, opts ...gen.DOOption) volunteer {
 	_volunteer.AvatarURL = field.NewString(tableName, "avatar_url")
 	_volunteer.Introduction = field.NewString(tableName, "introduction")
 	_volunteer.TotalHours = field.NewFloat64(tableName, "total_hours")
+	_volunteer.TotalPoints = field.NewInt32(tableName, "total_points")
+	_volunteer.LevelID = field.NewInt32(tableName, "level_id")
 	_volunteer.ServiceCount = field.NewInt32(tableName, "service_count")
 	_volunteer.CreditScore = field.NewInt32(tableName, "credit_score")
 	_volunteer.Status = field.NewInt32(tableName, "status")
@@ -62,6 +64,8 @@ type volunteer struct {
 	AvatarURL    field.String  // 头像URL
 	Introduction field.String  // 个人简介
 	TotalHours   field.Float64 // 累计服务时长(小时)
+	TotalPoints  field.Int32   // 累计积分
+	LevelID      field.Int32   // 当前等级ID
 	ServiceCount field.Int32   // 累计服务次数
 	CreditScore  field.Int32   // 信用分(默认100)
 	Status       field.Int32   // 志愿者状态: 1-活跃, 2-非活跃, 3-暂停
@@ -93,6 +97,8 @@ func (v *volunteer) updateTableName(table string) *volunteer {
 	v.AvatarURL = field.NewString(table, "avatar_url")
 	v.Introduction = field.NewString(table, "introduction")
 	v.TotalHours = field.NewFloat64(table, "total_hours")
+	v.TotalPoints = field.NewInt32(table, "total_points")
+	v.LevelID = field.NewInt32(table, "level_id")
 	v.ServiceCount = field.NewInt32(table, "service_count")
 	v.CreditScore = field.NewInt32(table, "credit_score")
 	v.Status = field.NewInt32(table, "status")
@@ -125,7 +131,7 @@ func (v *volunteer) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *volunteer) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 15)
+	v.fieldMap = make(map[string]field.Expr, 17)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["account_id"] = v.AccountID
 	v.fieldMap["real_name"] = v.RealName
@@ -135,6 +141,8 @@ func (v *volunteer) fillFieldMap() {
 	v.fieldMap["avatar_url"] = v.AvatarURL
 	v.fieldMap["introduction"] = v.Introduction
 	v.fieldMap["total_hours"] = v.TotalHours
+	v.fieldMap["total_points"] = v.TotalPoints
+	v.fieldMap["level_id"] = v.LevelID
 	v.fieldMap["service_count"] = v.ServiceCount
 	v.fieldMap["credit_score"] = v.CreditScore
 	v.fieldMap["status"] = v.Status

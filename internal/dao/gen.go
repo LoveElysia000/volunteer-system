@@ -17,23 +17,23 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:       db,
-		Activity: newActivity(db, opts...),
+		db:        db,
+		LevelRule: newLevelRule(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Activity activity
+	LevelRule levelRule
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:       db,
-		Activity: q.Activity.clone(db),
+		db:        db,
+		LevelRule: q.LevelRule.clone(db),
 	}
 }
 
@@ -47,18 +47,18 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:       db,
-		Activity: q.Activity.replaceDB(db),
+		db:        db,
+		LevelRule: q.LevelRule.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Activity *activityDo
+	LevelRule *levelRuleDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Activity: q.Activity.WithContext(ctx),
+		LevelRule: q.LevelRule.WithContext(ctx),
 	}
 }
 

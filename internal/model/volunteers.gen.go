@@ -21,6 +21,8 @@ type Volunteer struct {
 	AvatarURL    string     `gorm:"column:avatar_url;not null;comment:头像URL" json:"avatar_url"`                                  // 头像URL
 	Introduction string     `gorm:"column:introduction;not null;comment:个人简介" json:"introduction"`                               // 个人简介
 	TotalHours   float64    `gorm:"column:total_hours;not null;default:0.0;comment:累计服务时长(小时)" json:"total_hours"`               // 累计服务时长(小时)
+	TotalPoints  int32      `gorm:"column:total_points;not null;comment:累计积分" json:"total_points"`                               // 累计积分
+	LevelID      int32      `gorm:"column:level_id;not null;default:1;comment:当前等级ID" json:"level_id"`                           // 当前等级ID
 	ServiceCount int32      `gorm:"column:service_count;not null;comment:累计服务次数" json:"service_count"`                           // 累计服务次数
 	CreditScore  int32      `gorm:"column:credit_score;not null;default:100;comment:信用分(默认100)" json:"credit_score"`             // 信用分(默认100)
 	Status       int32      `gorm:"column:status;not null;default:1;comment:志愿者状态: 1-活跃, 2-非活跃, 3-暂停" json:"status"`             // 志愿者状态: 1-活跃, 2-非活跃, 3-暂停
