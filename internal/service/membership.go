@@ -12,6 +12,7 @@ import (
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,7 @@ type MembershipService struct {
 	Service
 }
 
+// NewMembershipService 创建成员关系服务实例，并注入请求上下文与仓储依赖。
 func NewMembershipService(ctx context.Context, c *app.RequestContext) *MembershipService {
 	if ctx == nil {
 		ctx = context.Background()
@@ -32,6 +34,7 @@ func NewMembershipService(ctx context.Context, c *app.RequestContext) *Membershi
 	}
 }
 
+// hasOrganizationPermission 校验当前组织列表中是否包含目标组织。
 func hasOrganizationPermission(organizations []*model.Organization, organizationID int64) bool {
 	for _, org := range organizations {
 		if org != nil && org.ID == organizationID {
@@ -148,6 +151,7 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 	}, nil
 }
 
+// hasPendingMemberCreateAudit 检查是否存在相同组织与志愿者的待审核新增成员申请。
 func (s *MembershipService) hasPendingMemberCreateAudit(db *gorm.DB, orgID, volunteerID int64) (bool, error) {
 	queryMap := map[string]any{
 		"target_type = ?":    model.AuditTargetMember,
@@ -296,32 +300,53 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 		return nil, err
 	}
 
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, req.OrganizationId)
-	if err != nil {
-		log.Error("查询组织成员列表失败: 查询组织信息异常: %v, organization_id=%d", err, req.OrganizationId)
-		return nil, err
+	volunteerIDs := make([]int64, 0, len(members))
+	for _, member := range members {
+		if member == nil {
+			continue
+		}
+		volunteerIDs = append(volunteerIDs, member.VolunteerID)
+	}
+	volunteerIDs = util.UniquePositiveInt64(volunteerIDs)
+
+	var (
+		organization *model.Organization
+		volunteers   []*model.Volunteer
+	)
+	group, _ := errgroup.WithContext(s.ctx)
+	group.SetLimit(2)
+	group.Go(func() error {
+		org, queryErr := s.repo.GetOrganizationByID(s.repo.DB, req.OrganizationId)
+		if queryErr != nil {
+			log.Error("查询组织成员列表失败: 查询组织信息异常: %v, organization_id=%d", queryErr, req.OrganizationId)
+			return queryErr
+		}
+		organization = org
+		return nil
+	})
+	group.Go(func() error {
+		volunteerList, queryErr := s.repo.GetVolunteersByIDs(s.repo.DB, volunteerIDs)
+		if queryErr != nil {
+			log.Error("查询组织成员列表失败: 批量查询志愿者异常: %v, organization_id=%d volunteer_count=%d", queryErr, req.OrganizationId, len(volunteerIDs))
+			return queryErr
+		}
+		volunteers = volunteerList
+		return nil
+	})
+	if waitErr := group.Wait(); waitErr != nil {
+		return nil, waitErr
 	}
 
-	volunteerNameMap := make(map[int64]string)
-	if len(members) > 0 {
-		volunteerIDs := make([]int64, 0, len(members))
-		seen := make(map[int64]struct{}, len(members))
-		for _, m := range members {
-			if _, exists := seen[m.VolunteerID]; exists {
-				continue
-			}
-			seen[m.VolunteerID] = struct{}{}
-			volunteerIDs = append(volunteerIDs, m.VolunteerID)
+	volunteerNameMap := make(map[int64]string, len(volunteers))
+	for _, volunteer := range volunteers {
+		if volunteer == nil {
+			continue
 		}
-
-		volunteers, err := s.repo.GetVolunteersByIDs(s.repo.DB, volunteerIDs)
-		if err != nil {
-			log.Error("查询组织成员列表失败: 批量查询志愿者异常: %v, organization_id=%d volunteer_count=%d", err, req.OrganizationId, len(volunteerIDs))
-			return nil, err
-		}
-		for _, volunteer := range volunteers {
-			volunteerNameMap[volunteer.ID] = volunteer.RealName
-		}
+		volunteerNameMap[volunteer.ID] = volunteer.RealName
+	}
+	organizationName := ""
+	if organization != nil {
+		organizationName = organization.OrgName
 	}
 
 	resp := &api.OrganizationMembersResponse{
@@ -330,13 +355,16 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 	}
 
 	for _, m := range members {
+		if m == nil {
+			continue
+		}
 		item := &api.MemberInfo{
 			MembershipId:     m.ID,
 			VolunteerId:      m.VolunteerID,
 			VolunteerName:    volunteerNameMap[m.VolunteerID],
 			VolunteerCode:    "",
 			OrganizationId:   m.OrgID,
-			OrganizationName: organization.OrgName,
+			OrganizationName: organizationName,
 			Status:           m.Status,
 			Role:             m.Role,
 			Position:         "",
@@ -394,14 +422,13 @@ func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganiza
 	orgInfoMap := make(map[int64]*model.Organization)
 	if len(list) > 0 {
 		orgIDs := make([]int64, 0, len(list))
-		seen := make(map[int64]struct{}, len(list))
 		for _, member := range list {
-			if _, exists := seen[member.OrgID]; exists {
+			if member == nil {
 				continue
 			}
-			seen[member.OrgID] = struct{}{}
 			orgIDs = append(orgIDs, member.OrgID)
 		}
+		orgIDs = util.UniquePositiveInt64(orgIDs)
 
 		organizations, err := s.repo.GetOrganizationsByIDs(s.repo.DB, orgIDs)
 		if err != nil {

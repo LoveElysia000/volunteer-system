@@ -22,35 +22,37 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 志愿者加入组织待审核列表查询参数
-type PendingVolunteerJoinOrgAuditListRequest struct {
+// 统一待审核列表查询参数
+type PendingAuditListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// 审核目标类型（单值） @gotags: query:"targetType"
+	TargetType int32 `protobuf:"varint,1,opt,name=targetType,proto3" json:"targetType" query:"targetType"`
+	// 审核状态集合 @gotags: query:"status"
+	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status" query:"status"`
 	// 标题/副标题关键词 @gotags: query:"keyword"
-	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
-	// 页码（从 1 开始） @gotags: query:"page"
-	Page int32 `protobuf:"varint,2,opt,name=page,proto3" json:"page" query:"page"`
+	Keyword string `protobuf:"bytes,3,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
+	// 页码（从1开始） @gotags: query:"page"
+	Page int32 `protobuf:"varint,4,opt,name=page,proto3" json:"page" query:"page"`
 	// 每页条数 @gotags: query:"pageSize"
-	PageSize int32 `protobuf:"varint,3,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
-	// 审核状态 @gotags: query:"status"
-	Status        []int32 `protobuf:"varint,4,rep,packed,name=status,proto3" json:"status" query:"status"`
+	PageSize      int32 `protobuf:"varint,5,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) Reset() {
-	*x = PendingVolunteerJoinOrgAuditListRequest{}
+func (x *PendingAuditListRequest) Reset() {
+	*x = PendingAuditListRequest{}
 	mi := &file_internal_api_audit_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) String() string {
+func (x *PendingAuditListRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PendingVolunteerJoinOrgAuditListRequest) ProtoMessage() {}
+func (*PendingAuditListRequest) ProtoMessage() {}
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) ProtoReflect() protoreflect.Message {
+func (x *PendingAuditListRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_api_audit_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -62,64 +64,71 @@ func (x *PendingVolunteerJoinOrgAuditListRequest) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PendingVolunteerJoinOrgAuditListRequest.ProtoReflect.Descriptor instead.
-func (*PendingVolunteerJoinOrgAuditListRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PendingAuditListRequest.ProtoReflect.Descriptor instead.
+func (*PendingAuditListRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_audit_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) GetKeyword() string {
+func (x *PendingAuditListRequest) GetTargetType() int32 {
+	if x != nil {
+		return x.TargetType
+	}
+	return 0
+}
+
+func (x *PendingAuditListRequest) GetStatus() []int32 {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *PendingAuditListRequest) GetKeyword() string {
 	if x != nil {
 		return x.Keyword
 	}
 	return ""
 }
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) GetPage() int32 {
+func (x *PendingAuditListRequest) GetPage() int32 {
 	if x != nil {
 		return x.Page
 	}
 	return 0
 }
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) GetPageSize() int32 {
+func (x *PendingAuditListRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
 	}
 	return 0
 }
 
-func (x *PendingVolunteerJoinOrgAuditListRequest) GetStatus() []int32 {
-	if x != nil {
-		return x.Status
-	}
-	return nil
-}
-
-// 志愿者加入组织待审核列表查询结果
-type PendingVolunteerJoinOrgAuditListResponse struct {
+// 统一待审核列表查询结果
+type PendingAuditListResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 总记录数
 	Total int32 `protobuf:"varint,1,opt,name=total,proto3" json:"total"`
 	// 当前页数据
-	List          []*PendingVolunteerJoinOrgAuditItem `protobuf:"bytes,2,rep,name=list,proto3" json:"list"`
+	List          []*PendingAuditItem `protobuf:"bytes,2,rep,name=list,proto3" json:"list"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PendingVolunteerJoinOrgAuditListResponse) Reset() {
-	*x = PendingVolunteerJoinOrgAuditListResponse{}
+func (x *PendingAuditListResponse) Reset() {
+	*x = PendingAuditListResponse{}
 	mi := &file_internal_api_audit_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PendingVolunteerJoinOrgAuditListResponse) String() string {
+func (x *PendingAuditListResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PendingVolunteerJoinOrgAuditListResponse) ProtoMessage() {}
+func (*PendingAuditListResponse) ProtoMessage() {}
 
-func (x *PendingVolunteerJoinOrgAuditListResponse) ProtoReflect() protoreflect.Message {
+func (x *PendingAuditListResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_api_audit_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -131,56 +140,60 @@ func (x *PendingVolunteerJoinOrgAuditListResponse) ProtoReflect() protoreflect.M
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PendingVolunteerJoinOrgAuditListResponse.ProtoReflect.Descriptor instead.
-func (*PendingVolunteerJoinOrgAuditListResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use PendingAuditListResponse.ProtoReflect.Descriptor instead.
+func (*PendingAuditListResponse) Descriptor() ([]byte, []int) {
 	return file_internal_api_audit_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *PendingVolunteerJoinOrgAuditListResponse) GetTotal() int32 {
+func (x *PendingAuditListResponse) GetTotal() int32 {
 	if x != nil {
 		return x.Total
 	}
 	return 0
 }
 
-func (x *PendingVolunteerJoinOrgAuditListResponse) GetList() []*PendingVolunteerJoinOrgAuditItem {
+func (x *PendingAuditListResponse) GetList() []*PendingAuditItem {
 	if x != nil {
 		return x.List
 	}
 	return nil
 }
 
-// 志愿者加入组织待审核对象摘要信息
-type PendingVolunteerJoinOrgAuditItem struct {
+// 统一待审核项
+type PendingAuditItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核目标 ID（org_members.id）
-	TargetId int64 `protobuf:"varint,1,opt,name=targetId,proto3" json:"targetId"`
-	// 当前审核状态（业务侧约定枚举值）
-	Status int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status"`
+	// 审核记录ID
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id"`
+	// 审核目标类型
+	TargetType int32 `protobuf:"varint,2,opt,name=targetType,proto3" json:"targetType"`
+	// 审核目标ID
+	TargetId int64 `protobuf:"varint,3,opt,name=targetId,proto3" json:"targetId"`
 	// 主标题
-	Title string `protobuf:"bytes,3,opt,name=title,proto3" json:"title"`
+	Title string `protobuf:"bytes,4,opt,name=title,proto3" json:"title"`
 	// 副标题
-	SubTitle string `protobuf:"bytes,4,opt,name=subTitle,proto3" json:"subTitle"`
-	// 创建时间（字符串时间格式由服务端统一约定）
-	CreatedAt     string `protobuf:"bytes,5,opt,name=createdAt,proto3" json:"createdAt"`
+	SubTitle string `protobuf:"bytes,5,opt,name=subTitle,proto3" json:"subTitle"`
+	// 提交人账号ID
+	CreatorId int64 `protobuf:"varint,6,opt,name=creatorId,proto3" json:"creatorId"`
+	// 创建时间
+	CreatedAt     string `protobuf:"bytes,7,opt,name=createdAt,proto3" json:"createdAt"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PendingVolunteerJoinOrgAuditItem) Reset() {
-	*x = PendingVolunteerJoinOrgAuditItem{}
+func (x *PendingAuditItem) Reset() {
+	*x = PendingAuditItem{}
 	mi := &file_internal_api_audit_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PendingVolunteerJoinOrgAuditItem) String() string {
+func (x *PendingAuditItem) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PendingVolunteerJoinOrgAuditItem) ProtoMessage() {}
+func (*PendingAuditItem) ProtoMessage() {}
 
-func (x *PendingVolunteerJoinOrgAuditItem) ProtoReflect() protoreflect.Message {
+func (x *PendingAuditItem) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_api_audit_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -192,40 +205,54 @@ func (x *PendingVolunteerJoinOrgAuditItem) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PendingVolunteerJoinOrgAuditItem.ProtoReflect.Descriptor instead.
-func (*PendingVolunteerJoinOrgAuditItem) Descriptor() ([]byte, []int) {
+// Deprecated: Use PendingAuditItem.ProtoReflect.Descriptor instead.
+func (*PendingAuditItem) Descriptor() ([]byte, []int) {
 	return file_internal_api_audit_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *PendingVolunteerJoinOrgAuditItem) GetTargetId() int64 {
+func (x *PendingAuditItem) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *PendingAuditItem) GetTargetType() int32 {
+	if x != nil {
+		return x.TargetType
+	}
+	return 0
+}
+
+func (x *PendingAuditItem) GetTargetId() int64 {
 	if x != nil {
 		return x.TargetId
 	}
 	return 0
 }
 
-func (x *PendingVolunteerJoinOrgAuditItem) GetStatus() int32 {
-	if x != nil {
-		return x.Status
-	}
-	return 0
-}
-
-func (x *PendingVolunteerJoinOrgAuditItem) GetTitle() string {
+func (x *PendingAuditItem) GetTitle() string {
 	if x != nil {
 		return x.Title
 	}
 	return ""
 }
 
-func (x *PendingVolunteerJoinOrgAuditItem) GetSubTitle() string {
+func (x *PendingAuditItem) GetSubTitle() string {
 	if x != nil {
 		return x.SubTitle
 	}
 	return ""
 }
 
-func (x *PendingVolunteerJoinOrgAuditItem) GetCreatedAt() string {
+func (x *PendingAuditItem) GetCreatorId() int64 {
+	if x != nil {
+		return x.CreatorId
+	}
+	return 0
+}
+
+func (x *PendingAuditItem) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
 	}
@@ -648,21 +675,28 @@ var File_internal_api_audit_proto protoreflect.FileDescriptor
 
 const file_internal_api_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x18internal/api/audit.proto\x12\x05audit\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\x8b\x01\n" +
-	"'PendingVolunteerJoinOrgAuditListRequest\x12\x18\n" +
-	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x12\n" +
-	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1a\n" +
-	"\bpageSize\x18\x03 \x01(\x05R\bpageSize\x12\x16\n" +
-	"\x06status\x18\x04 \x03(\x05R\x06status\"}\n" +
-	"(PendingVolunteerJoinOrgAuditListResponse\x12\x14\n" +
-	"\x05total\x18\x01 \x01(\x05R\x05total\x12;\n" +
-	"\x04list\x18\x02 \x03(\v2'.audit.PendingVolunteerJoinOrgAuditItemR\x04list\"\xa6\x01\n" +
-	" PendingVolunteerJoinOrgAuditItem\x12\x1a\n" +
-	"\btargetId\x18\x01 \x01(\x03R\btargetId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\x05R\x06status\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1a\n" +
-	"\bsubTitle\x18\x04 \x01(\tR\bsubTitle\x12\x1c\n" +
-	"\tcreatedAt\x18\x05 \x01(\tR\tcreatedAt\">\n" +
+	"\x18internal/api/audit.proto\x12\x05audit\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\x9b\x01\n" +
+	"\x17PendingAuditListRequest\x12\x1e\n" +
+	"\n" +
+	"targetType\x18\x01 \x01(\x05R\n" +
+	"targetType\x12\x16\n" +
+	"\x06status\x18\x02 \x03(\x05R\x06status\x12\x18\n" +
+	"\akeyword\x18\x03 \x01(\tR\akeyword\x12\x12\n" +
+	"\x04page\x18\x04 \x01(\x05R\x04page\x12\x1a\n" +
+	"\bpageSize\x18\x05 \x01(\x05R\bpageSize\"]\n" +
+	"\x18PendingAuditListResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x05R\x05total\x12+\n" +
+	"\x04list\x18\x02 \x03(\v2\x17.audit.PendingAuditItemR\x04list\"\xcc\x01\n" +
+	"\x10PendingAuditItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1e\n" +
+	"\n" +
+	"targetType\x18\x02 \x01(\x05R\n" +
+	"targetType\x12\x1a\n" +
+	"\btargetId\x18\x03 \x01(\x03R\btargetId\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x1a\n" +
+	"\bsubTitle\x18\x05 \x01(\tR\bsubTitle\x12\x1c\n" +
+	"\tcreatorId\x18\x06 \x01(\x03R\tcreatorId\x12\x1c\n" +
+	"\tcreatedAt\x18\a \x01(\tR\tcreatedAt\">\n" +
 	"\x14AuditApprovalRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x17\n" +
@@ -693,9 +727,9 @@ const file_internal_api_audit_proto_rawDesc = "" +
 	"\frejectReason\x18\t \x01(\tR\frejectReason\x12\x1c\n" +
 	"\tauditTime\x18\n" +
 	" \x01(\tR\tauditTime\x12\x1c\n" +
-	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt2\xac\x04\n" +
-	"\fAuditService\x12\xb3\x01\n" +
-	" PendingVolunteerJoinOrgAuditList\x12..audit.PendingVolunteerJoinOrgAuditListRequest\x1a/.audit.PendingVolunteerJoinOrgAuditListResponse\".\x82\xd3\xe4\x93\x02(\"&/api/audits/volunteer-join-org/pending\x12k\n" +
+	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt2\xe8\x03\n" +
+	"\fAuditService\x12p\n" +
+	"\x10PendingAuditList\x12\x1e.audit.PendingAuditListRequest\x1a\x1f.audit.PendingAuditListResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\"\x13/api/audits/pending\x12k\n" +
 	"\rAuditApproval\x12\x1b.audit.AuditApprovalRequest\x1a\x1c.audit.AuditApprovalResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/audits/approval\x12o\n" +
 	"\x0eAuditRejection\x12\x1c.audit.AuditRejectionRequest\x1a\x1d.audit.AuditRejectionResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/audits/rejection\x12w\n" +
 	"\x11AuditRecordDetail\x12\x1f.audit.AuditRecordDetailRequest\x1a .audit.AuditRecordDetailResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/audits/records/:id\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
@@ -714,25 +748,25 @@ func file_internal_api_audit_proto_rawDescGZIP() []byte {
 
 var file_internal_api_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_internal_api_audit_proto_goTypes = []any{
-	(*PendingVolunteerJoinOrgAuditListRequest)(nil),  // 0: audit.PendingVolunteerJoinOrgAuditListRequest
-	(*PendingVolunteerJoinOrgAuditListResponse)(nil), // 1: audit.PendingVolunteerJoinOrgAuditListResponse
-	(*PendingVolunteerJoinOrgAuditItem)(nil),         // 2: audit.PendingVolunteerJoinOrgAuditItem
-	(*AuditApprovalRequest)(nil),                     // 3: audit.AuditApprovalRequest
-	(*AuditApprovalResponse)(nil),                    // 4: audit.AuditApprovalResponse
-	(*AuditRejectionRequest)(nil),                    // 5: audit.AuditRejectionRequest
-	(*AuditRejectionResponse)(nil),                   // 6: audit.AuditRejectionResponse
-	(*AuditRecordDetailRequest)(nil),                 // 7: audit.AuditRecordDetailRequest
-	(*AuditRecordDetailResponse)(nil),                // 8: audit.AuditRecordDetailResponse
-	(*AuditRecordDetail)(nil),                        // 9: audit.AuditRecordDetail
+	(*PendingAuditListRequest)(nil),   // 0: audit.PendingAuditListRequest
+	(*PendingAuditListResponse)(nil),  // 1: audit.PendingAuditListResponse
+	(*PendingAuditItem)(nil),          // 2: audit.PendingAuditItem
+	(*AuditApprovalRequest)(nil),      // 3: audit.AuditApprovalRequest
+	(*AuditApprovalResponse)(nil),     // 4: audit.AuditApprovalResponse
+	(*AuditRejectionRequest)(nil),     // 5: audit.AuditRejectionRequest
+	(*AuditRejectionResponse)(nil),    // 6: audit.AuditRejectionResponse
+	(*AuditRecordDetailRequest)(nil),  // 7: audit.AuditRecordDetailRequest
+	(*AuditRecordDetailResponse)(nil), // 8: audit.AuditRecordDetailResponse
+	(*AuditRecordDetail)(nil),         // 9: audit.AuditRecordDetail
 }
 var file_internal_api_audit_proto_depIdxs = []int32{
-	2, // 0: audit.PendingVolunteerJoinOrgAuditListResponse.list:type_name -> audit.PendingVolunteerJoinOrgAuditItem
+	2, // 0: audit.PendingAuditListResponse.list:type_name -> audit.PendingAuditItem
 	9, // 1: audit.AuditRecordDetailResponse.record:type_name -> audit.AuditRecordDetail
-	0, // 2: audit.AuditService.PendingVolunteerJoinOrgAuditList:input_type -> audit.PendingVolunteerJoinOrgAuditListRequest
+	0, // 2: audit.AuditService.PendingAuditList:input_type -> audit.PendingAuditListRequest
 	3, // 3: audit.AuditService.AuditApproval:input_type -> audit.AuditApprovalRequest
 	5, // 4: audit.AuditService.AuditRejection:input_type -> audit.AuditRejectionRequest
 	7, // 5: audit.AuditService.AuditRecordDetail:input_type -> audit.AuditRecordDetailRequest
-	1, // 6: audit.AuditService.PendingVolunteerJoinOrgAuditList:output_type -> audit.PendingVolunteerJoinOrgAuditListResponse
+	1, // 6: audit.AuditService.PendingAuditList:output_type -> audit.PendingAuditListResponse
 	4, // 7: audit.AuditService.AuditApproval:output_type -> audit.AuditApprovalResponse
 	6, // 8: audit.AuditService.AuditRejection:output_type -> audit.AuditRejectionResponse
 	8, // 9: audit.AuditService.AuditRecordDetail:output_type -> audit.AuditRecordDetailResponse

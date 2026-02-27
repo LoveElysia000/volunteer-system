@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -17,6 +16,7 @@ import (
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -393,46 +393,66 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 		return nil, err
 	}
 
-	// 提取活动ID列表
+	// 提取活动ID与报名ID列表（去重）
 	activityIDs := make([]int64, 0, len(signups))
 	signupIDs := make([]int64, 0, len(signups))
 	for _, signup := range signups {
-		activityIDs = append(activityIDs, signup.ActivityID)
-		signupIDs = append(signupIDs, signup.ID)
-	}
-
-	// 批量获取活动信息
-	activitiesList, err := s.repo.ListActivitiesByIDs(s.repo.DB, activityIDs)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 批量查询活动异常: %v, user_id=%d volunteer_id=%d activity_count=%d", err, userID, volunteerID, len(activityIDs))
-		return nil, err
-	}
-	activityMap := make(map[int64]*model.Activity, len(activitiesList))
-	for _, act := range activitiesList {
-		if act == nil {
+		if signup == nil {
 			continue
 		}
-		activityMap[act.ID] = act
+		signupIDs = append(signupIDs, signup.ID)
+		activityIDs = append(activityIDs, signup.ActivityID)
+	}
+	signupIDs = util.UniquePositiveInt64(signupIDs)
+	activityIDs = util.UniquePositiveInt64(activityIDs)
+
+	// 并发查询活动信息与报名驳回记录。
+	var (
+		activitiesList     []*model.Activity
+		rejectAuditRecords []*model.AuditRecord
+	)
+	group, _ := errgroup.WithContext(s.ctx)
+	group.SetLimit(2)
+	group.Go(func() error {
+		activities, queryErr := s.repo.ListActivitiesByIDs(s.repo.DB, activityIDs)
+		if queryErr != nil {
+			log.Error("我的活动列表查询失败: 批量查询活动异常: %v, user_id=%d volunteer_id=%d activity_count=%d", queryErr, userID, volunteerID, len(activityIDs))
+			return queryErr
+		}
+		activitiesList = activities
+		return nil
+	})
+	group.Go(func() error {
+		rejectRecords, queryErr := s.repo.ListSignupRejectAuditRecords(s.repo.DB, signupIDs)
+		if queryErr != nil {
+			log.Error("我的活动列表查询失败: 查询报名驳回原因异常: %v, user_id=%d volunteer_id=%d signup_count=%d", queryErr, userID, volunteerID, len(signupIDs))
+			return queryErr
+		}
+		rejectAuditRecords = rejectRecords
+		return nil
+	})
+	if waitErr := group.Wait(); waitErr != nil {
+		return nil, waitErr
 	}
 
-	// 提取组织ID列表
+	activityMap := make(map[int64]*model.Activity, len(activitiesList))
 	orgIDs := make([]int64, 0, len(activitiesList))
 	for _, act := range activitiesList {
 		if act == nil {
 			continue
 		}
-		if act.OrgID > 0 {
-			orgIDs = append(orgIDs, act.OrgID)
-		}
+		activityMap[act.ID] = act
+		orgIDs = append(orgIDs, act.OrgID)
 	}
+	orgIDs = util.UniquePositiveInt64(orgIDs)
 
 	// 批量获取组织名称
-	organizations, err := s.repo.ListOrganizationsByIDs(s.repo.DB, orgIDs)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 批量查询组织名称异常: %v, user_id=%d volunteer_id=%d org_count=%d", err, userID, volunteerID, len(orgIDs))
-		return nil, err
+	orgNameMap := make(map[int64]string)
+	organizations, queryErr := s.repo.ListOrganizationsByIDs(s.repo.DB, orgIDs)
+	if queryErr != nil {
+		log.Error("我的活动列表查询失败: 批量查询组织名称异常: %v, user_id=%d volunteer_id=%d org_count=%d", queryErr, userID, volunteerID, len(orgIDs))
+		return nil, queryErr
 	}
-	orgNameMap := make(map[int64]string, len(organizations))
 	for _, org := range organizations {
 		if org == nil {
 			continue
@@ -440,12 +460,7 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 		orgNameMap[org.ID] = org.OrgName
 	}
 
-	// 批量查询报名驳回记录，并在 service 层按 signup_id 聚合最近一条驳回原因。
-	rejectAuditRecords, err := s.repo.ListSignupRejectAuditRecords(s.repo.DB, signupIDs)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 查询报名驳回原因异常: %v, user_id=%d volunteer_id=%d signup_count=%d", err, userID, volunteerID, len(signupIDs))
-		return nil, err
-	}
+	// 在 service 层按 signup_id 聚合最近一条驳回原因。
 	auditReasonMap := make(map[int64]string, len(rejectAuditRecords))
 	for _, record := range rejectAuditRecords {
 		if record == nil || record.TargetID <= 0 {
@@ -472,10 +487,7 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 		checkInTime := util.FormatDateTimePtr(signup.CheckInTime)
 		checkOutTime := util.FormatDateTimePtr(signup.CheckOutTime)
 
-		orgName := ""
-		if activity.OrgID > 0 {
-			orgName = orgNameMap[activity.OrgID]
-		}
+		orgName := orgNameMap[activity.OrgID]
 
 		item := &api.MyActivityItem{
 			Id:             activity.ID,
@@ -1421,9 +1433,24 @@ func (s *ActivityService) settleSignupWorkHours(
 		return 0, err
 	}
 
+	levelID, err := s.repo.ResolveLevelIDByTotalHours(tx, afterHours)
+	if err != nil {
+		return 0, err
+	}
+
 	if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
 		"total_hours":   afterHours,
 		"service_count": int32(afterCount),
+		"level_id":      levelID,
+	}); err != nil {
+		return 0, err
+	}
+
+	if err := s.repo.CreateRecord(tx, &model.Record{
+		VolunteerID: signup.VolunteerID,
+		Type:        "HOUR",
+		Amount:      grantedHours,
+		CreateTime:  workHourLog.CreatedAt,
 	}); err != nil {
 		return 0, err
 	}
@@ -1536,16 +1563,16 @@ func generateRandomAttendanceCode(length int) (string, error) {
 		return "", errors.New("无效的签到签退码长度")
 	}
 
-	digitPos, err := randomIndex(length)
+	digitPos, err := util.RandomIndex(length)
 	if err != nil {
 		return "", err
 	}
-	letterPos, err := randomIndex(length)
+	letterPos, err := util.RandomIndex(length)
 	if err != nil {
 		return "", err
 	}
 	for letterPos == digitPos {
-		letterPos, err = randomIndex(length)
+		letterPos, err = util.RandomIndex(length)
 		if err != nil {
 			return "", err
 		}
@@ -1557,11 +1584,11 @@ func generateRandomAttendanceCode(length int) (string, error) {
 
 	result := make([]byte, length)
 	// 先固定一个数字位和一个字母位，确保复杂度下限。
-	digitIdx, err := randomIndex(len(digits))
+	digitIdx, err := util.RandomIndex(len(digits))
 	if err != nil {
 		return "", err
 	}
-	letterIdx, err := randomIndex(len(letters))
+	letterIdx, err := util.RandomIndex(len(letters))
 	if err != nil {
 		return "", err
 	}
@@ -1572,26 +1599,11 @@ func generateRandomAttendanceCode(length int) (string, error) {
 		if i == digitPos || i == letterPos {
 			continue
 		}
-		charIdx, idxErr := randomIndex(len(chars))
+		charIdx, idxErr := util.RandomIndex(len(chars))
 		if idxErr != nil {
 			return "", idxErr
 		}
 		result[i] = chars[charIdx]
 	}
 	return string(result), nil
-}
-
-// randomIndex 返回 [0, n) 的随机下标。
-// 注意：使用 byte % n 的方式在 n 不是 256 的因数时会产生分布偏差（低位出现概率略高）。
-// 当前场景中 n=32（字母数）和 n=24（数字+字母数）都能整除 256，故无影响。
-func randomIndex(n int) (int, error) {
-	if n <= 0 {
-		return 0, errors.New("随机范围无效")
-	}
-	randomByte := make([]byte, 1)
-	if _, err := rand.Read(randomByte); err != nil {
-		log.Error("生成签到签退码失败: 读取随机字节异常: %v", err)
-		return 0, err
-	}
-	return int(randomByte[0]) % n, nil
 }

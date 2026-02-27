@@ -32,6 +32,13 @@ service VolunteerService {
     };
   }
 
+  // 志愿者首页摘要（志愿者端）
+  rpc VolunteerHomeSummary(VolunteerHomeSummaryRequest) returns (VolunteerHomeSummaryResponse) {
+    option (google.api.http) = {
+      get: "/api/volunteers/home/summary"
+    };
+  }
+
   // 更新志愿者信息（志愿者端）
   rpc VolunteerUpdate(VolunteerUpdateRequest) returns (VolunteerUpdateResponse) {
     option (google.api.http) = {
@@ -122,6 +129,33 @@ message MyProfileRequest {
 message MyProfileResponse {
   // 志愿者信息
   VolunteerInfo volunteer = 1;
+}
+
+// VolunteerHomeSummaryRequest 志愿者首页摘要请求（志愿者端）
+message VolunteerHomeSummaryRequest {}
+
+// VolunteerHomeSummaryResponse 志愿者首页摘要响应（志愿者端）
+message VolunteerHomeSummaryResponse {
+  // 昵称
+  string nickname = 1;
+  // 当前等级ID
+  int32 level = 2;
+  // 统计信息
+  VolunteerHomeSummaryStats stats = 3;
+  // 本月成长值（工时增量）
+  double monthlyGrowth = 4;
+  // 距离下一等级还需工时
+  double needHoursToNextLevel = 5;
+}
+
+// VolunteerHomeSummaryStats 首页统计信息
+message VolunteerHomeSummaryStats {
+  // 总积分
+  int32 points = 1;
+  // 总工时
+  double hours = 2;
+  // 活动参与次数
+  int32 activityCount = 3;
 }
 
 // VolunteerInfo 志愿者信息

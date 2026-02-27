@@ -36,94 +36,292 @@ func NewAuditService(ctx context.Context, c *app.RequestContext) *AuditService {
 
 type ApprovalHandler func(*gorm.DB, *model.AuditRecord) error
 
-// VolunteerJoinOrgAuditList 查询志愿者加入组织的待审核列表并补充展示信息。
-func (s *AuditService) VolunteerJoinOrgAuditList(req *api.PendingVolunteerJoinOrgAuditListRequest) (*api.PendingVolunteerJoinOrgAuditListResponse, error) {
+// PendingAuditList 查询统一待审核列表（按目标类型筛选）。
+func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.PendingAuditListResponse, error) {
 	if req == nil {
-		log.Warn("待审核列表查询失败: 请求为空")
+		log.Warn("统一待审核列表查询失败: 请求为空")
 		return nil, errors.New("请求不能为空")
 	}
 
-	resp := &api.PendingVolunteerJoinOrgAuditListResponse{}
-
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 20
-	}
-
-	auditMap := map[string]any{
-		"target_type = ?": model.AuditTypeVolunteerJoinOrganization,
-	}
-	if len(req.Status) > 0 {
-		auditMap["status in (?)"] = req.Status
-	}
-
-	offset := req.PageSize * (req.Page - 1)
-	auditRecords, total, err := s.repo.GetAuditRecordsList(s.repo.DB, auditMap, req.PageSize, offset)
-	if err != nil {
-		log.Error("待审核列表查询失败: %v, page=%d, pageSize=%d, status=%v", err, req.Page, req.PageSize, req.Status)
+	// 仅组织管理员可查看统一待审核列表。
+	if _, err := s.getAuditOperatorID(); err != nil {
+		log.Warn("统一待审核列表查询失败: 权限校验失败: %v", err)
 		return nil, err
 	}
+
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	targetType, err := normalizeAuditTargetType(req.TargetType)
+	if err != nil {
+		log.Warn("统一待审核列表查询失败: target_type参数无效: %v", err)
+		return nil, err
+	}
+	statuses, err := normalizeAuditStatuses(req.Status)
+	if err != nil {
+		log.Warn("统一待审核列表查询失败: status参数无效: %v", err)
+		return nil, err
+	}
+
+	queryMap := map[string]any{
+		"target_type = ?": targetType,
+		"status in (?)":   statuses,
+	}
+
+	keyword := strings.TrimSpace(req.Keyword)
+	resp := &api.PendingAuditListResponse{
+		List: make([]*api.PendingAuditItem, 0),
+	}
+
+	if keyword != "" {
+		matchedIDs, matchErr := s.searchPendingAuditRecordIDsByKeyword(targetType, statuses, keyword)
+		if matchErr != nil {
+			log.Error("统一待审核列表查询失败: 关键词匹配异常: %v, target_type=%d keyword=%q", matchErr, targetType, keyword)
+			return nil, matchErr
+		}
+		if len(matchedIDs) == 0 {
+			return resp, nil
+		}
+		queryMap["id in (?)"] = matchedIDs
+	}
+
+	offset := pageSize * (page - 1)
+	records, total, listErr := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, pageSize, offset)
+	if listErr != nil {
+		log.Error("统一待审核列表查询失败: 查询审核记录异常: %v, page=%d page_size=%d", listErr, page, pageSize)
+		return nil, listErr
+	}
+
 	if total == 0 {
 		return resp, nil
 	}
+	resp.Total = int32(total)
+	resp.List = s.buildPendingAuditItems(records)
+	return resp, nil
+}
 
-	items := make([]*api.PendingVolunteerJoinOrgAuditItem, 0, len(auditRecords))
-	for _, record := range auditRecords {
+// normalizeAuditTargetType 校验并返回审核目标类型。
+func normalizeAuditTargetType(input int32) (int32, error) {
+	if !model.IsValidAuditTargetType(input) {
+		return 0, errors.New("审核目标类型不合法")
+	}
+	return input, nil
+}
+
+// normalizeAuditStatuses 归一化审核状态筛选条件（空值默认待审核）。
+func normalizeAuditStatuses(input []int32) ([]int32, error) {
+	if len(input) == 0 {
+		return []int32{model.AuditStatusPending}, nil
+	}
+
+	result := make([]int32, 0, len(input))
+	seen := make(map[int32]struct{}, len(input))
+	for _, status := range input {
+		if status != model.AuditStatusPending &&
+			status != model.AuditStatusApproved &&
+			status != model.AuditStatusRejected {
+			return nil, errors.New("审核状态不合法")
+		}
+		if _, ok := seen[status]; ok {
+			continue
+		}
+		seen[status] = struct{}{}
+		result = append(result, status)
+	}
+	return result, nil
+}
+
+// buildPendingAuditItems 将审核记录列表转换为统一待审核返回项。
+func (s *AuditService) buildPendingAuditItems(records []*model.AuditRecord) []*api.PendingAuditItem {
+	items := make([]*api.PendingAuditItem, 0, len(records))
+	for _, record := range records {
 		if record == nil {
 			continue
 		}
-		if strings.TrimSpace(record.NewContent) == "" {
-			continue
-		}
-
-		var snapshot model.OrgMember
-		if err := json.Unmarshal([]byte(record.NewContent), &snapshot); err != nil {
-			log.Warn("待审核记录快照解析失败: record_id=%d", record.ID)
-			return nil, errors.New("成员关系快照无效")
-		}
-		if snapshot.VolunteerID <= 0 || snapshot.OrgID <= 0 {
-			log.Warn("待审核记录快照字段无效: record_id=%d volunteer_id=%d org_id=%d", record.ID, snapshot.VolunteerID, snapshot.OrgID)
-			return nil, errors.New("成员关系快照无效")
-		}
-
-		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, snapshot.VolunteerID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Warn("待审核记录关联志愿者不存在: record_id=%d volunteer_id=%d", record.ID, snapshot.VolunteerID)
-				return nil, errors.New("志愿者不存在")
-			}
-			log.Error("查询待审核记录关联志愿者失败: %v, record_id=%d volunteer_id=%d", err, record.ID, snapshot.VolunteerID)
-			return nil, err
-		}
-
-		organization, err := s.repo.GetOrganizationByID(s.repo.DB, snapshot.OrgID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Warn("待审核记录关联组织不存在: record_id=%d org_id=%d", record.ID, snapshot.OrgID)
-				return nil, errors.New("组织不存在")
-			}
-			log.Error("查询待审核记录关联组织失败: %v, record_id=%d org_id=%d", err, record.ID, snapshot.OrgID)
-			return nil, err
-		}
-
-		targetID := record.TargetID
-		if targetID <= 0 {
-			targetID = snapshot.ID
-		}
-		items = append(items, &api.PendingVolunteerJoinOrgAuditItem{
-			TargetId:  targetID,
-			Status:    record.Status,
-			Title:     volunteer.RealName,
-			SubTitle:  organization.OrgName,
-			CreatedAt: record.CreatedAt.Format(util.DateTimeLayout),
+		title, subTitle := s.resolvePendingAuditTitle(record)
+		items = append(items, &api.PendingAuditItem{
+			Id:         record.ID,
+			TargetType: record.TargetType,
+			TargetId:   record.TargetID,
+			Title:      title,
+			SubTitle:   subTitle,
+			CreatorId:  record.CreatorID,
+			CreatedAt:  record.CreatedAt.Format(util.DateTimeLayout),
 		})
 	}
+	return items
+}
 
-	resp.Total = int32(total)
-	resp.List = items
-	return resp, nil
+// searchPendingAuditRecordIDsByKeyword 通过标题/副标题匹配获取审核记录主键ID集合。
+func (s *AuditService) searchPendingAuditRecordIDsByKeyword(targetType int32, statuses []int32, keyword string) ([]int64, error) {
+	queryMap := map[string]any{
+		"target_type = ?": targetType,
+		"status in (?)":   statuses,
+	}
+	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	matchedIDs := make([]int64, 0, len(records))
+	for _, record := range records {
+		if record == nil {
+			continue
+		}
+		title, subTitle := s.resolvePendingAuditTitle(record)
+		if matchAuditKeyword(title, subTitle, keyword) {
+			matchedIDs = append(matchedIDs, record.ID)
+		}
+	}
+	return matchedIDs, nil
+}
+
+// matchAuditKeyword 判断标题与副标题是否命中关键词。
+func matchAuditKeyword(title, subTitle, keyword string) bool {
+	trimmed := strings.TrimSpace(keyword)
+	if trimmed == "" {
+		return true
+	}
+	keywordLower := strings.ToLower(trimmed)
+	return strings.Contains(strings.ToLower(title), keywordLower) ||
+		strings.Contains(strings.ToLower(subTitle), keywordLower)
+}
+
+// resolvePendingAuditTitle 按审核目标类型分发标题解析逻辑。
+func (s *AuditService) resolvePendingAuditTitle(record *model.AuditRecord) (string, string) {
+	switch record.TargetType {
+	case model.AuditTargetMember:
+		return s.resolveMemberAuditTitle(record)
+	case model.AuditTargetSignup:
+		return s.resolveSignupAuditTitle(record)
+	case model.AuditTargetVolunteer:
+		return s.resolveVolunteerAuditTitle(record)
+	case model.AuditTargetOrg:
+		return s.resolveOrganizationAuditTitle(record)
+	default:
+		return "审核记录", "未知审核类型"
+	}
+}
+
+// resolveVolunteerAuditTitle 构建志愿者审核项的标题与副标题。
+func (s *AuditService) resolveVolunteerAuditTitle(record *model.AuditRecord) (string, string) {
+	title := ""
+	if record.TargetID > 0 {
+		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, record.TargetID)
+		if err == nil && volunteer != nil {
+			title = volunteer.RealName
+		}
+	}
+
+	subTitle := "志愿者资料审核"
+	scene, data, isEnvelope, err := parseAuditSnapshotEnvelope(record.NewContent)
+	if err == nil && isEnvelope {
+		switch scene {
+		case model.AuditSceneVolunteerRealNameVerify:
+			subTitle = "志愿者实名认证"
+		case model.AuditSceneVolunteerProfileUpdate:
+			subTitle = "志愿者资料变更"
+		}
+
+		if title == "" && scene == model.AuditSceneVolunteerRealNameVerify {
+			var payload VolunteerRealNameVerifyAuditPayload
+			if unmarshalErr := json.Unmarshal(data, &payload); unmarshalErr == nil {
+				title = strings.TrimSpace(payload.RealName)
+			}
+		}
+	}
+
+	if title == "" {
+		title = "志愿者审核"
+	}
+	return title, subTitle
+}
+
+// resolveOrganizationAuditTitle 构建组织审核项的标题与副标题。
+func (s *AuditService) resolveOrganizationAuditTitle(record *model.AuditRecord) (string, string) {
+	title := ""
+	if record.TargetID > 0 {
+		organization, err := s.repo.GetOrganizationByID(s.repo.DB, record.TargetID)
+		if err == nil && organization != nil {
+			title = organization.OrgName
+		}
+	}
+	if title == "" {
+		title = "组织审核"
+	}
+	return title, "组织资质审核"
+}
+
+// resolveMemberAuditTitle 构建加入组织审核项的标题与副标题。
+func (s *AuditService) resolveMemberAuditTitle(record *model.AuditRecord) (string, string) {
+	var member model.OrgMember
+	memberID := record.TargetID
+	if strings.TrimSpace(record.NewContent) != "" {
+		_ = json.Unmarshal([]byte(record.NewContent), &member)
+	}
+	if memberID > 0 && (member.VolunteerID <= 0 || member.OrgID <= 0) {
+		memberEntity, err := s.repo.GetMembershipByID(s.repo.DB, memberID)
+		if err == nil && memberEntity != nil {
+			member = *memberEntity
+		}
+	}
+
+	title := "加入组织审核"
+	if member.VolunteerID > 0 {
+		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, member.VolunteerID)
+		if err == nil && volunteer != nil && strings.TrimSpace(volunteer.RealName) != "" {
+			title = volunteer.RealName
+		}
+	}
+
+	subTitle := "组织信息"
+	if member.OrgID > 0 {
+		organization, err := s.repo.GetOrganizationByID(s.repo.DB, member.OrgID)
+		if err == nil && organization != nil && strings.TrimSpace(organization.OrgName) != "" {
+			subTitle = organization.OrgName
+		}
+	}
+	return title, subTitle
+}
+
+// resolveSignupAuditTitle 构建活动报名审核项的标题与副标题。
+func (s *AuditService) resolveSignupAuditTitle(record *model.AuditRecord) (string, string) {
+	var signup model.ActivitySignup
+	if strings.TrimSpace(record.NewContent) != "" {
+		_ = json.Unmarshal([]byte(record.NewContent), &signup)
+	}
+	if record.TargetID > 0 && (signup.ActivityID <= 0 || signup.VolunteerID <= 0) {
+		signupEntity, err := s.repo.GetActivitySignupByID(s.repo.DB, record.TargetID)
+		if err == nil && signupEntity != nil {
+			signup = *signupEntity
+		}
+	}
+
+	title := "活动报名审核"
+	if signup.VolunteerID > 0 {
+		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, signup.VolunteerID)
+		if err == nil && volunteer != nil && strings.TrimSpace(volunteer.RealName) != "" {
+			title = volunteer.RealName
+		}
+	}
+
+	subTitle := "活动信息"
+	if signup.ActivityID > 0 {
+		activity, err := s.repo.GetActivityByID(s.repo.DB, signup.ActivityID)
+		if err == nil && activity != nil && strings.TrimSpace(activity.Title) != "" {
+			subTitle = activity.Title
+		}
+	}
+	return title, subTitle
 }
 
 // AuditApproval 审核通过指定记录并执行对应审核目标的通过逻辑。

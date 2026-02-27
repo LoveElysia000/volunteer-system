@@ -306,9 +306,24 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 			return err
 		}
 
+		levelID, err := s.repo.ResolveLevelIDByTotalHours(tx, afterHours)
+		if err != nil {
+			return err
+		}
+
 		if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]interface{}{
 			"total_hours":   afterHours,
 			"service_count": int32(afterCount),
+			"level_id":      levelID,
+		}); err != nil {
+			return err
+		}
+
+		if err := s.repo.CreateRecord(tx, &model.Record{
+			VolunteerID: signup.VolunteerID,
+			Type:        "HOUR",
+			Amount:      hoursDelta,
+			CreateTime:  logItem.CreatedAt,
 		}); err != nil {
 			return err
 		}
@@ -527,9 +542,24 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 			return err
 		}
 
+		levelID, err := s.repo.ResolveLevelIDByTotalHours(tx, afterHours)
+		if err != nil {
+			return err
+		}
+
 		if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]interface{}{
 			"total_hours":   afterHours,
 			"service_count": int32(afterCount),
+			"level_id":      levelID,
+		}); err != nil {
+			return err
+		}
+
+		if err := s.repo.CreateRecord(tx, &model.Record{
+			VolunteerID: signup.VolunteerID,
+			Type:        "HOUR",
+			Amount:      hoursDelta,
+			CreateTime:  logItem.CreatedAt,
 		}); err != nil {
 			return err
 		}

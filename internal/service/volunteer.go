@@ -226,6 +226,72 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 	return resp, nil
 }
 
+// VolunteerHomeSummary 志愿者首页摘要（志愿者端）
+func (s *VolunteerService) VolunteerHomeSummary(_ *api.VolunteerHomeSummaryRequest) (*api.VolunteerHomeSummaryResponse, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("查询志愿者首页摘要失败: 获取当前用户ID失败: %v", err)
+		return nil, err
+	}
+
+	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("志愿者信息不存在")
+		}
+		log.Error("查询志愿者首页摘要失败: 查询志愿者异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+	if volunteer == nil {
+		return nil, errors.New("志愿者信息不存在")
+	}
+
+	nickname := volunteer.RealName
+	account, err := s.repo.FindByID(s.repo.DB, userID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("查询志愿者首页摘要失败: 查询账号异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteer.ID)
+			return nil, err
+		}
+	} else if account != nil && account.Username != "" {
+		nickname = account.Username
+	}
+
+	now := time.Now()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	nextMonthStart := monthStart.AddDate(0, 1, 0)
+	monthlyGrowth, err := s.repo.SumRecordAmountByTypeAndTime(s.repo.DB, volunteer.ID, "HOUR", monthStart, nextMonthStart)
+	if err != nil {
+		log.Error("查询志愿者首页摘要失败: 查询月增长异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteer.ID)
+		return nil, err
+	}
+
+	needHoursToNextLevel := 0.0
+	nextLevelRule, err := s.repo.FindNextLevelRuleByTotalHours(s.repo.DB, volunteer.TotalHours)
+	if err != nil {
+		log.Error("查询志愿者首页摘要失败: 查询下一等级规则异常: %v, user_id=%d volunteer_id=%d total_hours=%.1f", err, userID, volunteer.ID, volunteer.TotalHours)
+		return nil, err
+	}
+	if nextLevelRule != nil {
+		needHoursToNextLevel = float64(nextLevelRule.ThresholdHours) - volunteer.TotalHours
+		if needHoursToNextLevel < 0 {
+			needHoursToNextLevel = 0
+		}
+	}
+
+	return &api.VolunteerHomeSummaryResponse{
+		Nickname: nickname,
+		Level:    volunteer.LevelID,
+		Stats: &api.VolunteerHomeSummaryStats{
+			Points:        volunteer.TotalPoints,
+			Hours:         volunteer.TotalHours,
+			ActivityCount: volunteer.ServiceCount,
+		},
+		MonthlyGrowth:        monthlyGrowth,
+		NeedHoursToNextLevel: needHoursToNextLevel,
+	}, nil
+}
+
 func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*api.VolunteerUpdateResponse, error) {
 	// 参数校验 + 构建更新查询
 	if req.VolunteerId <= 0 {

@@ -11,10 +11,10 @@ option go_package = "volunteer-system/internal/api;api";
 service AuditService {
   option (google.api.default_host) = "0.0.0.0:8080";
 
-  // 获取志愿者加入组织待审核列表（支持关键词和分页筛选）
-  rpc PendingVolunteerJoinOrgAuditList(PendingVolunteerJoinOrgAuditListRequest) returns (PendingVolunteerJoinOrgAuditListResponse) {
+  // 统一待审核列表（按目标类型筛选）
+  rpc PendingAuditList(PendingAuditListRequest) returns (PendingAuditListResponse) {
     option (google.api.http) = {
-      post: "/api/audits/volunteer-join-org/pending"
+      post: "/api/audits/pending"
     };
   }
 
@@ -42,38 +42,44 @@ service AuditService {
   }
 }
 
-// 志愿者加入组织待审核列表查询参数
-message PendingVolunteerJoinOrgAuditListRequest {
+// 统一待审核列表查询参数
+message PendingAuditListRequest {
+  // 审核目标类型（单值） @gotags: query:"targetType"
+  int32 targetType = 1;
+  // 审核状态集合 @gotags: query:"status"
+  repeated int32 status = 2;
   // 标题/副标题关键词 @gotags: query:"keyword"
-  string keyword = 1;
-  // 页码（从 1 开始） @gotags: query:"page"
-  int32 page = 2;
+  string keyword = 3;
+  // 页码（从1开始） @gotags: query:"page"
+  int32 page = 4;
   // 每页条数 @gotags: query:"pageSize"
-  int32 pageSize = 3;
-  // 审核状态 @gotags: query:"status"
-  repeated int32 status = 4;
+  int32 pageSize = 5;
 }
 
-// 志愿者加入组织待审核列表查询结果
-message PendingVolunteerJoinOrgAuditListResponse {
+// 统一待审核列表查询结果
+message PendingAuditListResponse {
   // 总记录数
   int32 total = 1;
   // 当前页数据
-  repeated PendingVolunteerJoinOrgAuditItem list = 2;
+  repeated PendingAuditItem list = 2;
 }
 
-// 志愿者加入组织待审核对象摘要信息
-message PendingVolunteerJoinOrgAuditItem {
-  // 审核目标 ID（org_members.id）
-  int64 targetId = 1;
-  // 当前审核状态（业务侧约定枚举值）
-  int32 status = 2;
+// 统一待审核项
+message PendingAuditItem {
+  // 审核记录ID
+  int64 id = 1;
+  // 审核目标类型
+  int32 targetType = 2;
+  // 审核目标ID
+  int64 targetId = 3;
   // 主标题
-  string title = 3;
+  string title = 4;
   // 副标题
-  string subTitle = 4;
-  // 创建时间（字符串时间格式由服务端统一约定）
-  string createdAt = 5;
+  string subTitle = 5;
+  // 提交人账号ID
+  int64 creatorId = 6;
+  // 创建时间
+  string createdAt = 7;
 }
 
 // 执行审核请求参数

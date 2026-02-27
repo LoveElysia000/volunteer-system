@@ -51,6 +51,20 @@ func MyProfile(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+func VolunteerHomeSummary(ctx context.Context, c *app.RequestContext) {
+	var req api.VolunteerHomeSummaryRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewVolunteerService(ctx, c).VolunteerHomeSummary(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func VolunteerUpdate(ctx context.Context, c *app.RequestContext) {
 	var req api.VolunteerUpdateRequest
 	if err := c.BindAndValidate(&req); err != nil {

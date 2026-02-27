@@ -1,6 +1,6 @@
 # 志愿者端与管理员端接口清单（待补功能版）
 
-更新时间：2026-02-26
+更新时间：2026-02-27
 适用范围：`/Users/Ein/project2/volunteer-system`
 
 ## 1. 说明
@@ -21,7 +21,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
-| 实现状态 | ❌ 未实现 |
+| 实现状态 | 🟡 部分完成（接口与核心字段已实现；`records` 历史回填/来源追踪仍待补） |
 | 新增 API | `GET /api/volunteers/home/summary` |
 | 请求参数 | 无（从 token 获取当前账号） |
 | 响应字段 | `nickname` `level` `stats.points` `stats.hours` `stats.activityCount` `monthlyGrowth` `needHoursToNextLevel` |
@@ -103,6 +103,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ✅ 已实现（新增统一多目标待审接口：`POST /api/audits/pending`） |
 | 新增 API | `POST /api/audits/pending` |
 | 请求参数 | `targetType[]` `status[]` `keyword` `page` `pageSize` |
 | 响应字段 | `id` `targetType` `targetId` `title` `subTitle` `creatorId` `createdAt` |
@@ -118,13 +119,15 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
-| 新增 API | `POST /api/audits/approval/batch` `POST /api/audits/rejection/batch` |
-| 请求参数 | `ids[]` `reason` |
-| 响应字段 | `successCount` `failedIds[]` |
-| 权限 | 组织管理员，且仅可操作本组织活动报名审核单 |
+| 实现状态 | ❎ 不实施（保留单条审核策略：`POST /api/audits/approval`、`POST /api/audits/rejection`） |
+| 新增 API | 无（不新增批处理接口） |
+| 请求参数 | 复用现有单条审核参数：`id` `reason` |
+| 响应字段 | 复用现有单条审核响应 |
+| 权限 | 组织管理员，且仅可操作本组织活动报名审核单（单条） |
 | 依赖表 | `audit_records` `activity_signups` `activities` |
 | 迁移建议 | 无 |
-| 代码落点 | `internal/api/audit.proto` `internal/service/audit.go` |
+| 代码落点 | 维持现有实现：`internal/api/audit.proto` `internal/service/audit.go` |
+| 决策说明 | 审核采用单条操作，降低误审风险并简化权限与失败处理 |
 
 ---
 
@@ -133,6 +136,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ✅ 已实现（`disable/enable` 已联动 `sys_accounts.status`） |
 | 现有 API | `POST /api/organizations/:id/disable` `POST /api/organizations/:id/enable`（升级） |
 | 行为要求 | 停用组织时同步设置 `sys_accounts.status=0`；启用时恢复 `1` |
 | 权限 | 组织管理员/平台管理员（按你当前权限模型收敛） |
@@ -147,6 +151,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P0 |
+| 实现状态 | ❎ 不实施（当前阶段不纳入） |
 | 任务类型 | 定时任务（非 HTTP） |
 | 触发周期 | 每小时一次 |
 | 逻辑 | `start_time < NOW() and status=1` -> 更新为 `status=2` |
@@ -154,6 +159,7 @@
 | 依赖表 | `activities` |
 | 迁移建议 | 无 |
 | 代码落点 | `cmd/main.go`（注册任务）+ `internal/service/activities.go`（归档方法） |
+| 决策说明 | 当前版本优先保障核心业务链路，自动归档任务后置 |
 
 ---
 
@@ -164,6 +170,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P1 |
+| 实现状态 | 🟡 部分完成（仅导出已实现，且为 `POST /api/admin/export/*`；导入与任务查询未实现） |
 | 新增 API | `POST /api/admin/import/volunteers` `POST /api/admin/import/activities` `GET /api/admin/import/tasks/:id` `GET /api/admin/export/volunteers` `GET /api/admin/export/activities` |
 | 请求参数 | 文件上传/筛选条件 |
 | 响应字段 | 导入任务ID、失败行回执、导出下载链接 |
@@ -177,6 +184,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P1 |
+| 实现状态 | ❌ 未实现 |
 | 新增 API | `POST /api/certificates/templates` `PUT /api/certificates/templates/:id` `POST /api/certificates/generate` `GET /api/certificates/:id/download` |
 | 请求参数 | 模板内容、活动/志愿者范围 |
 | 响应字段 | `certificateId` `downloadUrl` |
@@ -190,6 +198,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P1 |
+| 实现状态 | ❌ 未实现 |
 | 新增 API | `GET /api/notifications` `POST /api/notifications/read` |
 | 请求参数 | 分页、是否未读 |
 | 响应字段 | `title` `content` `bizType` `bizId` `readStatus` `createdAt` |
@@ -203,11 +212,28 @@
 | 项目 | 内容 |
 | --- | --- |
 | 优先级 | P1 |
+| 实现状态 | ❌ 未实现 |
 | 新增 API | `GET /api/activities/recommend` |
 | 请求参数 | `page` `pageSize` |
 | 响应字段 | 活动列表 + `recommendReason` |
 | 依赖表 | 轻量规则版可先不改表；AI版需 `activities.embedding_vector` |
 | 代码落点 | `internal/service/activities.go` 或独立 `recommend_service.go` |
+
+---
+
+### 4.5 组织批量停启（运营增强）
+
+| 项目 | 内容 |
+| --- | --- |
+| 优先级 | P1 |
+| 实现状态 | ❌ 未实现 |
+| 新增 API | `POST /api/organizations/batch-disable` `POST /api/organizations/batch-enable` |
+| 请求参数 | `ids[]` `reason` |
+| 响应字段 | `successCount` `failedIds[]` |
+| 权限 | 组织管理员/平台管理员（按权限模型收敛） |
+| 依赖表 | `organizations` `sys_accounts` |
+| 迁移建议 | 无 |
+| 代码落点 | `internal/api/organization.proto` `internal/service/organization.go` `internal/repository/organization.go` `internal/repository/user.go` |
 
 ---
 
@@ -231,6 +257,6 @@
 
 ### 6.2 管理员端
 1. 审核中心可按目标类型筛选，并可完成审批
-2. 批量审批报名记录后，活动人数与报名状态一致
+2. 单条审批报名记录后，活动人数与报名状态一致
 3. 停用组织后账号权限立即受限，启用后恢复
-4. 定时归档任务执行后，过期活动状态自动变更
+4. 定时归档任务不纳入当前版本验收

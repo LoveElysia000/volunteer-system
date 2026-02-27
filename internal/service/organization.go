@@ -287,9 +287,15 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 	if organization == nil {
 		return nil, errors.New("组织不存在")
 	}
+	if organization.AccountID <= 0 {
+		return nil, errors.New("组织账号信息异常")
+	}
 
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationDisabled}); err != nil {
+			return err
+		}
+		if err := s.repo.UpdateAccountStatusByID(tx, organization.AccountID, model.SysAccountNotNormal); err != nil {
 			return err
 		}
 		return nil
@@ -322,9 +328,15 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 	if organization == nil {
 		return nil, errors.New("组织不存在")
 	}
+	if organization.AccountID <= 0 {
+		return nil, errors.New("组织账号信息异常")
+	}
 
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationNormal}); err != nil {
+			return err
+		}
+		if err := s.repo.UpdateAccountStatusByID(tx, organization.AccountID, model.SysAccountNormal); err != nil {
 			return err
 		}
 		return nil

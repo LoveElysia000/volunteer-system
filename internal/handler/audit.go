@@ -9,14 +9,15 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
-func PendingVolunteerJoinOrgAuditList(ctx context.Context, c *app.RequestContext) {
-	var req api.PendingVolunteerJoinOrgAuditListRequest
+// PendingAuditList 处理统一待审核列表查询请求。
+func PendingAuditList(ctx context.Context, c *app.RequestContext) {
+	var req api.PendingAuditListRequest
 	if err := c.BindAndValidate(&req); err != nil {
 		response.Fail(c, err)
 		return
 	}
 
-	data, err := service.NewAuditService(ctx, c).VolunteerJoinOrgAuditList(&req)
+	data, err := service.NewAuditService(ctx, c).PendingAuditList(&req)
 	if err != nil {
 		response.Fail(c, err)
 		return
@@ -24,6 +25,7 @@ func PendingVolunteerJoinOrgAuditList(ctx context.Context, c *app.RequestContext
 	response.Success(c, data)
 }
 
+// AuditApproval 处理审核通过请求。
 func AuditApproval(ctx context.Context, c *app.RequestContext) {
 	var req api.AuditApprovalRequest
 	if err := c.BindAndValidate(&req); err != nil {
@@ -39,6 +41,7 @@ func AuditApproval(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+// AuditRejection 处理审核驳回请求。
 func AuditRejection(ctx context.Context, c *app.RequestContext) {
 	var req api.AuditRejectionRequest
 	if err := c.BindAndValidate(&req); err != nil {
@@ -54,6 +57,7 @@ func AuditRejection(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+// AuditRecordDetail 处理审核记录详情查询请求。
 func AuditRecordDetail(ctx context.Context, c *app.RequestContext) {
 	var req api.AuditRecordDetailRequest
 	if err := c.BindAndValidate(&req); err != nil {
