@@ -1319,6 +1319,244 @@ func (x *BulkDeleteOrganizationResponse) GetMessage() string {
 	return ""
 }
 
+// BatchDisableOrganizationRequest 批量停用组织请求
+type BatchDisableOrganizationRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 组织ID列表 必填 @gotags: json:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	// 停用原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchDisableOrganizationRequest) Reset() {
+	*x = BatchDisableOrganizationRequest{}
+	mi := &file_internal_api_organization_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchDisableOrganizationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchDisableOrganizationRequest) ProtoMessage() {}
+
+func (x *BatchDisableOrganizationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_organization_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchDisableOrganizationRequest.ProtoReflect.Descriptor instead.
+func (*BatchDisableOrganizationRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *BatchDisableOrganizationRequest) GetIds() []int64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+func (x *BatchDisableOrganizationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// BatchDisableOrganizationResponse 批量停用组织响应
+type BatchDisableOrganizationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 成功处理的数量
+	SuccessCount int32 `protobuf:"varint,1,opt,name=successCount,proto3" json:"successCount"`
+	// 失败的组织ID列表
+	FailedIds []int64 `protobuf:"varint,2,rep,packed,name=failedIds,proto3" json:"failedIds"`
+	// 消息
+	Message       string `protobuf:"bytes,3,opt,name=message,proto3" json:"message"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchDisableOrganizationResponse) Reset() {
+	*x = BatchDisableOrganizationResponse{}
+	mi := &file_internal_api_organization_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchDisableOrganizationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchDisableOrganizationResponse) ProtoMessage() {}
+
+func (x *BatchDisableOrganizationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_organization_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchDisableOrganizationResponse.ProtoReflect.Descriptor instead.
+func (*BatchDisableOrganizationResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *BatchDisableOrganizationResponse) GetSuccessCount() int32 {
+	if x != nil {
+		return x.SuccessCount
+	}
+	return 0
+}
+
+func (x *BatchDisableOrganizationResponse) GetFailedIds() []int64 {
+	if x != nil {
+		return x.FailedIds
+	}
+	return nil
+}
+
+func (x *BatchDisableOrganizationResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// BatchEnableOrganizationRequest 批量启用组织请求
+type BatchEnableOrganizationRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 组织ID列表 必填 @gotags: json:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	// 启用原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchEnableOrganizationRequest) Reset() {
+	*x = BatchEnableOrganizationRequest{}
+	mi := &file_internal_api_organization_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchEnableOrganizationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchEnableOrganizationRequest) ProtoMessage() {}
+
+func (x *BatchEnableOrganizationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_organization_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchEnableOrganizationRequest.ProtoReflect.Descriptor instead.
+func (*BatchEnableOrganizationRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *BatchEnableOrganizationRequest) GetIds() []int64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+func (x *BatchEnableOrganizationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// BatchEnableOrganizationResponse 批量启用组织响应
+type BatchEnableOrganizationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 成功处理的数量
+	SuccessCount int32 `protobuf:"varint,1,opt,name=successCount,proto3" json:"successCount"`
+	// 失败的组织ID列表
+	FailedIds []int64 `protobuf:"varint,2,rep,packed,name=failedIds,proto3" json:"failedIds"`
+	// 消息
+	Message       string `protobuf:"bytes,3,opt,name=message,proto3" json:"message"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchEnableOrganizationResponse) Reset() {
+	*x = BatchEnableOrganizationResponse{}
+	mi := &file_internal_api_organization_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchEnableOrganizationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchEnableOrganizationResponse) ProtoMessage() {}
+
+func (x *BatchEnableOrganizationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_organization_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchEnableOrganizationResponse.ProtoReflect.Descriptor instead.
+func (*BatchEnableOrganizationResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *BatchEnableOrganizationResponse) GetSuccessCount() int32 {
+	if x != nil {
+		return x.SuccessCount
+	}
+	return 0
+}
+
+func (x *BatchEnableOrganizationResponse) GetFailedIds() []int64 {
+	if x != nil {
+		return x.FailedIds
+	}
+	return nil
+}
+
+func (x *BatchEnableOrganizationResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 // DisableOrganizationRequest 停用组织请求
 type DisableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1332,7 +1570,7 @@ type DisableOrganizationRequest struct {
 
 func (x *DisableOrganizationRequest) Reset() {
 	*x = DisableOrganizationRequest{}
-	mi := &file_internal_api_organization_proto_msgTypes[16]
+	mi := &file_internal_api_organization_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1344,7 +1582,7 @@ func (x *DisableOrganizationRequest) String() string {
 func (*DisableOrganizationRequest) ProtoMessage() {}
 
 func (x *DisableOrganizationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_organization_proto_msgTypes[16]
+	mi := &file_internal_api_organization_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1357,7 +1595,7 @@ func (x *DisableOrganizationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableOrganizationRequest.ProtoReflect.Descriptor instead.
 func (*DisableOrganizationRequest) Descriptor() ([]byte, []int) {
-	return file_internal_api_organization_proto_rawDescGZIP(), []int{16}
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DisableOrganizationRequest) GetId() int64 {
@@ -1385,7 +1623,7 @@ type DisableOrganizationResponse struct {
 
 func (x *DisableOrganizationResponse) Reset() {
 	*x = DisableOrganizationResponse{}
-	mi := &file_internal_api_organization_proto_msgTypes[17]
+	mi := &file_internal_api_organization_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1397,7 +1635,7 @@ func (x *DisableOrganizationResponse) String() string {
 func (*DisableOrganizationResponse) ProtoMessage() {}
 
 func (x *DisableOrganizationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_organization_proto_msgTypes[17]
+	mi := &file_internal_api_organization_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1410,7 +1648,7 @@ func (x *DisableOrganizationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableOrganizationResponse.ProtoReflect.Descriptor instead.
 func (*DisableOrganizationResponse) Descriptor() ([]byte, []int) {
-	return file_internal_api_organization_proto_rawDescGZIP(), []int{17}
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DisableOrganizationResponse) GetMessage() string {
@@ -1433,7 +1671,7 @@ type EnableOrganizationRequest struct {
 
 func (x *EnableOrganizationRequest) Reset() {
 	*x = EnableOrganizationRequest{}
-	mi := &file_internal_api_organization_proto_msgTypes[18]
+	mi := &file_internal_api_organization_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1683,7 @@ func (x *EnableOrganizationRequest) String() string {
 func (*EnableOrganizationRequest) ProtoMessage() {}
 
 func (x *EnableOrganizationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_organization_proto_msgTypes[18]
+	mi := &file_internal_api_organization_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1696,7 @@ func (x *EnableOrganizationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableOrganizationRequest.ProtoReflect.Descriptor instead.
 func (*EnableOrganizationRequest) Descriptor() ([]byte, []int) {
-	return file_internal_api_organization_proto_rawDescGZIP(), []int{18}
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *EnableOrganizationRequest) GetId() int64 {
@@ -1486,7 +1724,7 @@ type EnableOrganizationResponse struct {
 
 func (x *EnableOrganizationResponse) Reset() {
 	*x = EnableOrganizationResponse{}
-	mi := &file_internal_api_organization_proto_msgTypes[19]
+	mi := &file_internal_api_organization_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1498,7 +1736,7 @@ func (x *EnableOrganizationResponse) String() string {
 func (*EnableOrganizationResponse) ProtoMessage() {}
 
 func (x *EnableOrganizationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_organization_proto_msgTypes[19]
+	mi := &file_internal_api_organization_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1511,7 +1749,7 @@ func (x *EnableOrganizationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableOrganizationResponse.ProtoReflect.Descriptor instead.
 func (*EnableOrganizationResponse) Descriptor() ([]byte, []int) {
-	return file_internal_api_organization_proto_rawDescGZIP(), []int{19}
+	return file_internal_api_organization_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *EnableOrganizationResponse) GetMessage() string {
@@ -1630,6 +1868,20 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x1eBulkDeleteOrganizationResponse\x12\"\n" +
 	"\fsuccessCount\x18\x01 \x01(\x05R\fsuccessCount\x12 \n" +
 	"\vfailedCount\x18\x02 \x01(\x05R\vfailedCount\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"K\n" +
+	"\x1fBatchDisableOrganizationRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x03R\x03ids\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"~\n" +
+	" BatchDisableOrganizationResponse\x12\"\n" +
+	"\fsuccessCount\x18\x01 \x01(\x05R\fsuccessCount\x12\x1c\n" +
+	"\tfailedIds\x18\x02 \x03(\x03R\tfailedIds\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"J\n" +
+	"\x1eBatchEnableOrganizationRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x03R\x03ids\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"}\n" +
+	"\x1fBatchEnableOrganizationResponse\x12\"\n" +
+	"\fsuccessCount\x18\x01 \x01(\x05R\fsuccessCount\x12\x1c\n" +
+	"\tfailedIds\x18\x02 \x03(\x03R\tfailedIds\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"D\n" +
 	"\x1aDisableOrganizationRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
@@ -1640,8 +1892,7 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"6\n" +
 	"\x1aEnableOrganizationResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xbb\n" +
-	"\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\x8b\r\n" +
 	"\x13OrganizationService\x12\x82\x01\n" +
 	"\x10OrganizationList\x12%.organization.OrganizationListRequest\x1a&.organization.OrganizationListResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\"\x17/api/organizations/list\x12\x87\x01\n" +
 	"\x12OrganizationDetail\x12'.organization.OrganizationDetailRequest\x1a(.organization.OrganizationDetailResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/organizations/:id\x12\x8d\x01\n" +
@@ -1651,7 +1902,9 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x13DisableOrganization\x12(.organization.DisableOrganizationRequest\x1a).organization.DisableOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/:id/disable\x12\x91\x01\n" +
 	"\x12EnableOrganization\x12'.organization.EnableOrganizationRequest\x1a(.organization.EnableOrganizationResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/organizations/:id/enable\x12\x8e\x01\n" +
 	"\x13SearchOrganizations\x12'.organization.OrganizationSearchRequest\x1a(.organization.OrganizationSearchResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/organizations/search\x12\x9f\x01\n" +
-	"\x17BulkDeleteOrganizations\x12+.organization.BulkDeleteOrganizationRequest\x1a,.organization.BulkDeleteOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/bulk-delete\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
+	"\x17BulkDeleteOrganizations\x12+.organization.BulkDeleteOrganizationRequest\x1a,.organization.BulkDeleteOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/bulk-delete\x12\xa7\x01\n" +
+	"\x19BatchDisableOrganizations\x12-.organization.BatchDisableOrganizationRequest\x1a..organization.BatchDisableOrganizationResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/organizations/batch-disable\x12\xa3\x01\n" +
+	"\x18BatchEnableOrganizations\x12,.organization.BatchEnableOrganizationRequest\x1a-.organization.BatchEnableOrganizationResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/organizations/batch-enable\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (
 	file_internal_api_organization_proto_rawDescOnce sync.Once
@@ -1665,28 +1918,32 @@ func file_internal_api_organization_proto_rawDescGZIP() []byte {
 	return file_internal_api_organization_proto_rawDescData
 }
 
-var file_internal_api_organization_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_internal_api_organization_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_internal_api_organization_proto_goTypes = []any{
-	(*OrganizationListRequest)(nil),        // 0: organization.OrganizationListRequest
-	(*OrganizationListResponse)(nil),       // 1: organization.OrganizationListResponse
-	(*OrganizationListItem)(nil),           // 2: organization.OrganizationListItem
-	(*OrganizationDetailRequest)(nil),      // 3: organization.OrganizationDetailRequest
-	(*OrganizationDetailResponse)(nil),     // 4: organization.OrganizationDetailResponse
-	(*OrganizationInfo)(nil),               // 5: organization.OrganizationInfo
-	(*OrganizationCreateRequest)(nil),      // 6: organization.OrganizationCreateRequest
-	(*OrganizationCreateResponse)(nil),     // 7: organization.OrganizationCreateResponse
-	(*OrganizationUpdateRequest)(nil),      // 8: organization.OrganizationUpdateRequest
-	(*OrganizationUpdateResponse)(nil),     // 9: organization.OrganizationUpdateResponse
-	(*DeleteOrganizationRequest)(nil),      // 10: organization.DeleteOrganizationRequest
-	(*DeleteOrganizationResponse)(nil),     // 11: organization.DeleteOrganizationResponse
-	(*OrganizationSearchRequest)(nil),      // 12: organization.OrganizationSearchRequest
-	(*OrganizationSearchResponse)(nil),     // 13: organization.OrganizationSearchResponse
-	(*BulkDeleteOrganizationRequest)(nil),  // 14: organization.BulkDeleteOrganizationRequest
-	(*BulkDeleteOrganizationResponse)(nil), // 15: organization.BulkDeleteOrganizationResponse
-	(*DisableOrganizationRequest)(nil),     // 16: organization.DisableOrganizationRequest
-	(*DisableOrganizationResponse)(nil),    // 17: organization.DisableOrganizationResponse
-	(*EnableOrganizationRequest)(nil),      // 18: organization.EnableOrganizationRequest
-	(*EnableOrganizationResponse)(nil),     // 19: organization.EnableOrganizationResponse
+	(*OrganizationListRequest)(nil),          // 0: organization.OrganizationListRequest
+	(*OrganizationListResponse)(nil),         // 1: organization.OrganizationListResponse
+	(*OrganizationListItem)(nil),             // 2: organization.OrganizationListItem
+	(*OrganizationDetailRequest)(nil),        // 3: organization.OrganizationDetailRequest
+	(*OrganizationDetailResponse)(nil),       // 4: organization.OrganizationDetailResponse
+	(*OrganizationInfo)(nil),                 // 5: organization.OrganizationInfo
+	(*OrganizationCreateRequest)(nil),        // 6: organization.OrganizationCreateRequest
+	(*OrganizationCreateResponse)(nil),       // 7: organization.OrganizationCreateResponse
+	(*OrganizationUpdateRequest)(nil),        // 8: organization.OrganizationUpdateRequest
+	(*OrganizationUpdateResponse)(nil),       // 9: organization.OrganizationUpdateResponse
+	(*DeleteOrganizationRequest)(nil),        // 10: organization.DeleteOrganizationRequest
+	(*DeleteOrganizationResponse)(nil),       // 11: organization.DeleteOrganizationResponse
+	(*OrganizationSearchRequest)(nil),        // 12: organization.OrganizationSearchRequest
+	(*OrganizationSearchResponse)(nil),       // 13: organization.OrganizationSearchResponse
+	(*BulkDeleteOrganizationRequest)(nil),    // 14: organization.BulkDeleteOrganizationRequest
+	(*BulkDeleteOrganizationResponse)(nil),   // 15: organization.BulkDeleteOrganizationResponse
+	(*BatchDisableOrganizationRequest)(nil),  // 16: organization.BatchDisableOrganizationRequest
+	(*BatchDisableOrganizationResponse)(nil), // 17: organization.BatchDisableOrganizationResponse
+	(*BatchEnableOrganizationRequest)(nil),   // 18: organization.BatchEnableOrganizationRequest
+	(*BatchEnableOrganizationResponse)(nil),  // 19: organization.BatchEnableOrganizationResponse
+	(*DisableOrganizationRequest)(nil),       // 20: organization.DisableOrganizationRequest
+	(*DisableOrganizationResponse)(nil),      // 21: organization.DisableOrganizationResponse
+	(*EnableOrganizationRequest)(nil),        // 22: organization.EnableOrganizationRequest
+	(*EnableOrganizationResponse)(nil),       // 23: organization.EnableOrganizationResponse
 }
 var file_internal_api_organization_proto_depIdxs = []int32{
 	2,  // 0: organization.OrganizationListResponse.list:type_name -> organization.OrganizationListItem
@@ -1697,21 +1954,25 @@ var file_internal_api_organization_proto_depIdxs = []int32{
 	6,  // 5: organization.OrganizationService.CreateOrganization:input_type -> organization.OrganizationCreateRequest
 	8,  // 6: organization.OrganizationService.UpdateOrganization:input_type -> organization.OrganizationUpdateRequest
 	10, // 7: organization.OrganizationService.DeleteOrganization:input_type -> organization.DeleteOrganizationRequest
-	16, // 8: organization.OrganizationService.DisableOrganization:input_type -> organization.DisableOrganizationRequest
-	18, // 9: organization.OrganizationService.EnableOrganization:input_type -> organization.EnableOrganizationRequest
+	20, // 8: organization.OrganizationService.DisableOrganization:input_type -> organization.DisableOrganizationRequest
+	22, // 9: organization.OrganizationService.EnableOrganization:input_type -> organization.EnableOrganizationRequest
 	12, // 10: organization.OrganizationService.SearchOrganizations:input_type -> organization.OrganizationSearchRequest
 	14, // 11: organization.OrganizationService.BulkDeleteOrganizations:input_type -> organization.BulkDeleteOrganizationRequest
-	1,  // 12: organization.OrganizationService.OrganizationList:output_type -> organization.OrganizationListResponse
-	4,  // 13: organization.OrganizationService.OrganizationDetail:output_type -> organization.OrganizationDetailResponse
-	7,  // 14: organization.OrganizationService.CreateOrganization:output_type -> organization.OrganizationCreateResponse
-	9,  // 15: organization.OrganizationService.UpdateOrganization:output_type -> organization.OrganizationUpdateResponse
-	11, // 16: organization.OrganizationService.DeleteOrganization:output_type -> organization.DeleteOrganizationResponse
-	17, // 17: organization.OrganizationService.DisableOrganization:output_type -> organization.DisableOrganizationResponse
-	19, // 18: organization.OrganizationService.EnableOrganization:output_type -> organization.EnableOrganizationResponse
-	13, // 19: organization.OrganizationService.SearchOrganizations:output_type -> organization.OrganizationSearchResponse
-	15, // 20: organization.OrganizationService.BulkDeleteOrganizations:output_type -> organization.BulkDeleteOrganizationResponse
-	12, // [12:21] is the sub-list for method output_type
-	3,  // [3:12] is the sub-list for method input_type
+	16, // 12: organization.OrganizationService.BatchDisableOrganizations:input_type -> organization.BatchDisableOrganizationRequest
+	18, // 13: organization.OrganizationService.BatchEnableOrganizations:input_type -> organization.BatchEnableOrganizationRequest
+	1,  // 14: organization.OrganizationService.OrganizationList:output_type -> organization.OrganizationListResponse
+	4,  // 15: organization.OrganizationService.OrganizationDetail:output_type -> organization.OrganizationDetailResponse
+	7,  // 16: organization.OrganizationService.CreateOrganization:output_type -> organization.OrganizationCreateResponse
+	9,  // 17: organization.OrganizationService.UpdateOrganization:output_type -> organization.OrganizationUpdateResponse
+	11, // 18: organization.OrganizationService.DeleteOrganization:output_type -> organization.DeleteOrganizationResponse
+	21, // 19: organization.OrganizationService.DisableOrganization:output_type -> organization.DisableOrganizationResponse
+	23, // 20: organization.OrganizationService.EnableOrganization:output_type -> organization.EnableOrganizationResponse
+	13, // 21: organization.OrganizationService.SearchOrganizations:output_type -> organization.OrganizationSearchResponse
+	15, // 22: organization.OrganizationService.BulkDeleteOrganizations:output_type -> organization.BulkDeleteOrganizationResponse
+	17, // 23: organization.OrganizationService.BatchDisableOrganizations:output_type -> organization.BatchDisableOrganizationResponse
+	19, // 24: organization.OrganizationService.BatchEnableOrganizations:output_type -> organization.BatchEnableOrganizationResponse
+	14, // [14:25] is the sub-list for method output_type
+	3,  // [3:14] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -1728,7 +1989,7 @@ func file_internal_api_organization_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_api_organization_proto_rawDesc), len(file_internal_api_organization_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

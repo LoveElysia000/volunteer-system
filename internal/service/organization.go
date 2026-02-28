@@ -3,18 +3,22 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
+	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"gorm.io/gorm"
 )
 
 type OrganizationService struct {
 	Service
 }
+
+// maxBatchOrganizationStatusIDs limits each batch request to avoid oversized IN SQL and lock pressure.
+const maxBatchOrganizationStatusIDs = 500
 
 func NewOrganizationService(ctx context.Context, c *app.RequestContext) *OrganizationService {
 	if ctx == nil {
@@ -291,15 +295,7 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 		return nil, errors.New("组织账号信息异常")
 	}
 
-	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
-		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationDisabled}); err != nil {
-			return err
-		}
-		if err := s.repo.UpdateAccountStatusByID(tx, organization.AccountID, model.SysAccountNotNormal); err != nil {
-			return err
-		}
-		return nil
-	})
+	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationDisabled})
 	if err != nil {
 		log.Error("停用组织失败: %v, ID=%d", err, req.Id)
 		return nil, errors.New("停用组织失败")
@@ -332,15 +328,7 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 		return nil, errors.New("组织账号信息异常")
 	}
 
-	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
-		if err := s.repo.UpdateOrganization(tx, req.Id, map[string]any{"status": model.OrganizationNormal}); err != nil {
-			return err
-		}
-		if err := s.repo.UpdateAccountStatusByID(tx, organization.AccountID, model.SysAccountNormal); err != nil {
-			return err
-		}
-		return nil
-	})
+	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationNormal})
 	if err != nil {
 		log.Error("启用组织失败: %v, ID=%d", err, req.Id)
 		return nil, errors.New("启用组织失败")
@@ -454,4 +442,157 @@ func (s *OrganizationService) BulkDeleteOrganizations(req *api.BulkDeleteOrganiz
 		FailedCount:  int32(failedCount),
 		Message:      "批量删除完成",
 	}, nil
+}
+
+func (s *OrganizationService) BatchDisableOrganizations(req *api.BatchDisableOrganizationRequest) (*api.BatchDisableOrganizationResponse, error) {
+	successCount, failedIDs, err := s.batchChangeOrganizationStatus(req.Ids, req.Reason, model.OrganizationDisabled, "停用")
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.BatchDisableOrganizationResponse{
+		SuccessCount: int32(successCount),
+		FailedIds:    failedIDs,
+		Message:      "批量停用完成",
+	}, nil
+}
+
+func (s *OrganizationService) BatchEnableOrganizations(req *api.BatchEnableOrganizationRequest) (*api.BatchEnableOrganizationResponse, error) {
+	successCount, failedIDs, err := s.batchChangeOrganizationStatus(req.Ids, req.Reason, model.OrganizationNormal, "启用")
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.BatchEnableOrganizationResponse{
+		SuccessCount: int32(successCount),
+		FailedIds:    failedIDs,
+		Message:      "批量启用完成",
+	}, nil
+}
+
+func (s *OrganizationService) resolveOrgBatchOperatorID() (int64, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Warn("组织批量停启失败: 获取当前用户失败: %v", err)
+		return 0, err
+	}
+	if userID <= 0 {
+		return 0, errors.New("用户ID无效")
+	}
+
+	account, err := s.repo.FindByID(s.repo.DB, userID)
+	if err != nil {
+		log.Error("组织批量停启失败: 查询账号失败: %v, user_id=%d", err, userID)
+		return 0, errors.New("查询账号信息失败")
+	}
+
+	if account.IdentityType != model.RegisterTypeOrganizationCode {
+		return 0, errors.New("无权执行组织批量停启")
+	}
+	return userID, nil
+}
+
+func (s *OrganizationService) batchChangeOrganizationStatus(
+	ids []int64,
+	reason string,
+	orgStatus int32,
+	action string,
+) (int, []int64, error) {
+	// 步骤1：基础参数与操作者权限校验。
+	if len(ids) == 0 {
+		return 0, nil, errors.New("组织ID列表不能为空")
+	}
+	operatorID, err := s.resolveOrgBatchOperatorID()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	// 步骤2：归一化ID输入（记录无效ID失败、有效ID去重、校验批量上限）。
+	failed := make([]int64, 0)
+	for _, id := range ids {
+		if id <= 0 {
+			failed = append(failed, id)
+		}
+	}
+	validOrgIDs := util.UniquePositiveInt64(ids)
+	if len(validOrgIDs) == 0 {
+		log.Warn("组织批量%s失败: 组织ID均无效, reason=%q", action, reason)
+		return 0, failed, nil
+	}
+	// 基于去重后的有效ID做上限校验，防止批量请求过大导致SQL过长和锁压力升高。
+	if len(validOrgIDs) > maxBatchOrganizationStatusIDs {
+		return 0, nil, fmt.Errorf("组织ID数量超过上限(%d)", maxBatchOrganizationStatusIDs)
+	}
+
+	// 步骤3：批量加载组织快照，构建查询索引。
+	orgs, err := s.repo.GetOrganizationsByIDs(s.repo.DB, validOrgIDs)
+	if err != nil {
+		log.Error("组织批量%s失败: 查询组织失败: %v", action, err)
+		return 0, nil, errors.New("查询组织信息失败")
+	}
+	orgMap := make(map[int64]*model.Organization, len(orgs))
+	for _, org := range orgs {
+		if org == nil {
+			continue
+		}
+		orgMap[org.ID] = org
+	}
+
+	// 步骤4：逐条校验可操作性并构建执行计划。
+	plan := struct {
+		idempotentOK int
+		updOrgIDs    []int64
+	}{
+		updOrgIDs: make([]int64, 0, len(validOrgIDs)),
+	}
+	for _, orgID := range validOrgIDs {
+		org := orgMap[orgID]
+		if org == nil || org.AccountID <= 0 || org.AccountID != operatorID {
+			failed = append(failed, orgID)
+			continue
+		}
+
+		if org.Status == orgStatus {
+			plan.idempotentOK++
+			continue
+		}
+		plan.updOrgIDs = append(plan.updOrgIDs, org.ID)
+	}
+
+	// 步骤5：批量落库并汇总结果。
+	if len(plan.updOrgIDs) == 0 {
+		successCount := plan.idempotentOK
+		log.Info(
+			"组织批量%s完成: total=%d success=%d failed=%d reason=%q",
+			action,
+			len(validOrgIDs),
+			successCount,
+			len(failed),
+			reason,
+		)
+		return successCount, failed, nil
+	}
+
+	err = s.repo.BatchUpdateOrganizationStatusByIDs(s.repo.DB, plan.updOrgIDs, orgStatus)
+	if err != nil {
+		log.Error(
+			"组织批量%s失败: 批量更新状态异常: %v, org_count=%d",
+			action,
+			err,
+			len(plan.updOrgIDs),
+		)
+		failed = append(failed, plan.updOrgIDs...)
+		plan.updOrgIDs = plan.updOrgIDs[:0]
+	}
+
+	successCount := plan.idempotentOK + len(plan.updOrgIDs)
+	log.Info(
+		"组织批量%s完成: total=%d success=%d failed=%d reason=%q",
+		action,
+		len(validOrgIDs),
+		successCount,
+		len(failed),
+		reason,
+	)
+	return successCount, failed, nil
 }

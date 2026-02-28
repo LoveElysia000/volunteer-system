@@ -62,6 +62,17 @@ func (r *Repository) UpdateOrganization(db *gorm.DB, orgID int64, updates map[st
 	return nil
 }
 
+// BatchUpdateOrganizationStatusByIDs 根据组织ID列表批量更新组织状态。
+func (r *Repository) BatchUpdateOrganizationStatusByIDs(db *gorm.DB, orgIDs []int64, status int32) error {
+	if len(orgIDs) == 0 {
+		return nil
+	}
+	return db.WithContext(r.ctx).
+		Model(&model.Organization{}).
+		Where("id IN ?", orgIDs).
+		Update("status", status).Error
+}
+
 // DeleteOrganization 删除组织
 func (r *Repository) DeleteOrganization(db *gorm.DB, orgID int64) error {
 	err := db.WithContext(r.ctx).Delete(&model.Organization{}, orgID).Error

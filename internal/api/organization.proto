@@ -79,6 +79,22 @@ service OrganizationService {
       body: "*"
     };
   }
+
+  // 批量停用组织
+  rpc BatchDisableOrganizations(BatchDisableOrganizationRequest) returns (BatchDisableOrganizationResponse) {
+    option (google.api.http) = {
+      post: "/api/organizations/batch-disable"
+      body: "*"
+    };
+  }
+
+  // 批量启用组织
+  rpc BatchEnableOrganizations(BatchEnableOrganizationRequest) returns (BatchEnableOrganizationResponse) {
+    option (google.api.http) = {
+      post: "/api/organizations/batch-enable"
+      body: "*"
+    };
+  }
 }
 
 // OrganizationListRequest 组织列表请求
@@ -296,6 +312,42 @@ message BulkDeleteOrganizationResponse {
   int32 successCount = 1;
   // 失败的数量
   int32 failedCount = 2;
+  // 消息
+  string message = 3;
+}
+
+// BatchDisableOrganizationRequest 批量停用组织请求
+message BatchDisableOrganizationRequest {
+  // 组织ID列表 必填 @gotags: json:"ids,required"
+  repeated int64 ids = 1;
+  // 停用原因 可选 @gotags: json:"reason"
+  string reason = 2;
+}
+
+// BatchDisableOrganizationResponse 批量停用组织响应
+message BatchDisableOrganizationResponse {
+  // 成功处理的数量
+  int32 successCount = 1;
+  // 失败的组织ID列表
+  repeated int64 failedIds = 2;
+  // 消息
+  string message = 3;
+}
+
+// BatchEnableOrganizationRequest 批量启用组织请求
+message BatchEnableOrganizationRequest {
+  // 组织ID列表 必填 @gotags: json:"ids,required"
+  repeated int64 ids = 1;
+  // 启用原因 可选 @gotags: json:"reason"
+  string reason = 2;
+}
+
+// BatchEnableOrganizationResponse 批量启用组织响应
+message BatchEnableOrganizationResponse {
+  // 成功处理的数量
+  int32 successCount = 1;
+  // 失败的组织ID列表
+  repeated int64 failedIds = 2;
   // 消息
   string message = 3;
 }

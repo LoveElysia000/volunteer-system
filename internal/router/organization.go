@@ -25,4 +25,8 @@ func RegisterOrganizationRouter(r *route.RouterGroup) {
 	r.POST("/organizations/search", handler.SearchOrganizations)
 	// 批量删除组织
 	r.POST("/organizations/bulk-delete", handler.BulkDeleteOrganizations)
+	// 批量停用组织
+	r.POST("/organizations/batch-disable", handler.BatchDisableOrganizations)
+	// 批量启用组织
+	r.POST("/organizations/batch-enable", handler.BatchEnableOrganizations)
 }

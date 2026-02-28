@@ -134,3 +134,31 @@ func BulkDeleteOrganizations(ctx context.Context, c *app.RequestContext) {
 	}
 	response.Success(c, data)
 }
+
+func BatchDisableOrganizations(ctx context.Context, c *app.RequestContext) {
+	var req api.BatchDisableOrganizationRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewOrganizationService(ctx, c).BatchDisableOrganizations(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+func BatchEnableOrganizations(ctx context.Context, c *app.RequestContext) {
+	var req api.BatchEnableOrganizationRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewOrganizationService(ctx, c).BatchEnableOrganizations(&req)
+	if err != nil {
+		response.Fail(c, err)
+		return
+	}
+	response.Success(c, data)
+}
