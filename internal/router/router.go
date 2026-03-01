@@ -34,5 +34,6 @@ func RegisterRouter(r *server.Hertz) {
 	// 注册工时功能路由（需要认证）
 	RegisterWorkHourRouter(authApi)
 	RegisterExportRouter(authApi)
+	RegisterNotificationRouter(authApi)
 
 }

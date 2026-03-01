@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
@@ -394,6 +395,7 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 		return nil, err
 	}
 	log.Info("审核通过成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", record.ID, record.TargetType, record.TargetID, auditorID)
+	s.handleAuditApprovedSideEffects(record, auditorID)
 
 	return &resp, nil
 }
@@ -668,6 +670,76 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 		return err
 	}
 	return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusSuccess)
+}
+
+func (s *AuditService) handleAuditApprovedSideEffects(record *model.AuditRecord, auditorID int64) {
+	if record == nil || record.TargetType != model.AuditTargetMember || record.TargetID <= 0 {
+		return
+	}
+
+	member, err := s.repo.GetMembershipByID(s.repo.DB, record.TargetID)
+	if err != nil || member == nil {
+		log.Error("审核通过副作用失败: 查询成员关系异常: %v, record_id=%d target_id=%d", err, record.ID, record.TargetID)
+		return
+	}
+
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, member.VolunteerID)
+	if err != nil || volunteer == nil {
+		log.Error("审核通过副作用失败: 查询志愿者异常: %v, record_id=%d target_id=%d volunteer_id=%d", err, record.ID, record.TargetID, member.VolunteerID)
+		return
+	}
+	if volunteer.AccountID <= 0 {
+		log.Warn("审核通过副作用跳过: 志愿者账号ID无效, record_id=%d target_id=%d volunteer_id=%d", record.ID, record.TargetID, member.VolunteerID)
+		return
+	}
+
+	if record.OperationType == model.OperationTypeDelete || member.Status == model.MemberStatusLeft {
+		rows, archiveErr := s.repo.ArchiveNotificationInboxByReceiverAndOrg(
+			s.repo.DB,
+			volunteer.AccountID,
+			member.OrgID,
+			model.NotificationArchiveReasonLeftOrg,
+			time.Now(),
+		)
+		if archiveErr != nil {
+			log.Error("审核通过副作用失败: 归档通知异常: %v, record_id=%d target_id=%d receiver_id=%d org_id=%d",
+				archiveErr, record.ID, record.TargetID, volunteer.AccountID, member.OrgID)
+			return
+		}
+		log.Info("审核通过副作用完成: 归档组织通知成功, record_id=%d target_id=%d receiver_id=%d org_id=%d archived_rows=%d",
+			record.ID, record.TargetID, volunteer.AccountID, member.OrgID, rows)
+		return
+	}
+
+	// 仅“加入组织创建审核通过”发入组通知，避免更新类审核误触发。
+	if record.OperationType != model.OperationTypeCreate {
+		return
+	}
+
+	if member.Status != model.MemberStatusActive {
+		return
+	}
+
+	orgName := ""
+	organization, orgErr := s.repo.GetOrganizationByID(s.repo.DB, member.OrgID)
+	if orgErr == nil && organization != nil {
+		orgName = organization.OrgName
+	}
+
+	PublishNotificationEvent(NotificationEvent{
+		EventType:   model.NotificationEventMemberJoinApproved,
+		BizType:     model.NotificationBizTypeMembership,
+		BizID:       member.ID,
+		SourceOrgID: member.OrgID,
+		ActorID:     auditorID,
+		CreatedAt:   time.Now(),
+		Payload: map[string]any{
+			"receiverAccountID": volunteer.AccountID,
+			"organizationName":  orgName,
+			"volunteerName":     volunteer.RealName,
+		},
+		DedupeKey: fmt.Sprintf("member.join.approved:%d", member.ID),
+	})
 }
 
 // AuditRecordDetail 查询并返回单条审核记录详情。

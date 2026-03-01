@@ -24,3 +24,6 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Project docs/tasks
+task/

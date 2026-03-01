@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
@@ -527,10 +528,69 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 		log.Error("更新成员状态失败: 更新成员关系异常: %v, membership_id=%d status=%d", err, member.ID, req.Status)
 		return nil, err
 	}
+	s.handleMemberStatusSideEffects(member, req.Status, req.AccountId)
 
 	return &api.MemberStatusUpdateResponse{
 		Message: "status updated",
 	}, nil
+}
+
+func (s *MembershipService) handleMemberStatusSideEffects(member *model.OrgMember, newStatus int32, operatorID int64) {
+	if member == nil || member.Status == newStatus {
+		return
+	}
+
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, member.VolunteerID)
+	if err != nil || volunteer == nil {
+		log.Error("成员状态副作用失败: 查询志愿者异常: %v, membership_id=%d volunteer_id=%d", err, member.ID, member.VolunteerID)
+		return
+	}
+	if volunteer.AccountID <= 0 {
+		log.Warn("成员状态副作用跳过: 志愿者账号ID无效, membership_id=%d volunteer_id=%d", member.ID, member.VolunteerID)
+		return
+	}
+
+	switch newStatus {
+	case model.MemberStatusActive:
+		// 成员转为 active 时发“加入组织通过”通知给成员本人。
+		orgName := ""
+		organization, orgErr := s.repo.GetOrganizationByID(s.repo.DB, member.OrgID)
+		if orgErr == nil && organization != nil {
+			orgName = organization.OrgName
+		}
+
+		PublishNotificationEvent(NotificationEvent{
+			EventType:   model.NotificationEventMemberJoinApproved,
+			BizType:     model.NotificationBizTypeMembership,
+			BizID:       member.ID,
+			SourceOrgID: member.OrgID,
+			ActorID:     operatorID,
+			CreatedAt:   time.Now(),
+			Payload: map[string]any{
+				"receiverAccountID": volunteer.AccountID,
+				"organizationName":  orgName,
+				"volunteerName":     volunteer.RealName,
+			},
+			DedupeKey: fmt.Sprintf("member.join.approved:%d", member.ID),
+		})
+
+	case model.MemberStatusLeft:
+		// 成员退出组织后，将该组织来源通知归档而非物理删除。
+		rows, archiveErr := s.repo.ArchiveNotificationInboxByReceiverAndOrg(
+			s.repo.DB,
+			volunteer.AccountID,
+			member.OrgID,
+			model.NotificationArchiveReasonLeftOrg,
+			time.Now(),
+		)
+		if archiveErr != nil {
+			log.Error("成员状态副作用失败: 归档通知异常: %v, membership_id=%d receiver_id=%d org_id=%d",
+				archiveErr, member.ID, volunteer.AccountID, member.OrgID)
+			return
+		}
+		log.Info("成员状态副作用完成: 归档组织通知成功, membership_id=%d receiver_id=%d org_id=%d archived_rows=%d",
+			member.ID, volunteer.AccountID, member.OrgID, rows)
+	}
 }
 
 // MembershipStats returns summary counts.

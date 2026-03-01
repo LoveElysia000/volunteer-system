@@ -592,6 +592,56 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/membership.MemberStatusUpdateResponse'
+    /api/notifications:
+        get:
+            tags:
+                - NotificationService
+            description: 获取当前用户通知列表
+            operationId: NotificationService_ListNotifications
+            parameters:
+                - name: page
+                  in: query
+                  description: '页码 可选 @gotags: query:"page"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 可选 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: unreadOnly
+                  in: query
+                  description: '仅未读 可选 @gotags: query:"unreadOnly"'
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/notification.NotificationListResponse'
+    /api/notifications/read:
+        post:
+            tags:
+                - NotificationService
+            description: 批量标记已读
+            operationId: NotificationService_MarkNotificationsRead
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/notification.NotificationReadRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/notification.NotificationReadResponse'
     /api/organization/register:
         post:
             tags:
@@ -2199,6 +2249,71 @@ components:
                     items:
                         $ref: '#/components/schemas/membership.OrganizationMemberInfo'
             description: VolunteerOrganizationsResponse 查询志愿者加入的组织响应
+        notification.NotificationItem:
+            type: object
+            properties:
+                inboxId:
+                    type: string
+                    description: 收件箱ID（notification_inbox.id）
+                notificationId:
+                    type: string
+                    description: 通知ID（notifications.id）
+                eventType:
+                    type: string
+                    description: 事件类型
+                bizType:
+                    type: string
+                    description: 业务类型
+                bizId:
+                    type: string
+                    description: 业务ID
+                title:
+                    type: string
+                    description: 标题
+                content:
+                    type: string
+                    description: 内容
+                readStatus:
+                    type: integer
+                    description: 已读状态：0-未读，1-已读
+                    format: int32
+                readAt:
+                    type: string
+                    description: 已读时间
+                createdAt:
+                    type: string
+                    description: 创建时间
+            description: NotificationItem 通知列表项
+        notification.NotificationListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    description: 总数
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/notification.NotificationItem'
+                    description: 列表
+            description: NotificationListResponse 获取通知列表响应
+        notification.NotificationReadRequest:
+            type: object
+            properties:
+                ids:
+                    type: array
+                    items:
+                        type: string
+                    description: '收件箱ID列表 @gotags: json:"ids,required"'
+            description: NotificationReadRequest 批量已读请求
+        notification.NotificationReadResponse:
+            type: object
+            properties:
+                updated:
+                    type: integer
+                    description: 成功更新的行数
+                    format: int32
+            description: NotificationReadResponse 批量已读响应
         organization.BatchDisableOrganizationRequest:
             type: object
             properties:
@@ -3010,6 +3125,8 @@ tags:
       description: 导出功能
     - name: MembershipService
       description: 志愿者-组织关联关系管理服务端接口
+    - name: NotificationService
+      description: 站内通知服务接口
     - name: OrganizationService
       description: 组织管理服务端接口
     - name: RegisterService

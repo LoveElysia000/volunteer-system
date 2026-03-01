@@ -96,6 +96,27 @@ const (
 	// 账号状态
 	SysAccountNotNormal int32 = 0 // 禁用
 	SysAccountNormal    int32 = 1 // 正常
+
+	// 通知读取状态（notification_inbox.read_status）
+	NotificationReadStatusUnread int32 = 0 // 未读
+	NotificationReadStatusRead   int32 = 1 // 已读
+
+	// 通知收件箱状态（notification_inbox.inbox_status）
+	NotificationInboxStatusNormal    int32 = 1 // 正常
+	NotificationInboxStatusArchived  int32 = 2 // 已归档
+	NotificationInboxStatusUserTrash int32 = 3 // 用户删除
+
+	// 通知归档原因（notification_inbox.archived_reason）
+	NotificationArchiveReasonLeftOrg = "left_org" // 退出组织
+
+	// 通知事件类型
+	NotificationEventActivityCreated    = "activity_created"
+	NotificationEventActivityUpdated    = "activity_updated"
+	NotificationEventMemberJoinApproved = "member_join"
+
+	// 通知业务类型
+	NotificationBizTypeActivity   = "activity"
+	NotificationBizTypeMembership = "membership"
 )
 
 // GetRegisterTypeCode 根据注册类型字符串返回对应的数字代码

@@ -36,7 +36,7 @@ ifeq ($(GOHOSTOS), windows)
     PLUGIN_OPENAPI := $(GOPATH_BIN)/protoc-gen-openapi.exe
 
     # 4. API 文件列表
-    API_PROTO_FILES = internal/api/activities.proto internal/api/login.proto internal/api/membership.proto internal/api/organization.proto internal/api/register.proto internal/api/volunteer.proto internal/api/export.proto
+    API_PROTO_FILES = $(wildcard internal/api/*.proto)
 
     # 5. Protoc 执行命令封装
     PROTOC_RUN = cmd /c ""$(PROTOC)" \
@@ -47,6 +47,18 @@ ifeq ($(GOHOSTOS), windows)
         --go_out=paths=source_relative:. \
         --openapi_out=fq_schema_naming=true,default_response=false:docs"
 
+    PROTOC_GO_RUN = cmd /c ""$(PROTOC)" \
+        --plugin=protoc-gen-go="$(PLUGIN_GO)" \
+        --proto_path=. \
+        --proto_path=proto \
+        --go_out=paths=source_relative:."
+
+    PROTOC_OPENAPI_RUN = cmd /c ""$(PROTOC)" \
+        --plugin=protoc-gen-openapi="$(PLUGIN_OPENAPI)" \
+        --proto_path=. \
+        --proto_path=proto \
+        --openapi_out=fq_schema_naming=true,default_response=false:docs"
+
     # 6. 辅助工具命令
     # 注意："$(Git_Bash)" 引号是为了处理 Program Files 的空格
     SED_CMD = "$(Git_Bash)" -c "sed -i 's/,omitempty//g' internal/api/*.pb.go"
@@ -55,12 +67,22 @@ ifeq ($(GOHOSTOS), windows)
 else
     # Linux/Mac 环境配置
     PROTOC = protoc
-    API_PROTO_FILES=$(shell find internal/api -name *.proto)
+    API_PROTO_FILES = $(wildcard internal/api/*.proto)
     
     PROTOC_RUN = $(PROTOC) \
         --proto_path=. \
         --proto_path=proto \
         --go_out=paths=source_relative:. \
+        --openapi_out=fq_schema_naming=true,default_response=false:docs
+
+    PROTOC_GO_RUN = $(PROTOC) \
+        --proto_path=. \
+        --proto_path=proto \
+        --go_out=paths=source_relative:.
+
+    PROTOC_OPENAPI_RUN = $(PROTOC) \
+        --proto_path=. \
+        --proto_path=proto \
         --openapi_out=fq_schema_naming=true,default_response=false:docs
 
     SED_CMD = sed -i "" -e "s/,omitempty//g" internal/api/*.pb.go
@@ -91,7 +113,8 @@ api:
 # 使用方法: make api-single file=internal/api/volunteer.proto
 api-single:
 	@if "$(file)"=="" (echo Usage: make api-single file=path/to/file.proto && exit 1)
-	$(PROTOC_RUN) $(file)
+	$(PROTOC_GO_RUN) $(file)
+	$(PROTOC_OPENAPI_RUN) $(API_PROTO_FILES)
 	"$(Git_Bash)" -c "sed -i 's/,omitempty//g' $(patsubst %.proto,%.pb.go,$(file))"
 	protoc-go-inject-tag -input="$(patsubst %.proto,%.pb.go,$(file))"
 
@@ -99,7 +122,8 @@ api-single:
 # 使用方法: make api-single-mac file=internal/api/volunteer.proto
 api-single-mac:
 	@if [ -z "$(file)" ]; then echo "Usage: make api-single-mac file=path/to/file.proto"; exit 1; fi
-	$(PROTOC_RUN) $(file)
+	$(PROTOC_GO_RUN) $(file)
+	$(PROTOC_OPENAPI_RUN) $(API_PROTO_FILES)
 	@pb_file="$(patsubst %.proto,%.pb.go,$(file))"; \
 	sed -i '' -e "s/,omitempty//g" "$$pb_file"; \
 	protoc-go-inject-tag -input="$$pb_file"

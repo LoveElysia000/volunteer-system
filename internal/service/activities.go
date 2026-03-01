@@ -591,6 +591,21 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		return nil, err
 	}
 
+	PublishNotificationEvent(NotificationEvent{
+		EventType:   model.NotificationEventActivityCreated,
+		BizType:     model.NotificationBizTypeActivity,
+		BizID:       activity.ID,
+		SourceOrgID: activity.OrgID,
+		ActorID:     userID,
+		CreatedAt:   time.Now(),
+		Payload: map[string]any{
+			"activityTitle": activity.Title,
+			"startTime":     util.FormatDateTimeOrEmpty(activity.StartTime),
+			"endTime":       util.FormatDateTimeOrEmpty(activity.EndTime),
+		},
+		DedupeKey: fmt.Sprintf("activity.created:%d", activity.ID),
+	})
+
 	log.Info("创建活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, req.OrgId, userID)
 	return &api.CreateActivityResponse{
 		Id:      activity.ID,
@@ -688,6 +703,27 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		log.Error("更新活动失败: 更新活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
 	}
+	updatedAt := activity.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now()
+	}
+
+	PublishNotificationEvent(NotificationEvent{
+		EventType:   model.NotificationEventActivityUpdated,
+		BizType:     model.NotificationBizTypeActivity,
+		BizID:       activity.ID,
+		SourceOrgID: activity.OrgID,
+		ActorID:     userID,
+		CreatedAt:   time.Now(),
+		Payload: map[string]any{
+			"activityTitle": activity.Title,
+			"startTime":     util.FormatDateTimeOrEmpty(activity.StartTime),
+			"endTime":       util.FormatDateTimeOrEmpty(activity.EndTime),
+			"updatedAt":     util.FormatDateTimeOrEmpty(updatedAt),
+		},
+		// 使用业务更新时间生成稳定幂等键，避免 time.Now() 造成每次都视为新事件。
+		DedupeKey: fmt.Sprintf("activity.updated:%d:%d", activity.ID, updatedAt.UnixNano()),
+	})
 
 	log.Info("更新活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, org.ID, userID)
 	return &api.UpdateActivityResponse{

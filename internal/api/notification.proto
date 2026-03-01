@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package notification;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// 站内通知服务接口
+service NotificationService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 获取当前用户通知列表
+  rpc ListNotifications(NotificationListRequest) returns (NotificationListResponse) {
+    option (google.api.http) = {
+      get: "/api/notifications"
+    };
+  }
+
+  // 批量标记已读
+  rpc MarkNotificationsRead(NotificationReadRequest) returns (NotificationReadResponse) {
+    option (google.api.http) = {
+      post: "/api/notifications/read"
+      body: "*"
+    };
+  }
+}
+
+// NotificationListRequest 获取通知列表请求
+message NotificationListRequest {
+  // 页码 可选 @gotags: query:"page"
+  int32 page = 1;
+  // 页大小 可选 @gotags: query:"pageSize"
+  int32 pageSize = 2;
+  // 仅未读 可选 @gotags: query:"unreadOnly"
+  bool unreadOnly = 3;
+}
+
+// NotificationListResponse 获取通知列表响应
+message NotificationListResponse {
+  // 总数
+  int32 total = 1;
+  // 列表
+  repeated NotificationItem list = 2;
+}
+
+// NotificationItem 通知列表项
+message NotificationItem {
+  // 收件箱ID（notification_inbox.id）
+  int64 inboxId = 1;
+  // 通知ID（notifications.id）
+  int64 notificationId = 2;
+  // 事件类型
+  string eventType = 3;
+  // 业务类型
+  string bizType = 4;
+  // 业务ID
+  int64 bizId = 5;
+  // 标题
+  string title = 6;
+  // 内容
+  string content = 7;
+  // 已读状态：0-未读，1-已读
+  int32 readStatus = 8;
+  // 已读时间
+  string readAt = 9;
+  // 创建时间
+  string createdAt = 10;
+}
+
+// NotificationReadRequest 批量已读请求
+message NotificationReadRequest {
+  // 收件箱ID列表 @gotags: json:"ids,required"
+  repeated int64 ids = 1;
+}
+
+// NotificationReadResponse 批量已读响应
+message NotificationReadResponse {
+  // 成功更新的行数
+  int32 updated = 1;
+}
+

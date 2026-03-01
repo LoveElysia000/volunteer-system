@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
 	"volunteer-system/config"
 	"volunteer-system/internal/router"
+	"volunteer-system/internal/service"
 	"volunteer-system/pkg/database/mysql"
 	"volunteer-system/pkg/database/redis"
 	"volunteer-system/pkg/logger"
@@ -39,6 +41,9 @@ func StartServer() {
 		log.Fatalf("无法启动应用")
 	}
 	defer closeDatabases()
+
+	// 启动通知分发器（异步 best-effort，不影响主链路返回）
+	service.InitNotificationDispatcher(context.Background())
 
 	// 启动HTTP服务器
 	initHttpServer(&cfg)
