@@ -14,7 +14,10 @@ database:
   # 活动相关表
   # - "org_members"
   # - "activity_signups"
-   - "notifications"
+   - "ai_sessions"
+   - "ai_messages"
+   - "ai_tool_calls"
+   - "ai_usage_daily"
   # 输出目录
   outPath: "./internal/dao"
   # 查询代码文件名，默认: gen.go

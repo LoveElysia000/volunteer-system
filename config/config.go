@@ -73,6 +73,20 @@ type AuthConfig struct {
 	} `mapstructure:"jwt"`
 }
 
+// AIConfig AI 助手配置
+type AIConfig struct {
+	Enabled            bool   `mapstructure:"enabled"`
+	Provider           string `mapstructure:"provider"`
+	APIKey             string `mapstructure:"api_key"`
+	BaseURL            string `mapstructure:"base_url"`
+	ChatModel          string `mapstructure:"chat_model"`
+	EmbeddingModel     string `mapstructure:"embedding_model"`
+	RequestTimeoutMS   int    `mapstructure:"request_timeout_ms"`
+	MaxRetries         int    `mapstructure:"max_retries"`
+	MaxContextMessages int    `mapstructure:"max_context_messages"`
+	DailyUserQuota     int    `mapstructure:"daily_user_quota"`
+}
+
 // Config 完整的配置结构
 type Config struct {
 	App     AppConfig          `mapstructure:"app"`
@@ -82,6 +96,7 @@ type Config struct {
 	Upload  *UploadConfig      `mapstructure:"upload"`
 	Logging *LoggingConfig     `mapstructure:"logging"`
 	Auth    *AuthConfig        `mapstructure:"auth"`
+	AI      *AIConfig          `mapstructure:"ai"`
 }
 
 var conf Config

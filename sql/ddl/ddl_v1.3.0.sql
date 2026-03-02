@@ -17,9 +17,7 @@ CREATE TABLE IF NOT EXISTS `ai_sessions` (
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at` DATETIME NULL COMMENT '软删除时间',
     PRIMARY KEY (`id`),
-    KEY `idx_ai_sessions_user_scene_status` (`user_id`, `scene`, `status`),
-    KEY `idx_ai_sessions_user_updated` (`user_id`, `updated_at`),
-    KEY `idx_ai_sessions_last_message_at` (`last_message_at`)
+    KEY `idx_ai_sessions_user_updated` (`user_id`, `updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 助手会话表';
 
 -- 2) AI 消息表
@@ -37,9 +35,7 @@ CREATE TABLE IF NOT EXISTS `ai_messages` (
     `request_id` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '链路追踪ID',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_ai_messages_session_seq` (`session_id`, `seq_no`),
-    KEY `idx_ai_messages_session_created` (`session_id`, `created_at`),
-    KEY `idx_ai_messages_role_created` (`role`, `created_at`)
+    UNIQUE KEY `uk_ai_messages_session_seq` (`session_id`, `seq_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 助手消息表';
 
 -- 3) AI 工具调用日志表
@@ -56,9 +52,7 @@ CREATE TABLE IF NOT EXISTS `ai_tool_calls` (
     `latency_ms` INT NOT NULL DEFAULT 0 COMMENT '工具执行耗时（毫秒）',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
-    KEY `idx_ai_tool_calls_session_created` (`session_id`, `created_at`),
-    KEY `idx_ai_tool_calls_tool_success` (`tool_name`, `success`, `created_at`),
-    KEY `idx_ai_tool_calls_message_id` (`message_id`)
+    KEY `idx_ai_tool_calls_session_created` (`session_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 工具调用日志表';
 
 -- 4) AI 每日用量汇总表
@@ -66,16 +60,15 @@ CREATE TABLE IF NOT EXISTS `ai_usage_daily` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `biz_date` DATE NOT NULL COMMENT '业务日期',
     `user_id` BIGINT NOT NULL COMMENT '用户ID（关联 sys_accounts.id）',
-    `request_count` INT NOT NULL DEFAULT 0 COMMENT '请求总数',
-    `success_count` INT NOT NULL DEFAULT 0 COMMENT '成功请求数',
-    `failed_count` INT NOT NULL DEFAULT 0 COMMENT '失败请求数',
+    `request_count` BIGINT NOT NULL DEFAULT 0 COMMENT '请求总数',
+    `success_count` BIGINT NOT NULL DEFAULT 0 COMMENT '成功请求数',
+    `failed_count` BIGINT NOT NULL DEFAULT 0 COMMENT '失败请求数',
     `token_in_total` BIGINT NOT NULL DEFAULT 0 COMMENT '输入token汇总',
     `token_out_total` BIGINT NOT NULL DEFAULT 0 COMMENT '输出token汇总',
     `estimated_cost` DECIMAL(12,4) NOT NULL DEFAULT 0.0000 COMMENT '预估成本（按模型单价计算）',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_ai_usage_daily_biz_user` (`biz_date`, `user_id`),
-    KEY `idx_ai_usage_daily_user_date` (`user_id`, `biz_date`)
+    UNIQUE KEY `uk_ai_usage_daily_biz_user` (`biz_date`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 每日用量汇总表';
 

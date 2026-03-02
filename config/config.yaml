@@ -84,3 +84,14 @@ auth:
       suspicious_login_threshold: 3
       refresh_rate_limit: 5
       refresh_window_minutes: 5
+
+# AI assistant
+ai:
+  enabled: true
+  provider: "deepseek"      # openai / deepseek / compatible
+  api_key: "${AI_API_KEY:}"
+  base_url: "https://api.deepseek.com/v1"
+  chat_model: "deepseek-chat"
+  request_timeout_ms: 15000
+  max_retries: 2
+  max_context_messages: 20

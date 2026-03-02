@@ -18,14 +18,20 @@ import (
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:           db,
-		Notification: newNotification(db, opts...),
+		AiMessage:    newAiMessage(db, opts...),
+		AiSession:    newAiSession(db, opts...),
+		AiToolCall:   newAiToolCall(db, opts...),
+		AiUsageDaily: newAiUsageDaily(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Notification notification
+	AiMessage    aiMessage
+	AiSession    aiSession
+	AiToolCall   aiToolCall
+	AiUsageDaily aiUsageDaily
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -33,7 +39,10 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
-		Notification: q.Notification.clone(db),
+		AiMessage:    q.AiMessage.clone(db),
+		AiSession:    q.AiSession.clone(db),
+		AiToolCall:   q.AiToolCall.clone(db),
+		AiUsageDaily: q.AiUsageDaily.clone(db),
 	}
 }
 
@@ -48,17 +57,26 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:           db,
-		Notification: q.Notification.replaceDB(db),
+		AiMessage:    q.AiMessage.replaceDB(db),
+		AiSession:    q.AiSession.replaceDB(db),
+		AiToolCall:   q.AiToolCall.replaceDB(db),
+		AiUsageDaily: q.AiUsageDaily.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Notification *notificationDo
+	AiMessage    *aiMessageDo
+	AiSession    *aiSessionDo
+	AiToolCall   *aiToolCallDo
+	AiUsageDaily *aiUsageDailyDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Notification: q.Notification.WithContext(ctx),
+		AiMessage:    q.AiMessage.WithContext(ctx),
+		AiSession:    q.AiSession.WithContext(ctx),
+		AiToolCall:   q.AiToolCall.WithContext(ctx),
+		AiUsageDaily: q.AiUsageDaily.WithContext(ctx),
 	}
 }
 
