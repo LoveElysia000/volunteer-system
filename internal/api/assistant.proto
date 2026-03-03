@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package assistant;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// AI 助手服务
+service AssistantService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  // 创建会话
+  rpc CreateSession(AssistantCreateSessionRequest) returns (AssistantCreateSessionResponse) {
+    option (google.api.http) = {
+      post: "/api/assistant/sessions"
+      body: "*"
+    };
+  }
+
+  // 对话
+  rpc Chat(AssistantChatRequest) returns (AssistantChatResponse) {
+    option (google.api.http) = {
+      post: "/api/assistant/chat"
+      body: "*"
+    };
+  }
+
+  // 会话历史
+  rpc SessionMessages(AssistantSessionMessagesRequest) returns (AssistantSessionMessagesResponse) {
+    option (google.api.http) = {
+      get: "/api/assistant/sessions/:id/messages"
+    };
+  }
+
+  // 活动草案快捷入口
+  rpc ActivityDraftAction(AssistantActivityDraftActionRequest) returns (AssistantActivityDraftActionResponse) {
+    option (google.api.http) = {
+      post: "/api/assistant/actions/activity-draft"
+      body: "*"
+    };
+  }
+}
+
+// 创建会话请求
+message AssistantCreateSessionRequest {
+  // 场景：general/activity_draft/ops_advisor 必填 @gotags: json:"scene,required"
+  string scene = 1;
+  // 会话标题 可选 @gotags: json:"title"
+  string title = 2;
+}
+
+// 创建会话响应
+message AssistantCreateSessionResponse {
+  // 会话ID @gotags: json:"session_id"
+  int64 session_id = 1;
+}
+
+// 对话请求
+message AssistantChatRequest {
+  // 会话ID 必填 @gotags: json:"session_id,required"
+  int64 session_id = 1;
+  // 用户消息 必填 @gotags: json:"message,required"
+  string message = 2;
+  // 是否流式（当前仅占位） @gotags: json:"stream"
+  bool stream = 3;
+}
+
+// 工具调用结果
+message AssistantToolCall {
+  // 工具名称 @gotags: json:"tool_name"
+  string tool_name = 1;
+  // 是否成功 @gotags: json:"success"
+  bool success = 2;
+  // 错误码 @gotags: json:"error_code"
+  string error_code = 3;
+  // 错误信息 @gotags: json:"error_msg"
+  string error_msg = 4;
+  // 耗时毫秒 @gotags: json:"latency_ms"
+  int32 latency_ms = 5;
+  // 入参 JSON @gotags: json:"input"
+  string input = 6;
+  // 出参 JSON @gotags: json:"output"
+  string output = 7;
+}
+
+// Token 用量
+message AssistantUsage {
+  // 模型名 @gotags: json:"model"
+  string model = 1;
+  // 输入 token @gotags: json:"token_in"
+  int32 token_in = 2;
+  // 输出 token @gotags: json:"token_out"
+  int32 token_out = 3;
+  // 耗时毫秒 @gotags: json:"latency_ms"
+  int32 latency_ms = 4;
+}
+
+// 对话响应
+message AssistantChatResponse {
+  // 回复 @gotags: json:"reply"
+  string reply = 1;
+  // 工具调用列表 @gotags: json:"tool_calls"
+  repeated AssistantToolCall tool_calls = 2;
+  // 用量信息 @gotags: json:"usage"
+  AssistantUsage usage = 3;
+}
+
+// 会话历史请求
+message AssistantSessionMessagesRequest {
+  // 会话ID 必填 @gotags: path:"id,required" json:"id"
+  int64 id = 1;
+}
+
+// 历史消息
+message AssistantMessageItem {
+  // 消息ID @gotags: json:"id"
+  int64 id = 1;
+  // 会话ID @gotags: json:"session_id"
+  int64 session_id = 2;
+  // 序号 @gotags: json:"seq_no"
+  int32 seq_no = 3;
+  // 角色：1-system，2-user，3-assistant，4-tool @gotags: json:"role"
+  int32 role = 4;
+  // 内容 @gotags: json:"content"
+  string content = 5;
+  // 模型 @gotags: json:"model"
+  string model = 6;
+  // 结束原因 @gotags: json:"finish_reason"
+  int32 finish_reason = 7;
+  // 输入 token @gotags: json:"token_in"
+  int32 token_in = 8;
+  // 输出 token @gotags: json:"token_out"
+  int32 token_out = 9;
+  // 延迟毫秒 @gotags: json:"latency_ms"
+  int32 latency_ms = 10;
+  // 请求ID @gotags: json:"request_id"
+  string request_id = 11;
+  // 创建时间 @gotags: json:"created_at"
+  string created_at = 12;
+}
+
+// 会话历史响应
+message AssistantSessionMessagesResponse {
+  // 历史消息列表 @gotags: json:"list"
+  repeated AssistantMessageItem list = 1;
+}
+
+// 活动草案快捷入口请求
+message AssistantActivityDraftActionRequest {
+  // 可选会话ID @gotags: json:"session_id"
+  int64 session_id = 1;
+  // 活动主题 必填 @gotags: json:"topic,required"
+  string topic = 2;
+  // 目标人群 @gotags: json:"target_people"
+  string target_people = 3;
+  // 地点 @gotags: json:"location"
+  string location = 4;
+}
+
+// 活动草案快捷入口响应
+message AssistantActivityDraftActionResponse {
+  // 会话ID @gotags: json:"session_id"
+  int64 session_id = 1;
+  // 执行结果 @gotags: json:"result"
+  AssistantChatResponse result = 2;
+}

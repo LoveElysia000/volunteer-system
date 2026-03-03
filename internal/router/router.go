@@ -35,5 +35,6 @@ func RegisterRouter(r *server.Hertz) {
 	RegisterWorkHourRouter(authApi)
 	RegisterExportRouter(authApi)
 	RegisterNotificationRouter(authApi)
+	RegisterAssistantRouter(authApi)
 
 }

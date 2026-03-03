@@ -374,6 +374,82 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/exportapi.ExportVolunteersResponse'
+    /api/assistant/actions/activity-draft:
+        post:
+            tags:
+                - AssistantService
+            description: 活动草案快捷入口
+            operationId: AssistantService_ActivityDraftAction
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/assistant.AssistantActivityDraftActionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/assistant.AssistantActivityDraftActionResponse'
+    /api/assistant/chat:
+        post:
+            tags:
+                - AssistantService
+            description: 对话
+            operationId: AssistantService_Chat
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/assistant.AssistantChatRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/assistant.AssistantChatResponse'
+    /api/assistant/sessions:
+        post:
+            tags:
+                - AssistantService
+            description: 创建会话
+            operationId: AssistantService_CreateSession
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/assistant.AssistantCreateSessionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/assistant.AssistantCreateSessionResponse'
+    /api/assistant/sessions/:id/messages:
+        get:
+            tags:
+                - AssistantService
+            description: 会话历史
+            operationId: AssistantService_SessionMessages
+            parameters:
+                - name: id
+                  in: query
+                  description: '会话ID 必填 @gotags: path:"id,required" json:"id"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/assistant.AssistantSessionMessagesResponse'
     /api/audits/approval:
         post:
             tags:
@@ -1889,6 +1965,179 @@ components:
                     type: string
                     description: 更新时间
             description: UserInfo 用户信息
+        assistant.AssistantActivityDraftActionRequest:
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: '可选会话ID @gotags: json:"session_id"'
+                topic:
+                    type: string
+                    description: '活动主题 必填 @gotags: json:"topic,required"'
+                targetPeople:
+                    type: string
+                    description: '目标人群 @gotags: json:"target_people"'
+                location:
+                    type: string
+                    description: '地点 @gotags: json:"location"'
+            description: 活动草案快捷入口请求
+        assistant.AssistantActivityDraftActionResponse:
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: '会话ID @gotags: json:"session_id"'
+                result:
+                    allOf:
+                        - $ref: '#/components/schemas/assistant.AssistantChatResponse'
+                    description: '执行结果 @gotags: json:"result"'
+            description: 活动草案快捷入口响应
+        assistant.AssistantChatRequest:
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: '会话ID 必填 @gotags: json:"session_id,required"'
+                message:
+                    type: string
+                    description: '用户消息 必填 @gotags: json:"message,required"'
+                stream:
+                    type: boolean
+                    description: '是否流式（当前仅占位） @gotags: json:"stream"'
+            description: 对话请求
+        assistant.AssistantChatResponse:
+            type: object
+            properties:
+                reply:
+                    type: string
+                    description: '回复 @gotags: json:"reply"'
+                toolCalls:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/assistant.AssistantToolCall'
+                    description: '工具调用列表 @gotags: json:"tool_calls"'
+                usage:
+                    allOf:
+                        - $ref: '#/components/schemas/assistant.AssistantUsage'
+                    description: '用量信息 @gotags: json:"usage"'
+            description: 对话响应
+        assistant.AssistantCreateSessionRequest:
+            type: object
+            properties:
+                scene:
+                    type: string
+                    description: '场景：general/activity_draft/ops_advisor 必填 @gotags: json:"scene,required"'
+                title:
+                    type: string
+                    description: '会话标题 可选 @gotags: json:"title"'
+            description: 创建会话请求
+        assistant.AssistantCreateSessionResponse:
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: '会话ID @gotags: json:"session_id"'
+            description: 创建会话响应
+        assistant.AssistantMessageItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '消息ID @gotags: json:"id"'
+                sessionId:
+                    type: string
+                    description: '会话ID @gotags: json:"session_id"'
+                seqNo:
+                    type: integer
+                    description: '序号 @gotags: json:"seq_no"'
+                    format: int32
+                role:
+                    type: integer
+                    description: '角色：1-system，2-user，3-assistant，4-tool @gotags: json:"role"'
+                    format: int32
+                content:
+                    type: string
+                    description: '内容 @gotags: json:"content"'
+                model:
+                    type: string
+                    description: '模型 @gotags: json:"model"'
+                finishReason:
+                    type: integer
+                    description: '结束原因 @gotags: json:"finish_reason"'
+                    format: int32
+                tokenIn:
+                    type: integer
+                    description: '输入 token @gotags: json:"token_in"'
+                    format: int32
+                tokenOut:
+                    type: integer
+                    description: '输出 token @gotags: json:"token_out"'
+                    format: int32
+                latencyMs:
+                    type: integer
+                    description: '延迟毫秒 @gotags: json:"latency_ms"'
+                    format: int32
+                requestId:
+                    type: string
+                    description: '请求ID @gotags: json:"request_id"'
+                createdAt:
+                    type: string
+                    description: '创建时间 @gotags: json:"created_at"'
+            description: 历史消息
+        assistant.AssistantSessionMessagesResponse:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/assistant.AssistantMessageItem'
+                    description: '历史消息列表 @gotags: json:"list"'
+            description: 会话历史响应
+        assistant.AssistantToolCall:
+            type: object
+            properties:
+                toolName:
+                    type: string
+                    description: '工具名称 @gotags: json:"tool_name"'
+                success:
+                    type: boolean
+                    description: '是否成功 @gotags: json:"success"'
+                errorCode:
+                    type: string
+                    description: '错误码 @gotags: json:"error_code"'
+                errorMsg:
+                    type: string
+                    description: '错误信息 @gotags: json:"error_msg"'
+                latencyMs:
+                    type: integer
+                    description: '耗时毫秒 @gotags: json:"latency_ms"'
+                    format: int32
+                input:
+                    type: string
+                    description: '入参 JSON @gotags: json:"input"'
+                output:
+                    type: string
+                    description: '出参 JSON @gotags: json:"output"'
+            description: 工具调用结果
+        assistant.AssistantUsage:
+            type: object
+            properties:
+                model:
+                    type: string
+                    description: '模型名 @gotags: json:"model"'
+                tokenIn:
+                    type: integer
+                    description: '输入 token @gotags: json:"token_in"'
+                    format: int32
+                tokenOut:
+                    type: integer
+                    description: '输出 token @gotags: json:"token_out"'
+                    format: int32
+                latencyMs:
+                    type: integer
+                    description: '耗时毫秒 @gotags: json:"latency_ms"'
+                    format: int32
+            description: Token 用量
         audit.AuditApprovalRequest:
             type: object
             properties:
@@ -3117,6 +3366,8 @@ components:
 tags:
     - name: ActivityService
       description: 活动管理服务端接口
+    - name: AssistantService
+      description: AI 助手服务
     - name: AuditService
       description: 审核服务：提供待审核列表、执行审核、审核记录查询等接口
     - name: AuthService
