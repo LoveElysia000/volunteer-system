@@ -19,7 +19,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// assistant_service.go 实现 AI 助手主业务编排服务。
+// assistant_service.go 实现 AI 助手核心编排服务。
 //
 // 主要职责：
 // 1. 管理会话生命周期：创建会话、校验归属、更新最后活跃时间与标题。
@@ -67,7 +67,6 @@ type assistantToolResult struct {
 // AssistantService AI 助手服务
 type AssistantService struct {
 	Service
-	aiClient    *ai.Client
 	toolService *AssistantToolService
 }
 
@@ -83,7 +82,6 @@ func NewAssistantService(ctx context.Context, c *app.RequestContext) *AssistantS
 			repo: repository.NewRepository(ctx, c),
 		},
 	}
-	svc.aiClient = ai.NewClient(config.GetConfig().AI)
 	svc.toolService = NewAssistantToolService(ctx, c)
 	return svc
 }
@@ -149,7 +147,6 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	}
 
 	cfg := s.getAIConfig()
-
 	requestID := s.resolveRequestID()
 	now := time.Now()
 	if err := s.checkDailyUserQuota(now, userID, cfg); err != nil {
@@ -168,13 +165,43 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		return nil, err
 	}
 
-	// 先做受控工具调用，再把结果以 tool 消息写入上下文，供后续模型回答引用。
-	toolPlans := s.toolService.PlanTools(session.Scene, message)
-	toolResults := make([]*assistantToolResult, 0, len(toolPlans))
-	toolLogIDs := make([]int64, 0, len(toolPlans))
-	for _, plan := range toolPlans {
-		result := s.toolService.Execute(userID, plan)
-		toolResults = append(toolResults, result)
+	contextLimit := resolveContextLimit(cfg)
+	historyRows, err := s.repo.ListRecentAiMessagesBySession(s.repo.DB, session.ID, contextLimit)
+	if err != nil {
+		log.Error("查询会话上下文失败: %v, session_id=%d", err, session.ID)
+		return nil, err
+	}
+
+	runtimeInput := &runtimeChatInput{
+		UserID:    userID,
+		SessionID: session.ID,
+		Scene:     session.Scene,
+		Message:   message,
+		History:   snapshotsFromMessages(historyRows),
+		RequestID: requestID,
+	}
+	runtimeOutput, runtimeErr := s.runRuntime(runtimeInput)
+	if runtimeErr != nil {
+		log.Warn("AI runtime execute failed, using fallback output: %v, session_id=%d user_id=%d", runtimeErr, session.ID, userID)
+		runtimeOutput = s.buildRuntimeFallbackOutput(runtimeOutput, runtimeErr)
+	}
+	if runtimeOutput == nil {
+		return nil, errors.New("AI 运行时返回为空")
+	}
+
+	if strings.TrimSpace(runtimeOutput.Reply) == "" {
+		runtimeOutput.Reply = "我已收到你的问题，但当前无法生成有效回复，请稍后重试。"
+	}
+	if strings.TrimSpace(runtimeOutput.Model) == "" {
+		runtimeOutput.Model = s.getChatModel()
+	}
+
+	toolResults := runtimeToolCallsToAssistantResults(runtimeOutput.ToolCalls)
+	toolLogIDs := make([]int64, 0, len(toolResults))
+	for _, result := range toolResults {
+		if result == nil {
+			continue
+		}
 
 		toolMessage := &model.AiMessage{
 			SessionID: session.ID,
@@ -210,59 +237,15 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		}
 	}
 
-	// 上下文窗口做上下限收敛，兼顾回复质量与 token 成本。
-	contextLimit := resolveContextLimit(cfg)
-
-	history, err := s.repo.ListRecentAiMessagesBySession(s.repo.DB, session.ID, contextLimit)
-	if err != nil {
-		log.Error("查询会话上下文失败: %v, session_id=%d", err, session.ID)
-		return nil, err
-	}
-
-	promptMessages := s.buildPromptMessages(session.Scene, history)
-	modelStart := time.Now()
-	chatResp, aiErr := s.aiClient.Chat(s.ctx, &ai.ChatRequest{
-		Model:    s.getChatModel(),
-		Messages: promptMessages,
-	})
-	latencyMS := int32(time.Since(modelStart).Milliseconds())
-
-	var (
-		reply        string
-		modelName    string
-		finishReason string
-		tokenIn      int32
-		tokenOut     int32
-	)
-	if aiErr != nil {
-		// 模型不可用时降级为工具结果总结，尽量保证主链路可用。
-		reply = s.buildFallbackReply(toolResults, aiErr)
-		modelName = "fallback"
-		finishReason = "fallback"
-		log.Warn("AI 调用失败，使用降级回复: %v, session_id=%d user_id=%d", aiErr, session.ID, userID)
-	} else {
-		reply = strings.TrimSpace(chatResp.Content)
-		modelName = strings.TrimSpace(chatResp.Model)
-		finishReason = strings.TrimSpace(chatResp.FinishReason)
-		tokenIn = chatResp.Usage.PromptTokens
-		tokenOut = chatResp.Usage.CompletionTokens
-	}
-	if reply == "" {
-		reply = "我已收到你的问题，但当前无法生成有效回复，请稍后重试。"
-	}
-	if modelName == "" {
-		modelName = s.getChatModel()
-	}
-
 	assistantMsg := &model.AiMessage{
 		SessionID:    session.ID,
 		Role:         assistantRoleAssistant,
-		Content:      reply,
-		Model:        modelName,
-		FinishReason: mapFinishReason(finishReason),
-		TokenIn:      tokenIn,
-		TokenOut:     tokenOut,
-		LatencyMs:    latencyMS,
+		Content:      runtimeOutput.Reply,
+		Model:        runtimeOutput.Model,
+		FinishReason: mapFinishReason(runtimeOutput.FinishReason),
+		TokenIn:      runtimeOutput.TokenIn,
+		TokenOut:     runtimeOutput.TokenOut,
+		LatencyMs:    runtimeOutput.LatencyMS,
 		RequestID:    requestID,
 		CreatedAt:    time.Now(),
 	}
@@ -285,25 +268,23 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		log.Error("更新会话时间失败: %v, session_id=%d", err, session.ID)
 	}
 
-	// 每日用量聚合用于配额、观测和成本估算。
-	estimatedCost := s.estimateCost(modelName, tokenIn, tokenOut)
-	if err := s.repo.UpsertAiUsageDaily(s.repo.DB, now, userID, aiErr == nil, tokenIn, tokenOut, estimatedCost); err != nil {
+	runtimeSuccess := runtimeOutput.Success && runtimeErr == nil
+	estimatedCost := s.estimateCost(runtimeOutput.Model, runtimeOutput.TokenIn, runtimeOutput.TokenOut)
+	if err := s.repo.UpsertAiUsageDaily(s.repo.DB, now, userID, runtimeSuccess, runtimeOutput.TokenIn, runtimeOutput.TokenOut, estimatedCost); err != nil {
 		log.Error("更新 AI 用量失败: %v, user_id=%d", err, userID)
 	}
 
 	return &api.AssistantChatResponse{
-		Reply:     reply,
+		Reply:     runtimeOutput.Reply,
 		ToolCalls: toAPIToolCalls(toolResults),
 		Usage: &api.AssistantUsage{
-			Model:     modelName,
-			TokenIn:   tokenIn,
-			TokenOut:  tokenOut,
-			LatencyMs: latencyMS,
+			Model:     runtimeOutput.Model,
+			TokenIn:   runtimeOutput.TokenIn,
+			TokenOut:  runtimeOutput.TokenOut,
+			LatencyMs: runtimeOutput.LatencyMS,
 		},
 	}, nil
 }
-
-// GetSessionMessages 获取会话历史消息
 func (s *AssistantService) GetSessionMessages(req *api.AssistantSessionMessagesRequest) (*api.AssistantSessionMessagesResponse, error) {
 	if req == nil || req.Id <= 0 {
 		return nil, errors.New("会话ID不能为空")
@@ -381,7 +362,12 @@ func (s *AssistantService) ActivityDraftAction(req *api.AssistantActivityDraftAc
 		}
 	}
 
-	message := fmt.Sprintf("请生成活动草案，主题：%s。目标人群：%s。活动地点：%s。", strings.TrimSpace(req.Topic), strings.TrimSpace(req.TargetPeople), strings.TrimSpace(req.Location))
+	message := fmt.Sprintf(
+		"请生成活动草案，主题：%s。目标人群：%s。活动地点：%s。",
+		strings.TrimSpace(req.Topic),
+		strings.TrimSpace(req.TargetPeople),
+		strings.TrimSpace(req.Location),
+	)
 	chatResp, err := s.Chat(&api.AssistantChatRequest{
 		SessionId: sessionID,
 		Message:   message,
@@ -476,7 +462,7 @@ func (s *AssistantService) buildPromptMessages(scene string, history []*model.Ai
 }
 
 func (s *AssistantService) buildSystemPrompt(scene string) string {
-	base := "你是环保志愿者平台的 AI 助手。回答要求准确、简洁、可执行。禁止编造不存在的数据。涉及权限或隐私时必须拒绝并解释原因。"
+	base := "你是环保志愿者平台的 AI 助手。回答要准确、简洁、可执行。禁止编造不存在的数据。涉及权限或隐私时必须拒绝并解释原因。"
 	switch scene {
 	case assistantSceneActivityDraft:
 		return base + "当前场景是活动草案生成，请优先给出活动标题、简介、执行流程和风险提示。"
@@ -506,7 +492,7 @@ func (s *AssistantService) buildFallbackReply(toolResults []*assistantToolResult
 		}
 	}
 	lines = append(lines, "失败原因: "+reason)
-	lines = append(lines, "你可以稍后重试，或缩小问题范围（例如指定活动关键词/组织ID）以提高成功率。")
+	lines = append(lines, "你可以稍后重试，或缩小问题范围（例如指定活动关键词、组织ID）以提高成功率。")
 	return strings.Join(lines, "\n")
 }
 
@@ -644,6 +630,20 @@ func toAPIToolCalls(results []*assistantToolResult) []*api.AssistantToolCall {
 	return items
 }
 
+func snapshotsFromMessages(history []*model.AiMessage) []*aiMessageSnapshot {
+	items := make([]*aiMessageSnapshot, 0, len(history))
+	for _, m := range history {
+		if m == nil {
+			continue
+		}
+		items = append(items, &aiMessageSnapshot{
+			Role:    m.Role,
+			Content: m.Content,
+		})
+	}
+	return items
+}
+
 func nonEmptyJSON(raw string) string {
 	if strings.TrimSpace(raw) == "" {
 		return "{}"
@@ -701,7 +701,7 @@ func normalizeUserMessage(raw string) (string, error) {
 		return "", errors.New("消息不能为空")
 	}
 	if utf8.RuneCountInString(message) > assistantMaxUserMessageRunes {
-		return "", fmt.Errorf("消息过长，最多 %d 字", assistantMaxUserMessageRunes)
+		return "", fmt.Errorf("消息过长，最大 %d 字符", assistantMaxUserMessageRunes)
 	}
 	return message, nil
 }

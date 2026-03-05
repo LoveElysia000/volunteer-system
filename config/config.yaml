@@ -96,3 +96,10 @@ ai:
   max_retries: 2
   max_context_messages: 20
   daily_user_quota: 200
+
+  eino:
+    max_steps: 4
+    tool_timeout_ms: 3000
+    enable_stream: false
+    checkpoint_ttl_seconds: 1800
+

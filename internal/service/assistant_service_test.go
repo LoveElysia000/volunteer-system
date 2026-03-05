@@ -183,7 +183,6 @@ func TestSessionFlowSmoke(t *testing.T) {
 			c:    reqCtx,
 			repo: repo,
 		},
-		aiClient:    ai.NewClient(nil), // 强制走 fallback，避免依赖外部 AI。
 		toolService: &AssistantToolService{},
 	}
 

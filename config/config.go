@@ -74,16 +74,24 @@ type AuthConfig struct {
 }
 
 // AIConfig AI 助手配置
+type AIEinoConfig struct {
+	MaxSteps             int  `mapstructure:"max_steps"`
+	ToolTimeoutMS        int  `mapstructure:"tool_timeout_ms"`
+	EnableStream         bool `mapstructure:"enable_stream"`
+	CheckpointTTLSeconds int  `mapstructure:"checkpoint_ttl_seconds"`
+}
+
 type AIConfig struct {
-	Enabled            bool   `mapstructure:"enabled"`
-	Provider           string `mapstructure:"provider"`
-	APIKey             string `mapstructure:"api_key"`
-	BaseURL            string `mapstructure:"base_url"`
-	ChatModel          string `mapstructure:"chat_model"`
-	RequestTimeoutMS   int    `mapstructure:"request_timeout_ms"`
-	MaxRetries         int    `mapstructure:"max_retries"`
-	MaxContextMessages int    `mapstructure:"max_context_messages"`
-	DailyUserQuota     int    `mapstructure:"daily_user_quota"`
+	Enabled            bool         `mapstructure:"enabled"`
+	Provider           string       `mapstructure:"provider"`
+	APIKey             string       `mapstructure:"api_key"`
+	BaseURL            string       `mapstructure:"base_url"`
+	ChatModel          string       `mapstructure:"chat_model"`
+	RequestTimeoutMS   int          `mapstructure:"request_timeout_ms"`
+	MaxRetries         int          `mapstructure:"max_retries"`
+	MaxContextMessages int          `mapstructure:"max_context_messages"`
+	DailyUserQuota     int          `mapstructure:"daily_user_quota"`
+	Eino               AIEinoConfig `mapstructure:"eino"`
 }
 
 // Config 完整的配置结构
@@ -102,7 +110,7 @@ var conf Config
 
 func LoadConfig() Config {
 	// 设置 Viper 配置
-	viper.SetConfigName("config")   // 配置文件名称 (不需要扩展名)
+	viper.SetConfigName("config")   // 配置文件名称（不需要扩展名）
 	viper.SetConfigType("yaml")     // 配置文件类型
 	viper.AddConfigPath("./config") // 配置文件路径
 	viper.AddConfigPath(".")        // 当前目录
