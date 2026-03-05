@@ -95,3 +95,4 @@ ai:
   request_timeout_ms: 15000
   max_retries: 2
   max_context_messages: 20
+  daily_user_quota: 200

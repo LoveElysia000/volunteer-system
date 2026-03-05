@@ -18,6 +18,7 @@ require (
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/mysql v1.5.7
+	gorm.io/driver/sqlite v1.4.3
 	gorm.io/gen v0.3.27
 	gorm.io/gorm v1.26.0
 	gorm.io/plugin/dbresolver v1.6.2
@@ -40,6 +41,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nyaruka/phonenumbers v1.0.55 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect

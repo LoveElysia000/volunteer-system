@@ -15,6 +15,16 @@ import (
 	"volunteer-system/config"
 )
 
+// client.go 提供 AI 对话客户端实现，面向 OpenAI Chat Completions 兼容协议。
+//
+// 该文件的核心职责：
+// 1. 统一多 Provider 调用入口（deepseek / openai / compatible），并归一化 provider 名称。
+// 2. 解析请求所需参数：API Key、BaseURL、Model，支持“请求级 > 配置级 > 默认值”的回退顺序。
+// 3. 支持 API Key 的多来源解析：显式配置、${ENV_VAR:default} 表达式、环境变量候选列表。
+// 4. 负责 HTTP 调用与错误处理：超时控制、状态码判定、可重试错误识别、指数退避重试。
+// 5. 解析并归一化响应结构，兼容不同 provider 的 content 形态，输出统一 ChatResponse。
+// 6. 在错误信息中对响应体做截断，避免超长内容影响日志可读性。
+
 var (
 	// ErrAIUnavailable 表示 AI 功能不可用
 	ErrAIUnavailable = errors.New("AI 助手未启用")
@@ -44,6 +54,7 @@ func NewClient(cfg *config.AIConfig) *Client {
 
 // Chat 按 provider 调用 chat completions 接口（deepseek/openai/compatible）
 func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
+	// 入口兜底：AI 未启用或请求消息为空时直接失败，避免无意义下游调用。
 	if c.cfg == nil || !c.cfg.Enabled {
 		return nil, ErrAIUnavailable
 	}
@@ -63,10 +74,12 @@ func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 
 	model := resolveModel(req.Model, c.cfg.ChatModel, provider)
 
+	// 构造与 OpenAI Chat Completions 兼容的最小请求体。
 	payload := map[string]any{
 		"model":    model,
 		"messages": req.Messages,
 	}
+	// temperature=0 在多数 provider 中等价于未传，这里仅在显式 >0 时附带。
 	if req.Temperature > 0 {
 		payload["temperature"] = req.Temperature
 	}
@@ -93,6 +106,7 @@ func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 		httpResp, err := c.httpClient.Do(httpReq)
 		if err != nil {
 			lastErr = err
+			// 网络层错误仅在可重试且仍有剩余次数时退避后重试。
 			if attempt < maxRetries && shouldRetryTransportError(err) {
 				if backoffErr := waitRetryBackoff(ctx, attempt); backoffErr != nil {
 					return nil, backoffErr
@@ -106,6 +120,7 @@ func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 		_ = httpResp.Body.Close()
 		if readErr != nil {
 			lastErr = readErr
+			// 读取失败通常是瞬时网络问题，保守按重试策略处理。
 			if attempt < maxRetries {
 				if backoffErr := waitRetryBackoff(ctx, attempt); backoffErr != nil {
 					return nil, backoffErr
@@ -116,6 +131,7 @@ func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 		}
 		if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
 			lastErr = fmt.Errorf("AI 接口调用失败: status=%d body=%s", httpResp.StatusCode, truncate(string(respBody), 200))
+			// 仅对限流/5xx 进行重试，避免对确定性客户端错误反复请求。
 			if attempt < maxRetries && shouldRetryStatusCode(httpResp.StatusCode) {
 				if backoffErr := waitRetryBackoff(ctx, attempt); backoffErr != nil {
 					return nil, backoffErr
@@ -130,6 +146,7 @@ func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 			lastErr = err
 			return nil, err
 		}
+		// 协议上 choices 应至少包含一个候选回复。
 		if len(wire.Choices) == 0 {
 			lastErr = errors.New("AI 接口返回空结果")
 			return nil, lastErr
@@ -153,6 +170,7 @@ func (c *Client) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, err
 	return nil, errors.New("AI 调用失败")
 }
 
+// wireChatResponse 是与上游 provider 对齐的响应解码结构。
 type wireChatResponse struct {
 	Model   string `json:"model"`
 	Choices []struct {
@@ -213,6 +231,7 @@ func extractContent(v any) string {
 	}
 }
 
+// truncate 仅用于日志/错误展示，避免把超长响应体直接拼接到错误信息中。
 func truncate(s string, max int) string {
 	if max <= 0 || len(s) <= max {
 		return s
@@ -223,6 +242,7 @@ func truncate(s string, max int) string {
 	return s[:max-3] + "..."
 }
 
+// normalizeMaxRetries 将非法重试次数归零，统一由调用方按 "重试+首调" 计算总尝试次数。
 func normalizeMaxRetries(cfg *config.AIConfig) int {
 	if cfg == nil || cfg.MaxRetries < 0 {
 		return 0
@@ -230,6 +250,7 @@ func normalizeMaxRetries(cfg *config.AIConfig) int {
 	return cfg.MaxRetries
 }
 
+// normalizeProvider 归一化 provider 名称；未知值按 compatible 处理。
 func normalizeProvider(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "deepseek":

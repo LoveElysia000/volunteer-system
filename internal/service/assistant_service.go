@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 	"volunteer-system/config"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
@@ -17,6 +18,16 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+// assistant_service.go 实现 AI 助手主业务编排服务。
+//
+// 主要职责：
+// 1. 管理会话生命周期：创建会话、校验归属、更新最后活跃时间与标题。
+// 2. 编排对话链路：写入用户消息 -> 规划/执行工具 -> 构建上下文 -> 调用 AI -> 落库回复。
+// 3. 处理失败降级：当模型调用失败时，基于工具结果生成可用的 fallback 回复。
+// 4. 维护消息一致性：通过 seq_no 重试机制降低并发写入冲突风险。
+// 5. 记录观测数据：保存 token、延迟、finish_reason、工具调用日志与日聚合用量。
+// 6. 提供场景化能力：通用问答、活动草案、运营分析等场景提示与快捷入口。
 
 const (
 	assistantSceneGeneral       = "general"
@@ -30,7 +41,11 @@ const (
 	assistantRoleAssistant = 3
 	assistantRoleTool      = 4
 
-	assistantMaxSeqRetry = 3
+	assistantMaxSeqRetry         = 3
+	assistantDefaultContextLimit = 20
+	assistantMinContextLimit     = 4
+	assistantMaxContextLimit     = 100
+	assistantMaxUserMessageRunes = 2000
 )
 
 type assistantToolPlan struct {
@@ -108,9 +123,13 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		return nil, errors.New("请求不能为空")
 	}
 
-	message := strings.TrimSpace(req.Message)
-	if message == "" {
-		return nil, errors.New("消息不能为空")
+	if req.Stream {
+		return nil, errors.New("暂不支持流式输出，请将 stream 设为 false")
+	}
+
+	message, err := normalizeUserMessage(req.Message)
+	if err != nil {
+		return nil, err
 	}
 
 	userID, err := middleware.GetUserIDInt(s.c)
@@ -125,11 +144,17 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		}
 		return nil, err
 	}
+	if session.Status != assistantSessionStatusActive {
+		return nil, errors.New("会话已归档，无法继续对话")
+	}
 
 	cfg := s.getAIConfig()
 
 	requestID := s.resolveRequestID()
 	now := time.Now()
+	if err := s.checkDailyUserQuota(now, userID, cfg); err != nil {
+		return nil, err
+	}
 
 	userMessage := &model.AiMessage{
 		SessionID: session.ID,
@@ -185,11 +210,8 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		}
 	}
 
-	// 上下文窗口默认 20，可通过配置缩放，控制 token 成本与回复稳定性。
-	contextLimit := 20
-	if cfg != nil && cfg.MaxContextMessages > 0 {
-		contextLimit = cfg.MaxContextMessages
-	}
+	// 上下文窗口做上下限收敛，兼顾回复质量与 token 成本。
+	contextLimit := resolveContextLimit(cfg)
 
 	history, err := s.repo.ListRecentAiMessagesBySession(s.repo.DB, session.ID, contextLimit)
 	if err != nil {
@@ -214,7 +236,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	)
 	if aiErr != nil {
 		// 模型不可用时降级为工具结果总结，尽量保证主链路可用。
-		reply = s.buildFallbackReply(message, toolResults, aiErr)
+		reply = s.buildFallbackReply(toolResults, aiErr)
 		modelName = "fallback"
 		finishReason = "fallback"
 		log.Warn("AI 调用失败，使用降级回复: %v, session_id=%d user_id=%d", aiErr, session.ID, userID)
@@ -259,11 +281,11 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	if strings.TrimSpace(session.Title) == "" {
 		title = s.generateSessionTitle(message, session.Scene)
 	}
-	if err := s.repo.UpdateAiSessionAfterMessage(s.repo.DB, session.ID, now, title); err != nil {
+	if err := s.repo.UpdateAiSessionAfterMessage(s.repo.DB, session.ID, assistantMsg.CreatedAt, title); err != nil {
 		log.Error("更新会话时间失败: %v, session_id=%d", err, session.ID)
 	}
 
-	// 仅保留每日用量聚合，便于观测与成本估算（当前不做日配额拦截）。
+	// 每日用量聚合用于配额、观测和成本估算。
 	estimatedCost := s.estimateCost(modelName, tokenIn, tokenOut)
 	if err := s.repo.UpsertAiUsageDaily(s.repo.DB, now, userID, aiErr == nil, tokenIn, tokenOut, estimatedCost); err != nil {
 		log.Error("更新 AI 用量失败: %v, user_id=%d", err, userID)
@@ -465,9 +487,10 @@ func (s *AssistantService) buildSystemPrompt(scene string) string {
 	}
 }
 
-func (s *AssistantService) buildFallbackReply(userMessage string, toolResults []*assistantToolResult, cause error) string {
+func (s *AssistantService) buildFallbackReply(toolResults []*assistantToolResult, cause error) string {
+	reason := resolveUserVisibleModelError(cause)
 	if len(toolResults) == 0 {
-		return "AI 服务暂时不可用，请稍后重试。"
+		return "AI 服务暂时不可用（" + reason + "），请稍后重试。"
 	}
 
 	lines := make([]string, 0, len(toolResults)+2)
@@ -482,13 +505,25 @@ func (s *AssistantService) buildFallbackReply(userMessage string, toolResults []
 			lines = append(lines, fmt.Sprintf("- %s 调用失败: %s", item.ToolName, item.ErrorMsg))
 		}
 	}
-	if strings.TrimSpace(userMessage) != "" {
-		lines = append(lines, "你可以稍后重试，或缩小问题范围（例如指定活动关键词/组织ID）以提高成功率。")
-	}
-	if cause != nil {
-		lines = append(lines, "失败原因: "+truncateText(cause.Error(), 120))
-	}
+	lines = append(lines, "失败原因: "+reason)
+	lines = append(lines, "你可以稍后重试，或缩小问题范围（例如指定活动关键词/组织ID）以提高成功率。")
 	return strings.Join(lines, "\n")
+}
+
+func (s *AssistantService) checkDailyUserQuota(now time.Time, userID int64, cfg *config.AIConfig) error {
+	if cfg == nil || cfg.DailyUserQuota <= 0 {
+		return nil
+	}
+
+	usage, err := s.repo.GetAiUsageDaily(s.repo.DB, now, userID)
+	if err != nil {
+		log.Error("查询 AI 日配额失败: %v, user_id=%d", err, userID)
+		return errors.New("系统繁忙，请稍后重试")
+	}
+	if usage != nil && usage.RequestCount >= int64(cfg.DailyUserQuota) {
+		return errors.New("今日 AI 使用次数已达上限，请明日再试")
+	}
+	return nil
 }
 
 func (s *AssistantService) resolveRequestID() string {
@@ -517,6 +552,20 @@ func (s *AssistantService) getAIConfig() *config.AIConfig {
 		return nil
 	}
 	return cfg.AI
+}
+
+func resolveContextLimit(cfg *config.AIConfig) int {
+	limit := assistantDefaultContextLimit
+	if cfg != nil && cfg.MaxContextMessages > 0 {
+		limit = cfg.MaxContextMessages
+	}
+	if limit < assistantMinContextLimit {
+		return assistantDefaultContextLimit
+	}
+	if limit > assistantMaxContextLimit {
+		return assistantMaxContextLimit
+	}
+	return limit
 }
 
 func (s *AssistantService) estimateCost(modelName string, tokenIn, tokenOut int32) float64 {
@@ -644,4 +693,42 @@ func truncateText(s string, max int) string {
 		return s[:max]
 	}
 	return s[:max-3] + "..."
+}
+
+func normalizeUserMessage(raw string) (string, error) {
+	message := strings.TrimSpace(raw)
+	if message == "" {
+		return "", errors.New("消息不能为空")
+	}
+	if utf8.RuneCountInString(message) > assistantMaxUserMessageRunes {
+		return "", fmt.Errorf("消息过长，最多 %d 字", assistantMaxUserMessageRunes)
+	}
+	return message, nil
+}
+
+func resolveUserVisibleModelError(err error) string {
+	if err == nil {
+		return "模型服务暂时不可用"
+	}
+	if errors.Is(err, ai.ErrAPIKeyMissing) {
+		return "AI 配置异常"
+	}
+	if errors.Is(err, ai.ErrAIUnavailable) {
+		return "AI 服务未启用"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "模型服务响应超时"
+	}
+
+	lower := strings.ToLower(err.Error())
+	if strings.Contains(lower, "status=429") ||
+		strings.Contains(lower, "too many requests") ||
+		strings.Contains(lower, "rate limit") {
+		return "模型服务限流"
+	}
+	if strings.Contains(lower, "timeout") || strings.Contains(lower, "deadline exceeded") {
+		return "模型服务响应超时"
+	}
+
+	return "模型服务暂时不可用"
 }

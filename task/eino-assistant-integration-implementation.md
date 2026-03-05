@@ -1,51 +1,46 @@
-﻿# AI 助手 Eino 集成实施文档
+﻿# AI 助手 Eino 接入实施文档（未来规划）
 
-更新时间：2026-03-04  
+更新时间：2026-03-05  
 适用项目：`volunteer-system`
 
 ## 1. 背景与目标
 
-当前项目已具备独立 AI 助手模块能力：
+当前项目已有独立 AI 助手域（`/api/assistant/*`、独立 service/repository、独立 AI 表），但核心链路仍以 native 规则编排为主。  
+本文件聚焦“后续接入 Eino 框架”所需工作，不描述本轮 native 优化内容。
 
-1. 独立 API：`/api/assistant/*`
-2. 独立服务编排：`assistant_service + assistant_tool_service`
-3. 独立持久化：`ai_sessions / ai_messages / ai_tool_calls / ai_usage_daily`
-4. 独立模型访问层：`pkg/ai/client.go`
+目标：
 
-本实施文档目标是：在不破坏现有业务 API 与数据库模型的前提下，引入 Eino 作为可选运行时，支持后续更复杂的 Agent 编排能力。
+1. 引入 Eino 作为可选运行时，支持多步工具调用与中断恢复。
+2. 保持现有 API 协议、数据库模型、落库语义不变。
+3. 提供可灰度、可回滚的接入方案（`native` 与 `eino` 并存）。
 
-## 2. 范围与非目标
+## 2. 范围与边界
 
-### 2.1 本期范围
+### 2.1 本期范围（接入 Eino）
 
-1. 引入 Eino 运行时并可开关切换（`native` / `eino`）。
-2. 复用现有工具能力（活动检索/统计/草案）。
-3. 保持现有落库与观测逻辑。
-4. 支持失败回退到现有 native 逻辑。
+1. 运行时抽象：`AssistantRuntime` 接口化。
+2. 新增 `EinoRuntime`，复用现有工具能力。
+3. 支持 `Runner Query/Resume` 与 `CheckPointStore`。
+4. 工具事件、模型事件映射到现有 `ai_messages / ai_tool_calls / ai_usage_daily`。
+5. 配置化灰度：`runtime=native|eino`、`runtime_fallback`。
+6. 补齐集成测试、回滚方案、观测指标。
 
 ### 2.2 非目标
 
-1. 不重构现有 API 协议（`assistant.proto` 保持兼容）。
-2. 不更改现有 DDL 结构。
-3. 不在本期引入向量库或长期记忆系统。
-4. `stream` 先不强制上线（可预留）。
+1. 不改 `internal/api/assistant.proto` 协议结构。
+2. 不改 `sql/ddl/ddl_v1.3.0.sql` 表结构（仅复用）。
+3. 不在本期引入向量数据库与长期记忆系统。
+4. 不做多框架混用（Eino 与 LangChainGo 二选一，本期仅 Eino）。
 
-## 3. 现状基线
+## 3. 当前基线（供接入评估）
 
-当前核心链路：
+1. 助手主链路：`internal/service/assistant_service.go`
+2. 工具层：`internal/service/assistant_tool_service.go`
+3. 模型调用：`pkg/ai/client.go`
+4. 持久化：`internal/repository/assistant.go`
+5. 当前未引入 Eino 依赖（`go.mod` 中无 `cloudwego/eino`）
 
-1. `internal/service/assistant_service.go`：会话管理、工具调用、模型调用、消息落库。
-2. `internal/service/assistant_tool_service.go`：规则规划 + 受控工具执行。
-3. `pkg/ai/client.go`：多 provider chat completions 调用。
-4. `internal/repository/assistant.go`：assistant 域数据访问。
-
-现状特点：
-
-1. 工具规划为规则启发式（非自治多步 Agent）。
-2. 模型失败有 fallback 文本回复。
-3. 已具备 token 用量与工具调用日志。
-
-## 4. 目标架构（增量改造）
+## 4. 目标架构
 
 ```text
 Client
@@ -53,93 +48,128 @@ Client
       -> handler/assistant.go
           -> service/assistant_service.go
               -> AssistantRuntime (interface)
-                 |- NativeRuntime (当前逻辑)
+                 |- NativeRuntime (现有逻辑适配)
                  |- EinoRuntime  (新实现)
               -> assistant_tool_service.go (工具能力源)
-              -> repository/assistant.go   (落库保持不变)
+              -> repository/assistant.go   (统一落库)
 ```
 
 设计原则：
 
-1. 先抽象运行时，再接入 Eino。
-2. API、DB、日志模型保持不变。
-3. 通过配置灰度切换，支持秒级回滚。
+1. service 负责会话生命周期与落库一致性；runtime 负责“推理与工具执行”。
+2. runtime 不直接写数据库，避免双写路径。
+3. Eino 失败可回落到 native。
 
-## 5. 实施阶段
+## 5. 关键设计与待办
 
-## Phase 0：准备与依赖校验（0.5 天）
+### 5.1 运行时接口抽象
 
-1. 引入 Eino 相关依赖（`github.com/cloudwego/eino` 及对应 provider 扩展）。
-2. 本地执行 `go mod tidy`，确认与 Hertz/GORM 依赖无冲突。
-3. 记录基线接口行为（`CreateSession/Chat/SessionMessages/ActivityDraftAction`）。
-
-交付：依赖可编译，现有功能无回归。
-
-## Phase 1：运行时抽象（1 天）
-
-新增接口（建议文件：`internal/service/assistant_runtime.go`）：
+新增文件建议：`internal/service/assistant_runtime.go`
 
 ```go
 type AssistantRuntime interface {
-    Chat(ctx context.Context, in *RuntimeChatInput) (*RuntimeChatOutput, error)
     Name() string
+    Chat(ctx context.Context, in *RuntimeChatInput) (*RuntimeChatOutput, error)
+}
+
+type RuntimeChatInput struct {
+    UserID    int64
+    SessionID int64
+    Scene     string
+    Message   string
+    History   []ai.Message
+    RequestID string
+}
+
+type RuntimeToolCall struct {
+    ToolName   string
+    InputJSON  string
+    OutputJSON string
+    Success    bool
+    ErrorCode  string
+    ErrorMsg   string
+    LatencyMS  int32
+}
+
+type RuntimeChatOutput struct {
+    Reply        string
+    Model        string
+    FinishReason string
+    TokenIn      int32
+    TokenOut     int32
+    LatencyMS    int32
+    ToolCalls    []RuntimeToolCall
 }
 ```
 
-新增结构：
+待办：
 
-1. `RuntimeChatInput`：scene、message、history、userID、sessionID、requestID。
-2. `RuntimeChatOutput`：reply、model、finishReason、tokenIn/out、toolCalls、latency。
-3. `RuntimeToolCall`：tool_name/input/output/success/error/latency。
+1. 把现有“工具规划 + 工具执行 + 模型调用”从 `AssistantService.Chat` 下沉到 `NativeRuntime`。
+2. `AssistantService` 保留会话校验、消息序列号、工具日志绑定、usage upsert。
 
-改造点：
-
-1. 将 `assistant_service.go` 中“工具 + 模型调用”段落下沉到 runtime。
-2. 保留 `appendAiMessage`、`UpdateAiToolCallMessageID`、`UpsertAiUsageDaily` 逻辑不变。
-
-交付：默认仍走 `NativeRuntime`，行为与当前一致。
-
-## Phase 2：EinoRuntime 落地（1.5~2 天）
+### 5.2 EinoRuntime 实现
 
 新增文件建议：
 
 1. `internal/service/assistant_runtime_eino.go`
 2. `internal/service/assistant_tool_eino_adapter.go`
 
-关键实现：
+待办：
 
-1. 初始化 ChatModel（DeepSeek/OpenAI，按现有 `ai` 配置映射）。
-2. 通过工具适配器把现有 3 个工具注册为 Eino Tool。
-3. 创建 `ChatModelAgent` + `Runner`。
-4. 执行 Query，提取最终回复与工具调用过程。
-5. 将 Eino 输出映射为 `RuntimeChatOutput`。
+1. 初始化 ChatModel（按现有 `ai.provider/base_url/chat_model` 映射）。
+2. 将现有 3 个工具注册为 Eino Tool（不搬业务逻辑，只做适配）。
+3. 使用 `adk.Runner` 执行 Query；中断场景支持 Resume。
+4. 将 Eino 输出映射为 `RuntimeChatOutput`，保持现有响应兼容。
 
-工具适配约束：
+### 5.3 CheckPointStore 与恢复策略
 
-1. 工具内部继续做权限校验（不能依赖模型判断权限）。
-2. 工具输入输出仍使用 JSON 字符串形态，方便复用当前审计表。
-3. 单次对话设置最大步骤上限（建议 3~5）避免失控循环。
+必须补齐（当前文档缺项）：
 
-交付：`runtime=eino` 可稳定完成三类场景。
+1. 指定 `CheckPointStore` 存储（建议 Redis，兜底可 MySQL）。
+2. 定义 checkpoint key 规范：`assistant:{session_id}:{request_id}`。
+3. 定义 TTL、清理策略、跨实例恢复约束。
+4. 明确 `Resume` 入口与超时策略。
 
-## Phase 3：灰度、降级与回滚（0.5~1 天）
+### 5.4 工具事件与落库映射（必须细化）
 
-1. 新增配置开关：默认 `runtime=native`。
-2. 在 `AssistantService` 统一选择 runtime。
-3. `EinoRuntime` 调用失败时可自动 fallback 到 `NativeRuntime`。
-4. 记录 runtime 维度日志：成功率、耗时、工具失败率。
+Eino 事件 -> 现有表：
 
-交付：生产可灰度启用 Eino，异常可快速切回 native。
+1. ToolStart/ToolEnd -> `ai_tool_calls`
+2. Agent 最终回复 -> `ai_messages(role=assistant)`
+3. token 使用 -> `ai_usage_daily`
 
-## Phase 4：可选增强（后续迭代）
+必须增加：
 
-1. 流式输出（`stream=true`）按 Eino stream 能力实现。
-2. 工具注册中心（去除硬编码规划）。
-3. 日配额拦截（当前仅统计未拦截）。
+1. 幂等键设计（避免重试导致重复写工具日志）。
+2. 失败事件落库规范（工具失败也要记录）。
+3. message_id 回填时机与事务边界。
 
-## 6. 配置设计
+### 5.5 流式策略（`stream=true`）
 
-在现有 `ai` 配置下新增：
+需要明确：
+
+1. 对外传输协议（SSE 或分片 JSON）。
+2. streaming 过程中消息落库策略（分片缓存 + 最终落单条 assistant 消息）。
+3. 工具事件在流中的可见性与顺序保证。
+
+### 5.6 错误分类与回退
+
+统一错误码建议：
+
+1. `MODEL_TIMEOUT`
+2. `MODEL_RATE_LIMIT`
+3. `TOOL_TIMEOUT`
+4. `PERMISSION_DENIED`
+5. `RUNTIME_EXEC_FAILED`
+6. `CHECKPOINT_STORE_FAILED`
+7. `RESUME_CONTEXT_MISSING`
+
+回退策略：
+
+1. `runtime=eino` 且失败时，若 `runtime_fallback=true` 则自动降级 native。
+2. 回退流程同样写 usage 与审计日志。
+
+### 5.7 配置扩展（接入前必须落地）
 
 ```yaml
 ai:
@@ -152,133 +182,99 @@ ai:
   max_retries: 2
   max_context_messages: 20
 
-  runtime: "native"     # native / eino
-  runtime_fallback: true # eino失败是否回退native
+  runtime: "native"         # native / eino
+  runtime_fallback: true    # eino失败是否自动回退native
 
   eino:
     max_steps: 4
     tool_timeout_ms: 3000
     enable_stream: false
+    checkpoint_ttl_seconds: 1800
 ```
 
-说明：
+### 5.8 版本锁定策略（必须补齐）
 
-1. `runtime` 默认建议 `native`，灰度阶段再切 `eino`。
-2. 保持 `api_key` 使用环境变量，不写日志。
+1. 锁定 `github.com/cloudwego/eino` 与 `eino-ext` 版本（禁止 floating）。
+2. 引入依赖后执行 `go test ./...` + smoke tests。
+3. 在文档记录升级流程与破坏性变更检查项。
 
-## 7. 文件改造清单
+## 6. 分阶段实施计划
 
-### 7.1 新增文件
+### Phase 0：依赖与基线（0.5 天）
 
-1. `internal/service/assistant_runtime.go`
-2. `internal/service/assistant_runtime_native.go`
-3. `internal/service/assistant_runtime_eino.go`
-4. `internal/service/assistant_tool_eino_adapter.go`
-5. `task/eino-assistant-integration-implementation.md`（本文档）
+1. 引入 Eino 依赖并锁版本。
+2. 跑通现有接口基线（chat、history、action）。
 
-### 7.2 修改文件
+### Phase 1：运行时抽象（1 天）
 
-1. `config/config.go`：扩展 AIConfig（runtime/eino配置）。
-2. `config/config.yaml.example`：补充示例配置。
-3. `config/config.yaml`：本地环境配置补齐。
-4. `internal/service/assistant_service.go`：改为 runtime 驱动。
+1. 新增 runtime 接口与 `NativeRuntime`。
+2. `AssistantService` 改为 runtime 驱动。
 
-### 7.3 不改文件
+### Phase 2：EinoRuntime 接入（1.5~2 天）
 
-1. `internal/api/assistant.proto`（本期保持协议兼容）。
-2. `internal/repository/assistant.go`（持久化接口继续复用）。
-3. `sql/ddl/ddl_v1.3.0.sql`（本期不新增表）。
+1. 接入 ChatModel + Tool Adapter + Runner Query。
+2. 对齐现有落库语义。
 
-## 8. 关键实现细节
+### Phase 3：恢复能力与灰度（1 天）
 
-### 8.1 工具调用日志映射
+1. CheckPointStore 接入与 Resume 实测。
+2. 开启 `runtime=eino` 小流量灰度，观测 24h。
 
-Eino 的工具事件需映射到现有 `ai_tool_calls`：
+### Phase 4：流式与增强（后续）
 
-1. `tool_name` <- Eino tool 名称
-2. `tool_input` <- 请求参数 JSON
-3. `tool_output` <- 响应 JSON
-4. `success/error_code/error_msg/latency_ms` <- 运行结果
+1. `stream=true` 真正可用。
+2. 工具注册中心化，弱化硬编码规则。
 
-要求：即使工具失败，也要记录调用日志。
+## 7. 测试计划
 
-### 8.2 消息序号与并发安全
+### 7.1 单元测试
 
-继续沿用现有逻辑：
+1. runtime 选择逻辑（native/eino/fallback）。
+2. Eino 输出映射准确性。
+3. Checkpoint 失效/缺失/恢复失败分支。
+4. 工具适配层权限与超时分支。
 
-1. `(session_id, seq_no)` 唯一键 + 重试。
-2. runtime 不直接写库，由 `assistant_service.go` 统一落库。
+### 7.2 集成测试
 
-### 8.3 错误分类建议
+1. 活动检索（`activity_search`）
+2. 运营统计（`activity_stats`）
+3. 草案生成（`activity_draft_generate`）
+4. 中断后 Resume 场景
 
-1. `MODEL_TIMEOUT`
-2. `MODEL_RATE_LIMIT`
-3. `TOOL_TIMEOUT`
-4. `PERMISSION_DENIED`
-5. `RUNTIME_EXEC_FAILED`
+验收点：
 
-## 9. 测试计划
+1. `reply` 非空且语义正确。
+2. `tool_calls` 完整落库。
+3. `ai_messages / ai_tool_calls / ai_usage_daily` 数据一致。
 
-## 9.1 单元测试
-
-1. runtime 选择逻辑（`native/eino/fallback`）。
-2. Eino 输出到 `RuntimeChatOutput` 的映射正确性。
-3. 工具适配层的权限拒绝与超时行为。
-
-## 9.2 集成测试
-
-覆盖 3 条主链路：
-
-1. 活动检索问答（`activity_search`）
-2. 运营分析问答（`activity_stats`）
-3. 活动草案生成（`activity_draft_generate`）
-
-每条链路验证：
-
-1. reply 非空
-2. tool_calls 完整
-3. `ai_messages / ai_tool_calls / ai_usage_daily` 有落库
-
-## 9.3 回归检查
-
-1. 非 AI 模块接口不受影响。
-2. `runtime=native` 时行为与改造前一致。
-
-## 10. 发布与回滚
+## 8. 发布与回滚
 
 发布策略：
 
-1. 先上线代码，默认 `runtime=native`。
-2. 小流量环境切 `runtime=eino` 验证 24 小时。
-3. 观察错误率/耗时/工具成功率后逐步放量。
+1. 默认 `runtime=native` 上线代码。
+2. 小流量切 `runtime=eino`，观察成功率、P95、工具失败率、恢复成功率。
+3. 指标达标后逐步放量。
 
 回滚策略：
 
-1. 配置切回 `runtime=native`（无需回滚代码）。
-2. 若依赖异常，临时关闭 `ai.enabled`。
+1. 配置回切 `runtime=native`（无须回滚代码）。
+2. 异常扩大时关闭 `ai.enabled`。
 
-## 11. 风险与应对
+## 9. DoD（完成标准）
 
-1. 依赖兼容风险：固定版本并在 CI 做 `go test` + smoke。
-2. 工具调用失控：限制 `max_steps` + 单工具超时。
-3. 权限绕过风险：权限校验保留在工具服务内部。
-4. 成本波动：沿用日用量统计，后续增加日配额拦截。
+1. `runtime=native` 与 `runtime=eino` 都能完成完整会话流程。
+2. 三类工具场景在 Eino 下稳定可用，失败可追踪。
+3. Checkpoint 恢复链路可用并有监控。
+4. 数据落库语义与现有系统一致。
+5. 配置可灰度、可回滚、文档与代码一致。
 
-## 12. 验收标准（DoD）
+## 10. 参考资料（官方）
 
-1. `runtime=native` 和 `runtime=eino` 均可完成对话主流程。
-2. 三类工具场景稳定可用，失败可追踪。
-3. 关键表落库完整且字段语义一致。
-4. 配置可灰度、可回滚。
-5. 文档与配置模板同步更新。
-
-## 13. 参考资料（官方）
-
-1. Eino Agent with Tools Quick Start：
+1. Eino Agent with Tools Quick Start  
    https://cloudwego.cn/docs/eino/quick_start/agent_llm_with_tools/
-2. Eino ADK ChatModel Agent：
+2. Eino ADK ChatModel Agent  
    https://www.cloudwego.io/docs/eino/core_modules/eino_adk/agent_implementation/chat_model/
-3. Eino ADK 扩展与事件：
+3. Eino ADK Extension / Runner / Resume  
    https://www.cloudwego.io/docs/eino/core_modules/eino_adk/agent_extension/
-4. Eino DeepSeek ChatModel：
+4. Eino DeepSeek ChatModel  
    https://www.cloudwego.io/docs/eino/ecosystem_integration/chat_model/chat_model_deepseek/

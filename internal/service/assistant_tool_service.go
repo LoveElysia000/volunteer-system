@@ -13,11 +13,21 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 )
 
+// assistant_tool_service.go 实现 AI 助手可控工具链服务。
+//
+// 该文件负责把“用户问题”转换为“可执行的内部工具调用”：
+// 1. 基于场景和关键词进行规则化工具规划（PlanTools），避免模型直接决策工具链。
+// 2. 执行工具调用并统一输出结构（Execute），包含超时控制、有限重试与错误分类。
+// 3. 在工具层做权限与参数校验，确保组织数据访问边界清晰。
+// 4. 输出稳定的 JSON 结果，供上层消息上下文与工具日志复用。
+// 5. 提供输入提取与类型转换辅助函数，降低上层编排复杂度。
+
 const (
 	assistantToolActivitySearch        = "activity_search"
 	assistantToolActivityStats         = "activity_stats"
 	assistantToolActivityDraftGenerate = "activity_draft_generate"
 
+	assistantToolMaxPlans    = 3
 	assistantToolTimeout     = 3 * time.Second
 	assistantToolMaxAttempts = 2 // 首次 + 1 次重试
 )
@@ -57,7 +67,7 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 	added := make(map[string]struct{})
 
 	addPlan := func(tool string, input map[string]any) {
-		if len(plans) >= 3 {
+		if len(plans) >= assistantToolMaxPlans {
 			return
 		}
 		if _, ok := added[tool]; ok {
@@ -78,7 +88,7 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 		addPlan(assistantToolActivityStats, map[string]any{})
 	}
 
-	if containsAny(msg, "活动", "查询", "搜索", "报名", "招募") {
+	if shouldPlanActivitySearch(msg) {
 		searchInput := map[string]any{
 			"keyword": extractKeyword(msg),
 			"limit":   5,
@@ -349,13 +359,13 @@ func extractTopic(message string) string {
 	}
 	for _, token := range []string{"主题：", "主题:", "topic:"} {
 		if idx := strings.Index(trimmed, token); idx >= 0 {
-			value := strings.TrimSpace(trimmed[idx+len(token):])
+			value := trimByStopWords(strings.TrimSpace(trimmed[idx+len(token):]))
 			if value != "" {
 				return truncateText(value, 30)
 			}
 		}
 	}
-	return truncateText(trimmed, 30)
+	return truncateText(trimByStopWords(trimmed), 30)
 }
 
 func extractKeyword(message string) string {
@@ -365,7 +375,7 @@ func extractKeyword(message string) string {
 	}
 	for _, token := range []string{"关键词：", "关键词:", "keyword:"} {
 		if idx := strings.Index(trimmed, token); idx >= 0 {
-			value := strings.TrimSpace(trimmed[idx+len(token):])
+			value := trimByStopWords(strings.TrimSpace(trimmed[idx+len(token):]))
 			if value != "" {
 				return truncateText(value, 20)
 			}
@@ -423,8 +433,34 @@ func asInt32(v any) int32 {
 
 func asInt(v any, fallback int) int {
 	n := int(asInt64(v))
-	if n == 0 {
+	if n <= 0 {
 		return fallback
 	}
 	return n
+}
+
+func shouldPlanActivitySearch(msg string) bool {
+	if containsAny(msg, "查询", "搜索", "招募", "报名", "报名中", "已结束", "已取消") {
+		return true
+	}
+	if containsAny(msg, "有哪些活动", "什么活动", "活动列表", "最近活动", "活动推荐") {
+		return true
+	}
+	return strings.Contains(msg, "活动") && containsAny(msg, "最近", "有哪些", "什么", "推荐")
+}
+
+func trimByStopWords(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+
+	stops := []string{"。", "；", ";", "\n"}
+	cut := len(value)
+	for _, stop := range stops {
+		if idx := strings.Index(value, stop); idx >= 0 && idx < cut {
+			cut = idx
+		}
+	}
+	return strings.TrimSpace(value[:cut])
 }

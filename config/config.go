@@ -83,6 +83,7 @@ type AIConfig struct {
 	RequestTimeoutMS   int    `mapstructure:"request_timeout_ms"`
 	MaxRetries         int    `mapstructure:"max_retries"`
 	MaxContextMessages int    `mapstructure:"max_context_messages"`
+	DailyUserQuota     int    `mapstructure:"daily_user_quota"`
 }
 
 // Config 完整的配置结构
