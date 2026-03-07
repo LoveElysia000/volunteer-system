@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 func VolunteerJoinOrganization(ctx context.Context, c *app.RequestContext) {
@@ -17,7 +18,7 @@ func VolunteerJoinOrganization(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewMembershipService(ctx, c).VolunteerJoinOrganization(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -31,7 +32,7 @@ func VolunteerLeaveOrganization(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewMembershipService(ctx, c).VolunteerLeaveOrganization(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -45,7 +46,7 @@ func GetOrganizationMembers(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewMembershipService(ctx, c).GetOrganizationMembers(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -59,7 +60,7 @@ func GetVolunteerOrganizations(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewMembershipService(ctx, c).GetVolunteerOrganizations(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -73,7 +74,7 @@ func UpdateMemberStatus(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewMembershipService(ctx, c).UpdateMemberStatus(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -87,7 +88,7 @@ func MembershipStats(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewMembershipService(ctx, c).MembershipStats(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

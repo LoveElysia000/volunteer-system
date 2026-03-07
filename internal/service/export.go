@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	exportPageSize = 500
-	exportMaxRows  = 50000
+	exportMaxRows = 50000
 )
 
 type ExportService struct {
@@ -50,49 +49,53 @@ func (s *ExportService) ExportVolunteers(req *api.ExportVolunteersRequest) (*mod
 	}
 
 	rows := make([]model.VolunteerExportRow, 0, 256)
-	offset := 0
+	records, err := s.repo.ListVolunteerExportRecords(s.repo.DB, req, orgID, exportMaxRows+1, 0)
+	if err != nil {
+		log.Error("导出志愿者失败: 查询数据异常: %v, org_id=%d", err, orgID)
+		return nil, err
+	}
+	if len(records) > exportMaxRows {
+		return nil, fmt.Errorf("单次最多导出 %d 行，请缩小筛选范围", exportMaxRows)
+	}
 
-	for {
-		records, err := s.repo.ListVolunteerExportRecords(s.repo.DB, req, orgID, exportPageSize, offset)
-		if err != nil {
-			log.Error("导出志愿者失败: 查询数据异常: %v, org_id=%d offset=%d", err, orgID, offset)
-			return nil, err
-		}
-		if len(records) == 0 {
-			break
+	for _, rec := range records {
+		if rec == nil {
+			continue
 		}
 
-		for _, rec := range records {
-			if rec == nil {
-				continue
+		genderText := model.DefaultUnknownText
+		if text, ok := model.VolunteerGenderTextByCode[rec.Gender]; ok {
+			genderText = text
+		}
+		statusText := model.DefaultOtherText
+		if text, ok := model.VolunteerStatusTextByCode[rec.Status]; ok {
+			statusText = text
+		}
+		auditStatusText := model.DefaultUnknownText
+		if text, ok := model.VolunteerAuditStatusTextByCode[rec.AuditStatus]; ok {
+			auditStatusText = text
+		}
+
+		mobile := rec.Mobile
+		if rec.Mobile != "" {
+			if decrypted, decryptErr := util.DecryptSensitiveField(rec.Mobile); decryptErr == nil {
+				mobile = decrypted
 			}
-
-			mobile := rec.Mobile
-			if rec.Mobile != "" {
-				if decrypted, decryptErr := util.DecryptSensitiveField(rec.Mobile); decryptErr == nil {
-					mobile = decrypted
-				}
-			}
-
-			rows = append(rows, model.VolunteerExportRow{
-				VolunteerID:  rec.VolunteerID,
-				RealName:     rec.RealName,
-				Gender:       volunteerGenderText(rec.Gender),
-				Mobile:       mobile,
-				Email:        rec.Email,
-				Organization: rec.OrgName,
-				TotalHours:   rec.TotalHours,
-				ServiceCount: rec.ServiceCount,
-				Status:       volunteerStatusText(rec.Status),
-				AuditStatus:  volunteerAuditStatusText(rec.AuditStatus),
-				CreatedAt:    util.FormatDateTimeOrEmpty(rec.CreatedAt),
-			})
 		}
 
-		if len(rows) > exportMaxRows {
-			return nil, fmt.Errorf("单次最多导出 %d 行，请缩小筛选范围", exportMaxRows)
-		}
-		offset += exportPageSize
+		rows = append(rows, model.VolunteerExportRow{
+			VolunteerID:  rec.VolunteerID,
+			RealName:     rec.RealName,
+			Gender:       genderText,
+			Mobile:       mobile,
+			Email:        rec.Email,
+			Organization: rec.OrgName,
+			TotalHours:   rec.TotalHours,
+			ServiceCount: rec.ServiceCount,
+			Status:       statusText,
+			AuditStatus:  auditStatusText,
+			CreatedAt:    util.FormatDateTimeOrEmpty(rec.CreatedAt),
+		})
 	}
 
 	content, err := util.MarshalXLSX(rows)
@@ -141,44 +144,40 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*mod
 	}
 
 	rows := make([]model.ActivityExportRow, 0, 256)
-	offset := 0
+	records, err := s.repo.ListActivityExportRecords(s.repo.DB, req, orgID, startFrom, startTo, exportMaxRows+1, 0)
+	if err != nil {
+		log.Error("导出活动失败: 查询数据异常: %v, org_id=%d", err, orgID)
+		return nil, err
+	}
+	if len(records) > exportMaxRows {
+		return nil, fmt.Errorf("单次最多导出 %d 行，请缩小筛选范围", exportMaxRows)
+	}
 
-	for {
-		records, err := s.repo.ListActivityExportRecords(s.repo.DB, req, orgID, startFrom, startTo, exportPageSize, offset)
-		if err != nil {
-			log.Error("导出活动失败: 查询数据异常: %v, org_id=%d offset=%d", err, orgID, offset)
-			return nil, err
-		}
-		if len(records) == 0 {
-			break
-		}
-
-		for _, rec := range records {
-			if rec == nil {
-				continue
-			}
-
-			rows = append(rows, model.ActivityExportRow{
-				ActivityID:    rec.ActivityID,
-				Title:         rec.Title,
-				Description:   rec.Description,
-				StartTime:     util.FormatDateTimeOrEmpty(rec.StartTime),
-				EndTime:       util.FormatDateTimeOrEmpty(rec.EndTime),
-				Location:      rec.Location,
-				Address:       rec.Address,
-				Duration:      rec.Duration,
-				MaxPeople:     rec.MaxPeople,
-				CurrentPeople: rec.CurrentPeople,
-				Status:        activityStatusText(rec.Status),
-				Organization:  rec.OrgName,
-				CreatedAt:     util.FormatDateTimeOrEmpty(rec.CreatedAt),
-			})
+	for _, rec := range records {
+		if rec == nil {
+			continue
 		}
 
-		if len(rows) > exportMaxRows {
-			return nil, fmt.Errorf("单次最多导出 %d 行，请缩小筛选范围", exportMaxRows)
+		statusText := model.DefaultUnknownText
+		if text, ok := model.ActivityStatusTextByCode[rec.Status]; ok {
+			statusText = text
 		}
-		offset += exportPageSize
+
+		rows = append(rows, model.ActivityExportRow{
+			ActivityID:    rec.ActivityID,
+			Title:         rec.Title,
+			Description:   rec.Description,
+			StartTime:     util.FormatDateTimeOrEmpty(rec.StartTime),
+			EndTime:       util.FormatDateTimeOrEmpty(rec.EndTime),
+			Location:      rec.Location,
+			Address:       rec.Address,
+			Duration:      rec.Duration,
+			MaxPeople:     rec.MaxPeople,
+			CurrentPeople: rec.CurrentPeople,
+			Status:        statusText,
+			Organization:  rec.OrgName,
+			CreatedAt:     util.FormatDateTimeOrEmpty(rec.CreatedAt),
+		})
 	}
 
 	content, err := util.MarshalXLSX(rows)
@@ -207,54 +206,4 @@ func (s *ExportService) getCurrentOrgID() (int64, error) {
 		return 0, err
 	}
 	return org.ID, nil
-}
-
-func volunteerGenderText(gender int32) string {
-	switch gender {
-	case 1:
-		return "男"
-	case 2:
-		return "女"
-	default:
-		return "未知"
-	}
-}
-
-func volunteerStatusText(status int32) string {
-	switch status {
-	case model.VolunteerActiveStatus:
-		return "活跃"
-	case model.VolunteerInactiveStatus:
-		return "非活跃"
-	default:
-		return "其他"
-	}
-}
-
-func volunteerAuditStatusText(status int32) string {
-	switch status {
-	case model.VolunteerAuditStatusUnverified:
-		return "未认证"
-	case model.VolunteerAuditStatusPending:
-		return "审核中"
-	case model.VolunteerAuditStatusApproved:
-		return "已通过"
-	case model.VolunteerAuditStatusRejected:
-		return "已驳回"
-	default:
-		return "未知"
-	}
-}
-
-func activityStatusText(status int32) string {
-	switch status {
-	case model.ActivityStatusRecruiting:
-		return "报名中"
-	case model.ActivityStatusFinished:
-		return "已结束"
-	case model.ActivityStatusCanceled:
-		return "已取消"
-	default:
-		return "未知"
-	}
 }

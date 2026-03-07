@@ -15,28 +15,28 @@ func TestShouldPlanActivitySearch(t *testing.T) {
 
 	for _, tc := range cases {
 		if got := shouldPlanActivitySearch(tc.msg); got != tc.want {
-			t.Fatalf("shouldPlanActivitySearch(%q) = %v, want %v", tc.msg, got, tc.want)
+			t.Fatalf("shouldPlanActivitySearch(%q)=%v want=%v", tc.msg, got, tc.want)
 		}
 	}
 }
 
 func TestTrimByStopWords(t *testing.T) {
 	if got := trimByStopWords("社区清洁；附带说明"); got != "社区清洁" {
-		t.Fatalf("trim result = %q, want %q", got, "社区清洁")
+		t.Fatalf("trim result=%q want=%q", got, "社区清洁")
 	}
 	if got := trimByStopWords("河道清理。\n后续"); got != "河道清理" {
-		t.Fatalf("trim result = %q, want %q", got, "河道清理")
+		t.Fatalf("trim result=%q want=%q", got, "河道清理")
 	}
 }
 
 func TestAsIntFallback(t *testing.T) {
 	if got := asInt(-1, 5); got != 5 {
-		t.Fatalf("asInt negative = %d, want 5", got)
+		t.Fatalf("asInt negative=%d want=5", got)
 	}
 	if got := asInt(0, 5); got != 5 {
-		t.Fatalf("asInt zero = %d, want 5", got)
+		t.Fatalf("asInt zero=%d want=5", got)
 	}
 	if got := asInt(8, 5); got != 8 {
-		t.Fatalf("asInt positive = %d, want 8", got)
+		t.Fatalf("asInt positive=%d want=8", got)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 func UserLogin(ctx context.Context, c *app.RequestContext) {
@@ -17,7 +18,7 @@ func UserLogin(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewLoginService(ctx, c).Login(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -31,7 +32,7 @@ func UserLogout(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewLoginService(ctx, c).Logout(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -45,7 +46,7 @@ func RefreshToken(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewLoginService(ctx, c).RefreshToken(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

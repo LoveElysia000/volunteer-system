@@ -10,6 +10,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // ExportVolunteers 导出志愿者
@@ -22,7 +23,7 @@ func ExportVolunteers(ctx context.Context, c *app.RequestContext) {
 
 	file, err := service.NewExportService(ctx, c).ExportVolunteers(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 
@@ -44,7 +45,7 @@ func ExportActivities(ctx context.Context, c *app.RequestContext) {
 
 	file, err := service.NewExportService(ctx, c).ExportActivities(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 

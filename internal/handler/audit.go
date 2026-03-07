@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // PendingAuditList 处理统一待审核列表查询请求。
@@ -19,7 +20,7 @@ func PendingAuditList(ctx context.Context, c *app.RequestContext) {
 
 	data, err := service.NewAuditService(ctx, c).PendingAuditList(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -35,7 +36,7 @@ func AuditApproval(ctx context.Context, c *app.RequestContext) {
 
 	data, err := service.NewAuditService(ctx, c).AuditApproval(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -51,7 +52,7 @@ func AuditRejection(ctx context.Context, c *app.RequestContext) {
 
 	data, err := service.NewAuditService(ctx, c).AuditRejection(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -67,7 +68,7 @@ func AuditRecordDetail(ctx context.Context, c *app.RequestContext) {
 
 	data, err := service.NewAuditService(ctx, c).AuditRecordDetail(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

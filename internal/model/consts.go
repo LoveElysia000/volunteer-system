@@ -119,18 +119,6 @@ const (
 	NotificationBizTypeMembership = "membership"
 )
 
-// GetRegisterTypeCode 根据注册类型字符串返回对应的数字代码
-func GetRegisterTypeCode(registerType string) int {
-	switch registerType {
-	case RegisterTypeVolunteer:
-		return RegisterTypeVolunteerCode
-	case RegisterTypeOrganization:
-		return RegisterTypeOrganizationCode
-	default:
-		return 0 // 未知类型返回0
-	}
-}
-
 // IsValidAuditTargetType 返回审核目标类型是否合法
 func IsValidAuditTargetType(targetType int32) bool {
 	switch targetType {
@@ -144,18 +132,6 @@ func IsValidAuditTargetType(targetType int32) bool {
 // IsValidAuditResult 返回审核结果是否合法
 func IsValidAuditResult(auditResult int32) bool {
 	return auditResult == auditResultPassCode || auditResult == auditResultRejectCode
-}
-
-// ResolveAuditResult 根据审核状态计算审核结果
-func ResolveAuditResult(auditStatus int32) int32 {
-	switch auditStatus {
-	case AuditStatusApproved:
-		return auditResultPassCode
-	case AuditStatusRejected:
-		return auditResultRejectCode
-	default:
-		return 0
-	}
 }
 
 // IsValidAttendanceCodeType returns whether code type is valid.

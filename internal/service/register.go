@@ -75,8 +75,9 @@ func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (
 	}
 
 	// 转换性别
-	genderCode, err := s.convertGenderToCode(req.Gender)
-	if err != nil {
+	genderCode, ok := model.GenderCodeByText[req.Gender]
+	if !ok {
+		err = errors.New("不支持的性别")
 		log.Warn("志愿者注册 - 性别转换失败: %v", err)
 		return nil, err
 	}
@@ -249,7 +250,7 @@ func (s *RegisterService) validateVolunteerRequest(req *api.VolunteerRegisterReq
 	}
 
 	// 验证性别格式
-	if _, err := s.convertGenderToCode(req.Gender); err != nil {
+	if _, ok := model.GenderCodeByText[req.Gender]; !ok {
 		return errors.New("性别格式不正确，支持：男、女、未知")
 	}
 
@@ -299,18 +300,4 @@ func (s *RegisterService) isValidEmail(email string) bool {
 	// 简单的邮箱格式验证
 	matched, _ := regexp.MatchString(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, email)
 	return matched
-}
-
-// convertGenderToCode 转换性别字符串为数字代码
-func (s *RegisterService) convertGenderToCode(gender string) (int32, error) {
-	switch gender {
-	case "男":
-		return 1, nil
-	case "女":
-		return 2, nil
-	case "未知":
-		return 0, nil
-	default:
-		return 0, errors.New("不支持的性别")
-	}
 }

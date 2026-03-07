@@ -12,15 +12,9 @@ func ConvertSysAccountToUserInfo(account *model.SysAccount) *api.UserInfo {
 		return nil
 	}
 
-	// 将身份类型转换为字符串
-	var identity string
-	switch account.IdentityType {
-	case 1:
-		identity = "volunteer"
-	case 2:
-		identity = "organization"
-	default:
-		identity = "unknown"
+	identity := model.DefaultUnknownValue
+	if value, ok := model.IdentityTypeTextMap[account.IdentityType]; ok {
+		identity = value
 	}
 
 	return &api.UserInfo{

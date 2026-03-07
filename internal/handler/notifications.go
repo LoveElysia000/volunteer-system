@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // ListNotifications 获取通知列表。
@@ -18,7 +19,7 @@ func ListNotifications(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewNotificationService(ctx, c).ListNotifications(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -33,7 +34,7 @@ func MarkNotificationsRead(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewNotificationService(ctx, c).MarkNotificationsRead(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

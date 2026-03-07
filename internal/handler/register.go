@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // VolunteerRegister 志愿者注册接口
@@ -19,7 +20,7 @@ func VolunteerRegister(ctx context.Context, c *app.RequestContext) {
 
 	resp, err := service.NewRegisterService(ctx, c).RegisterVolunteer(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 
@@ -36,7 +37,7 @@ func OrganizationRegister(ctx context.Context, c *app.RequestContext) {
 
 	resp, err := service.NewRegisterService(ctx, c).RegisterOrganization(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 

@@ -376,7 +376,7 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 
 		updates := map[string]any{
 			"auditor_id":    auditorID,
-			"audit_result":  model.ResolveAuditResult(model.AuditStatusApproved),
+			"audit_result":  model.AuditResultByStatus[model.AuditStatusApproved],
 			"reject_reason": reason,
 			"audit_time":    time.Now(),
 			"status":        model.AuditStatusApproved,
@@ -445,7 +445,7 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 
 		updates := map[string]any{
 			"auditor_id":    auditorID,
-			"audit_result":  model.ResolveAuditResult(model.AuditStatusRejected),
+			"audit_result":  model.AuditResultByStatus[model.AuditStatusRejected],
 			"reject_reason": reason,
 			"audit_time":    time.Now(),
 			"status":        model.AuditStatusRejected,

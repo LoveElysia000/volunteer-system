@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 func VolunteerList(ctx context.Context, c *app.RequestContext) {
@@ -17,7 +18,7 @@ func VolunteerList(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).VolunteerList(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -31,7 +32,7 @@ func VolunteerDetail(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).VolunteerDetail(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -45,7 +46,7 @@ func MyProfile(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).MyProfile(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -59,7 +60,7 @@ func VolunteerHomeSummary(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).VolunteerHomeSummary(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -73,7 +74,7 @@ func VolunteerUpdate(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).VolunteerUpdate(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -87,7 +88,7 @@ func VolunteerProfileChangeSubmit(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).VolunteerProfileChangeSubmit(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -101,7 +102,7 @@ func VolunteerRealNameSubmit(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewVolunteerService(ctx, c).VolunteerRealNameSubmit(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

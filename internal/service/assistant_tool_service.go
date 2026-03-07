@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"volunteer-system/config"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
+	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
 )
@@ -27,9 +29,11 @@ const (
 	assistantToolActivityStats         = "activity_stats"
 	assistantToolActivityDraftGenerate = "activity_draft_generate"
 
-	assistantToolMaxPlans    = 3
-	assistantToolTimeout     = 3 * time.Second
-	assistantToolMaxAttempts = 2 // 首次 + 1 次重试
+	assistantToolMaxPlans       = 3
+	assistantToolDefaultTimeout = 3 * time.Second
+	assistantToolMinTimeout     = 300 * time.Millisecond
+	assistantToolMaxTimeout     = 30 * time.Second
+	assistantToolMaxAttempts    = 2 // 首次 + 1 次重试
 )
 
 var (
@@ -68,9 +72,11 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 
 	addPlan := func(tool string, input map[string]any) {
 		if len(plans) >= assistantToolMaxPlans {
+			// 单轮最多执行有限个工具，防止模型触发过长工具链。
 			return
 		}
 		if _, ok := added[tool]; ok {
+			// 去重，避免同一工具重复计划。
 			return
 		}
 		added[tool] = struct{}{}
@@ -78,13 +84,13 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 	}
 
 	// 当前为规则启发式规划：优先保证可控性，避免模型直接决定工具链。
-	if scene == assistantSceneActivityDraft || containsAny(msg, "草案", "活动方案", "活动策划", "活动发布") {
+	if scene == assistantSceneActivityDraft || util.ContainsAny(msg, "草案", "活动方案", "活动策划", "活动发布") {
 		addPlan(assistantToolActivityDraftGenerate, map[string]any{
 			"topic": extractTopic(msg),
 		})
 	}
 
-	if scene == assistantSceneOpsAdvisor || containsAny(msg, "统计", "数据", "完结率", "参与人数", "运营建议", "分析") {
+	if scene == assistantSceneOpsAdvisor || util.ContainsAny(msg, "统计", "数据", "完结率", "参与人数", "运营建议", "分析") {
 		addPlan(assistantToolActivityStats, map[string]any{})
 	}
 
@@ -93,6 +99,7 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 			"keyword": extractKeyword(msg),
 			"limit":   5,
 		}
+		// 对自然语言状态词做映射，提升检索命中率。
 		if strings.Contains(msg, "报名中") {
 			searchInput["status"] = model.ActivityStatusRecruiting
 		} else if strings.Contains(msg, "已结束") {
@@ -107,23 +114,33 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 }
 
 // Execute 执行单个工具，包含超时与重试
-func (t *AssistantToolService) Execute(userID int64, plan assistantToolPlan) *assistantToolResult {
+func (t *AssistantToolService) Execute(ctx context.Context, userID int64, plan assistantToolPlan) *assistantToolResult {
 	result := &assistantToolResult{
 		ToolName: plan.ToolName,
 	}
 
 	inputJSON, _ := json.Marshal(plan.Input)
+	// 记录原始输入，便于工具日志和问题排查。
 	result.InputJSON = string(inputJSON)
 
 	start := time.Now()
+	toolTimeout := resolveEinoToolTimeout(t.getAIConfig())
+	baseCtx := ctx
+	if baseCtx == nil {
+		baseCtx = t.ctx
+	}
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
 	var (
 		output any
 		err    error
 	)
 	// 工具执行失败时最多重试一次；权限/参数错误直接终止，避免无效重试。
 	for attempt := 1; attempt <= assistantToolMaxAttempts; attempt++ {
-		ctx, cancel := context.WithTimeout(t.ctx, assistantToolTimeout)
-		output, err = t.executeOnce(ctx, userID, plan)
+		// 每次尝试都基于同一个父上下文派生独立超时，确保可被上层取消信号中断。
+		attemptCtx, cancel := context.WithTimeout(baseCtx, toolTimeout)
+		output, err = t.executeOnce(attemptCtx, userID, plan)
 		cancel()
 		if err == nil {
 			break
@@ -136,12 +153,13 @@ func (t *AssistantToolService) Execute(userID int64, plan assistantToolPlan) *as
 
 	if err != nil {
 		result.Success = false
-		result.ErrorMsg = truncateText(err.Error(), 255)
+		result.ErrorMsg = util.TruncateText(err.Error(), 255)
 		result.ErrorCode = classifyToolError(err)
 		result.OutputJSON = "{}"
 		return result
 	}
 
+	// 成功时强制输出 JSON 字符串，保障上层解析稳定性。
 	outputJSON, _ := json.Marshal(output)
 	result.Success = true
 	result.OutputJSON = string(outputJSON)
@@ -151,6 +169,31 @@ func (t *AssistantToolService) Execute(userID int64, plan assistantToolPlan) *as
 	return result
 }
 
+func (t *AssistantToolService) getAIConfig() *config.AIConfig {
+	cfg := config.GetConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.AI
+}
+
+func resolveEinoToolTimeout(cfg *config.AIConfig) time.Duration {
+	if cfg == nil || cfg.Eino.ToolTimeoutMS <= 0 {
+		return assistantToolDefaultTimeout
+	}
+
+	// 通过上下限裁剪，避免配置误填导致工具执行过快超时或超长阻塞。
+	timeout := time.Duration(cfg.Eino.ToolTimeoutMS) * time.Millisecond
+	if timeout < assistantToolMinTimeout {
+		return assistantToolMinTimeout
+	}
+	if timeout > assistantToolMaxTimeout {
+		return assistantToolMaxTimeout
+	}
+	return timeout
+}
+
+// executeOnce 仅负责路由到具体工具实现，不承担重试与超时控制。
 func (t *AssistantToolService) executeOnce(ctx context.Context, userID int64, plan assistantToolPlan) (any, error) {
 	switch plan.ToolName {
 	case assistantToolActivitySearch:
@@ -164,7 +207,9 @@ func (t *AssistantToolService) executeOnce(ctx context.Context, userID int64, pl
 	}
 }
 
+// executeActivitySearch 面向普通问答检索活动列表，返回结构化列表数据。
 func (t *AssistantToolService) executeActivitySearch(ctx context.Context, input map[string]any) (any, error) {
+	// 做轻量参数归一化，兜底 limit 默认值。
 	keyword := strings.TrimSpace(asString(input["keyword"]))
 	status := asInt32(input["status"])
 	limit := asInt(input["limit"], 5)
@@ -178,6 +223,7 @@ func (t *AssistantToolService) executeActivitySearch(ctx context.Context, input 
 		if row == nil {
 			continue
 		}
+		// 转换为统一输出字段，避免泄漏数据库内部列结构。
 		list = append(list, map[string]any{
 			"id":             row.ID,
 			"org_id":         row.OrgID,
@@ -199,6 +245,7 @@ func (t *AssistantToolService) executeActivitySearch(ctx context.Context, input 
 	}, nil
 }
 
+// executeActivityStats 面向运营分析，含组织权限校验与统计聚合。
 func (t *AssistantToolService) executeActivityStats(ctx context.Context, userID int64, input map[string]any) (any, error) {
 	manageableOrgIDs, err := t.repo.GetAssistantAccessibleOrgIDs(t.repo.DB, ctx, userID, model.MemberRoleManager)
 	if err != nil {
@@ -213,7 +260,7 @@ func (t *AssistantToolService) executeActivityStats(ctx context.Context, userID 
 	if orgID <= 0 {
 		orgID = manageableOrgIDs[0]
 	}
-	if !containsInt64(manageableOrgIDs, orgID) {
+	if !util.ContainsInt64(manageableOrgIDs, orgID) {
 		return nil, fmt.Errorf("%w: 无权访问该组织统计", errToolPermissionDenied)
 	}
 
@@ -250,6 +297,7 @@ func (t *AssistantToolService) executeActivityStats(ctx context.Context, userID 
 
 	completionRate := 0.0
 	if totalActivities > 0 {
+		// 避免除零并输出可解释的比例指标。
 		completionRate = float64(finishedCount) / float64(totalActivities)
 	}
 
@@ -271,6 +319,7 @@ func (t *AssistantToolService) executeActivityStats(ctx context.Context, userID 
 	}, nil
 }
 
+// executeActivityDraftGenerate 先生成稳定草案骨架，再交给模型在上下文中润色。
 func (t *AssistantToolService) executeActivityDraftGenerate(ctx context.Context, userID int64, input map[string]any) (any, error) {
 	accessibleOrgIDs, err := t.repo.GetAssistantAccessibleOrgIDs(t.repo.DB, ctx, userID, model.MemberRoleMember)
 	if err != nil {
@@ -284,12 +333,13 @@ func (t *AssistantToolService) executeActivityDraftGenerate(ctx context.Context,
 	if orgID <= 0 {
 		orgID = accessibleOrgIDs[0]
 	}
-	if !containsInt64(accessibleOrgIDs, orgID) {
+	if !util.ContainsInt64(accessibleOrgIDs, orgID) {
 		return nil, fmt.Errorf("%w: 无权在该组织下生成活动草案", errToolPermissionDenied)
 	}
 
 	topic := strings.TrimSpace(asString(input["topic"]))
 	if topic == "" {
+		// 补默认主题，防止模型未传参时返回空草案。
 		topic = "社区环保志愿服务"
 	}
 	targetPeople := strings.TrimSpace(asString(input["target_people"]))
@@ -328,6 +378,7 @@ func (t *AssistantToolService) executeActivityDraftGenerate(ctx context.Context,
 	}, nil
 }
 
+// classifyToolError 将执行错误映射为可观测的标准错误码，便于上层统一处理。
 func classifyToolError(err error) string {
 	switch {
 	case err == nil:
@@ -343,15 +394,6 @@ func classifyToolError(err error) string {
 	}
 }
 
-func containsAny(text string, words ...string) bool {
-	for _, word := range words {
-		if strings.Contains(text, word) {
-			return true
-		}
-	}
-	return false
-}
-
 func extractTopic(message string) string {
 	trimmed := strings.TrimSpace(message)
 	if trimmed == "" {
@@ -361,11 +403,11 @@ func extractTopic(message string) string {
 		if idx := strings.Index(trimmed, token); idx >= 0 {
 			value := trimByStopWords(strings.TrimSpace(trimmed[idx+len(token):]))
 			if value != "" {
-				return truncateText(value, 30)
+				return util.TruncateText(value, 30)
 			}
 		}
 	}
-	return truncateText(trimByStopWords(trimmed), 30)
+	return util.TruncateText(trimByStopWords(trimmed), 30)
 }
 
 func extractKeyword(message string) string {
@@ -377,7 +419,7 @@ func extractKeyword(message string) string {
 		if idx := strings.Index(trimmed, token); idx >= 0 {
 			value := trimByStopWords(strings.TrimSpace(trimmed[idx+len(token):]))
 			if value != "" {
-				return truncateText(value, 20)
+				return util.TruncateText(value, 20)
 			}
 		}
 	}
@@ -387,15 +429,6 @@ func extractKeyword(message string) string {
 	return trimmed
 }
 
-func containsInt64(items []int64, target int64) bool {
-	for _, item := range items {
-		if item == target {
-			return true
-		}
-	}
-	return false
-}
-
 func asString(v any) string {
 	switch val := v.(type) {
 	case string:
@@ -403,6 +436,7 @@ func asString(v any) string {
 	case nil:
 		return ""
 	default:
+		// 兜底做字符串化，兼容 json.Number/数字等输入。
 		return strings.TrimSpace(fmt.Sprintf("%v", val))
 	}
 }
@@ -434,19 +468,21 @@ func asInt32(v any) int32 {
 func asInt(v any, fallback int) int {
 	n := int(asInt64(v))
 	if n <= 0 {
+		// 工具参数中的非法或空值回退到默认值。
 		return fallback
 	}
 	return n
 }
 
 func shouldPlanActivitySearch(msg string) bool {
-	if containsAny(msg, "查询", "搜索", "招募", "报名", "报名中", "已结束", "已取消") {
+	// 关键词启发式：优先捕获检索类意图。
+	if util.ContainsAny(msg, "查询", "搜索", "招募", "报名", "报名中", "已结束", "已取消") {
 		return true
 	}
-	if containsAny(msg, "有哪些活动", "什么活动", "活动列表", "最近活动", "活动推荐") {
+	if util.ContainsAny(msg, "有哪些活动", "什么活动", "活动列表", "最近活动", "活动推荐") {
 		return true
 	}
-	return strings.Contains(msg, "活动") && containsAny(msg, "最近", "有哪些", "什么", "推荐")
+	return strings.Contains(msg, "活动") && util.ContainsAny(msg, "最近", "有哪些", "什么", "推荐")
 }
 
 func trimByStopWords(raw string) string {

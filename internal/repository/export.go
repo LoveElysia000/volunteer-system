@@ -71,7 +71,7 @@ func (r *Repository) ListVolunteerExportRecords(
 			v.audit_status,
 			v.created_at
 		`).
-		Joins("INNER JOIN sys_accounts AS sa ON sa.id = v.account_id").
+		Joins("INNER JOIN sys_accounts AS sa ON sa.id = v.account_id AND sa.deleted_at IS NULL").
 		Joins("INNER JOIN org_members AS m ON m.volunteer_id = v.id AND m.status = ?", model.MemberStatusActive).
 		Joins("INNER JOIN organizations AS org ON org.id = m.org_id").
 		Where("m.org_id = ?", orgID)

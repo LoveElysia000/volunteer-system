@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +41,7 @@ func MarshalXLSX(rows interface{}) ([]byte, error) {
 		}
 	}
 
+	writeRow := 2
 	for rowIdx := 0; rowIdx < value.Len(); rowIdx++ {
 		row := value.Index(rowIdx)
 		if row.Kind() == reflect.Ptr {
@@ -52,15 +52,16 @@ func MarshalXLSX(rows interface{}) ([]byte, error) {
 		}
 
 		for colIdx, col := range columns {
-			cellName, cellErr := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
+			cellName, cellErr := excelize.CoordinatesToCellName(colIdx+1, writeRow)
 			if cellErr != nil {
 				return nil, cellErr
 			}
 			field := row.Field(col.FieldIndex)
-			if err = file.SetCellStr(sheetName, cellName, reflectValueToString(field)); err != nil {
+			if err = file.SetCellValue(sheetName, cellName, reflectValueForExcel(field)); err != nil {
 				return nil, err
 			}
 		}
+		writeRow++
 	}
 
 	buffer, err := file.WriteToBuffer()
@@ -115,7 +116,7 @@ func extractExcelColumns(elemType reflect.Type) []exportColumn {
 	return columns
 }
 
-func reflectValueToString(value reflect.Value) string {
+func reflectValueForExcel(value reflect.Value) interface{} {
 	if !value.IsValid() {
 		return ""
 	}
@@ -125,7 +126,7 @@ func reflectValueToString(value reflect.Value) string {
 		if value.IsNil() {
 			return ""
 		}
-		return reflectValueToString(value.Elem())
+		return reflectValueForExcel(value.Elem())
 	}
 
 	if value.CanInterface() {
@@ -141,15 +142,15 @@ func reflectValueToString(value reflect.Value) string {
 	case reflect.String:
 		return value.String()
 	case reflect.Bool:
-		return strconv.FormatBool(value.Bool())
+		return value.Bool()
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return strconv.FormatInt(value.Int(), 10)
+		return value.Int()
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return strconv.FormatUint(value.Uint(), 10)
+		return value.Uint()
 	case reflect.Float32:
-		return strconv.FormatFloat(value.Float(), 'f', -1, 32)
+		return value.Float()
 	case reflect.Float64:
-		return strconv.FormatFloat(value.Float(), 'f', -1, 64)
+		return value.Float()
 	default:
 		if value.CanInterface() {
 			return fmt.Sprint(value.Interface())

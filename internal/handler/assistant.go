@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // CreateAssistantSession 创建 AI 会话
@@ -18,7 +19,7 @@ func CreateAssistantSession(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewAssistantService(ctx, c).CreateSession(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -33,7 +34,7 @@ func AssistantChat(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewAssistantService(ctx, c).Chat(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -48,7 +49,7 @@ func AssistantSessionMessages(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewAssistantService(ctx, c).GetSessionMessages(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -63,7 +64,7 @@ func AssistantActivityDraftAction(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewAssistantService(ctx, c).ActivityDraftAction(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

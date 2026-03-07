@@ -77,8 +77,8 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 	}
 
 	// 5. 验证身份类型是否匹配
-	expectedIdentityType := util.GetIdentityTypeFromString(req.Identity)
-	if user.IdentityType != expectedIdentityType {
+	expectedIdentityType, ok := model.IdentityTypeCodeMap[req.Identity]
+	if !ok || user.IdentityType != expectedIdentityType {
 		log.Warn("身份类型不匹配: 用户ID=%d, 预期=%s, 实际=%d", user.ID, req.Identity, user.IdentityType)
 		resp.Success = false
 		resp.Message = "身份类型不匹配"
@@ -125,7 +125,7 @@ func (s *LoginService) validateLoginRequest(req *api.LoginRequest) error {
 	if req.LoginType == "" {
 		return errors.New("登录类型不能为空")
 	}
-	if !util.ValidateLoginType(req.LoginType) {
+	if _, ok := model.LoginTypeSet[req.LoginType]; !ok {
 		return errors.New("无效的登录类型")
 	}
 	if req.Identifier == "" {
@@ -137,7 +137,7 @@ func (s *LoginService) validateLoginRequest(req *api.LoginRequest) error {
 	if req.Identity == "" {
 		return errors.New("身份类型不能为空")
 	}
-	if !util.ValidateIdentity(req.Identity) {
+	if _, ok := model.IdentityTypeCodeMap[req.Identity]; !ok {
 		return errors.New("无效的身份类型")
 	}
 

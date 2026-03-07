@@ -13,6 +13,7 @@ import (
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/ai"
+	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/google/uuid"
@@ -102,6 +103,7 @@ func (s *AssistantService) CreateSession(req *api.AssistantCreateSessionRequest)
 		return nil, err
 	}
 
+	// 未传标题时按场景自动生成默认标题。
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		title = defaultSessionTitle(scene)
@@ -149,9 +151,24 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	cfg := s.getAIConfig()
 	requestID := s.resolveRequestID()
 	now := time.Now()
+	// 先原子扣减请求配额，再进入后续流程，避免并发下超额放行。
 	if err := s.checkDailyUserQuota(now, userID, cfg); err != nil {
 		return nil, err
 	}
+	usageOutcomeRecorded := false
+	usageSuccess := false
+	usageTokenIn := int32(0)
+	usageTokenOut := int32(0)
+	usageEstimatedCost := float64(0)
+	// 任意中途 return 都会走该 defer：确保请求已扣配额时，最终结果指标至少被记录一次。
+	defer func() {
+		if usageOutcomeRecorded {
+			return
+		}
+		if err := s.repo.AppendAiUsageOutcome(s.repo.DB, now, userID, usageSuccess, usageTokenIn, usageTokenOut, usageEstimatedCost); err != nil {
+			log.Error("补记 AI 失败用量失败: %v, user_id=%d", err, userID)
+		}
+	}()
 
 	userMessage := &model.AiMessage{
 		SessionID: session.ID,
@@ -166,11 +183,15 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	}
 
 	contextLimit := resolveContextLimit(cfg)
+	// 历史消息用于模型上下文，不需要全量拉取，避免 token 与延迟失控。
 	historyRows, err := s.repo.ListRecentAiMessagesBySession(s.repo.DB, session.ID, contextLimit)
 	if err != nil {
 		log.Error("查询会话上下文失败: %v, session_id=%d", err, session.ID)
 		return nil, err
 	}
+
+	// 反转为正序
+	util.ReverseInPlace(historyRows)
 
 	runtimeInput := &runtimeChatInput{
 		UserID:    userID,
@@ -180,6 +201,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		History:   snapshotsFromMessages(historyRows),
 		RequestID: requestID,
 	}
+	// 运行时失败时降级为 fallback 输出，尽量保持用户可用体验。
 	runtimeOutput, runtimeErr := s.runRuntime(runtimeInput)
 	if runtimeErr != nil {
 		log.Warn("AI runtime execute failed, using fallback output: %v, session_id=%d user_id=%d", runtimeErr, session.ID, userID)
@@ -197,45 +219,8 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	}
 
 	toolResults := runtimeToolCallsToAssistantResults(runtimeOutput.ToolCalls)
-	toolLogIDs := make([]int64, 0, len(toolResults))
-	for _, result := range toolResults {
-		if result == nil {
-			continue
-		}
-
-		toolMessage := &model.AiMessage{
-			SessionID: session.ID,
-			Role:      assistantRoleTool,
-			Content:   nonEmptyJSON(result.OutputJSON),
-			RequestID: requestID,
-			CreatedAt: time.Now(),
-		}
-		if err := s.appendAiMessage(toolMessage); err != nil {
-			log.Error("写入工具消息失败: %v, session_id=%d user_id=%d tool=%s", err, session.ID, userID, result.ToolName)
-		}
-
-		var output *string
-		if strings.TrimSpace(result.OutputJSON) != "" {
-			value := result.OutputJSON
-			output = &value
-		}
-		toolCall := &model.AiToolCall{
-			SessionID:  session.ID,
-			ToolName:   result.ToolName,
-			ToolInput:  nonEmptyJSON(result.InputJSON),
-			ToolOutput: output,
-			Success:    boolToInt32(result.Success),
-			ErrorCode:  truncateText(result.ErrorCode, 64),
-			ErrorMsg:   truncateText(result.ErrorMsg, 255),
-			LatencyMs:  result.LatencyMS,
-		}
-		if err := s.repo.CreateAiToolCall(s.repo.DB, toolCall); err != nil {
-			log.Error("写入工具调用日志失败: %v, session_id=%d tool=%s", err, session.ID, result.ToolName)
-		} else {
-			result.LogID = toolCall.ID
-			toolLogIDs = append(toolLogIDs, toolCall.ID)
-		}
-	}
+	// 工具结果先写消息与工具日志，再绑定到本次 assistant 消息。
+	toolLogIDs := s.persistRuntimeToolResults(session.ID, userID, requestID, toolResults)
 
 	assistantMsg := &model.AiMessage{
 		SessionID:    session.ID,
@@ -270,8 +255,15 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 
 	runtimeSuccess := runtimeOutput.Success && runtimeErr == nil
 	estimatedCost := s.estimateCost(runtimeOutput.Model, runtimeOutput.TokenIn, runtimeOutput.TokenOut)
-	if err := s.repo.UpsertAiUsageDaily(s.repo.DB, now, userID, runtimeSuccess, runtimeOutput.TokenIn, runtimeOutput.TokenOut, estimatedCost); err != nil {
+	usageSuccess = runtimeSuccess
+	usageTokenIn = runtimeOutput.TokenIn
+	usageTokenOut = runtimeOutput.TokenOut
+	usageEstimatedCost = estimatedCost
+	if err := s.repo.AppendAiUsageOutcome(s.repo.DB, now, userID, runtimeSuccess, runtimeOutput.TokenIn, runtimeOutput.TokenOut, estimatedCost); err != nil {
 		log.Error("更新 AI 用量失败: %v, user_id=%d", err, userID)
+	} else {
+		// 主路径写入成功后，关闭 defer 补记。
+		usageOutcomeRecorded = true
 	}
 
 	return &api.AssistantChatResponse{
@@ -313,6 +305,7 @@ func (s *AssistantService) GetSessionMessages(req *api.AssistantSessionMessagesR
 		if m == nil {
 			continue
 		}
+		// 统一做 API DTO 转换，避免直接暴露 model 结构。
 		items = append(items, &api.AssistantMessageItem{
 			Id:           m.ID,
 			SessionId:    m.SessionID,
@@ -348,6 +341,7 @@ func (s *AssistantService) ActivityDraftAction(req *api.AssistantActivityDraftAc
 
 	sessionID := req.SessionId
 	if sessionID <= 0 {
+		// 草案快捷入口允许无会话调用：内部自动创建会话承接上下文。
 		session, err := s.createSessionForUser(userID, assistantSceneActivityDraft, s.generateSessionTitle(req.Topic, assistantSceneActivityDraft))
 		if err != nil {
 			return nil, err
@@ -368,6 +362,7 @@ func (s *AssistantService) ActivityDraftAction(req *api.AssistantActivityDraftAc
 		strings.TrimSpace(req.TargetPeople),
 		strings.TrimSpace(req.Location),
 	)
+	// 复用统一 Chat 链路，保证草案入口和普通对话的审计/记账行为一致。
 	chatResp, err := s.Chat(&api.AssistantChatRequest{
 		SessionId: sessionID,
 		Message:   message,
@@ -387,12 +382,13 @@ func (s *AssistantService) createSessionForUser(userID int64, scene, title strin
 	session := &model.AiSession{
 		UserID:        userID,
 		Scene:         scene,
-		Title:         truncateText(strings.TrimSpace(title), 128),
+		Title:         util.TruncateText(strings.TrimSpace(title), 128),
 		Status:        assistantSessionStatusActive,
 		Summary:       "",
 		LastMessageAt: nil,
 	}
 	if session.Title == "" {
+		// 再次兜底，防止上游传入空白标题。
 		session.Title = defaultSessionTitle(scene)
 	}
 	if err := s.repo.CreateAiSession(s.repo.DB, session); err != nil {
@@ -414,6 +410,7 @@ func (s *AssistantService) appendAiMessage(message *model.AiMessage) error {
 
 	// 通过唯一索引 (session_id, seq_no) + 重试，避免并发写入导致序号冲突。
 	for i := 0; i < assistantMaxSeqRetry; i++ {
+		// 每次重试都重新申请 seq_no，避免复用冲突序号。
 		seqNo, err := s.repo.GetNextAiMessageSeqNo(s.repo.DB, message.SessionID)
 		if err != nil {
 			return err
@@ -421,6 +418,7 @@ func (s *AssistantService) appendAiMessage(message *model.AiMessage) error {
 		message.SeqNo = seqNo
 		if err := s.repo.CreateAiMessage(s.repo.DB, message); err != nil {
 			if isDuplicateSeqError(err) {
+				// 仅对并发冲突重试，其他错误直接返回。
 				continue
 			}
 			return err
@@ -434,6 +432,7 @@ func (s *AssistantService) appendAiMessage(message *model.AiMessage) error {
 // buildPromptMessages 将会话历史转换为 Chat Completions 上下文。
 func (s *AssistantService) buildPromptMessages(scene string, history []*model.AiMessage) []ai.Message {
 	messages := make([]ai.Message, 0, len(history)+1)
+	// 第一条固定为系统提示，约束模型角色和行为边界。
 	messages = append(messages, ai.Message{
 		Role:    "system",
 		Content: s.buildSystemPrompt(scene),
@@ -454,6 +453,7 @@ func (s *AssistantService) buildPromptMessages(scene string, history []*model.Ai
 		case assistantRoleAssistant:
 			messages = append(messages, ai.Message{Role: "assistant", Content: content})
 		case assistantRoleTool:
+			// 旧版 chat completion 链路中，工具结果通过 system 消息注入上下文。
 			messages = append(messages, ai.Message{Role: "system", Content: "工具结果(JSON):\n" + content})
 		}
 	}
@@ -479,6 +479,7 @@ func (s *AssistantService) buildFallbackReply(toolResults []*assistantToolResult
 		return "AI 服务暂时不可用（" + reason + "），请稍后重试。"
 	}
 
+	// 有工具结果时优先给出可执行信息，尽量降低模型失败的可用性损失。
 	lines := make([]string, 0, len(toolResults)+2)
 	lines = append(lines, "AI 服务暂时不可用，我先基于系统工具结果给你结论：")
 	for _, item := range toolResults {
@@ -486,7 +487,7 @@ func (s *AssistantService) buildFallbackReply(toolResults []*assistantToolResult
 			continue
 		}
 		if item.Success {
-			lines = append(lines, fmt.Sprintf("- %s: %s", item.ToolName, truncateText(item.OutputJSON, 280)))
+			lines = append(lines, fmt.Sprintf("- %s: %s", item.ToolName, util.TruncateText(item.OutputJSON, 280)))
 		} else {
 			lines = append(lines, fmt.Sprintf("- %s 调用失败: %s", item.ToolName, item.ErrorMsg))
 		}
@@ -497,23 +498,75 @@ func (s *AssistantService) buildFallbackReply(toolResults []*assistantToolResult
 }
 
 func (s *AssistantService) checkDailyUserQuota(now time.Time, userID int64, cfg *config.AIConfig) error {
-	if cfg == nil || cfg.DailyUserQuota <= 0 {
-		return nil
+	dailyQuota := 0
+	if cfg != nil && cfg.DailyUserQuota > 0 {
+		dailyQuota = cfg.DailyUserQuota
 	}
-
-	usage, err := s.repo.GetAiUsageDaily(s.repo.DB, now, userID)
+	// 原子配额消费：避免“先查后改”在高并发时被绕过。
+	consumed, err := s.repo.ConsumeAiRequestQuota(s.repo.DB, now, userID, dailyQuota)
 	if err != nil {
 		log.Error("查询 AI 日配额失败: %v, user_id=%d", err, userID)
 		return errors.New("系统繁忙，请稍后重试")
 	}
-	if usage != nil && usage.RequestCount >= int64(cfg.DailyUserQuota) {
+	if !consumed {
 		return errors.New("今日 AI 使用次数已达上限，请明日再试")
 	}
 	return nil
 }
 
+// persistRuntimeToolResults 同步落库工具结果：
+// 1) 写入 tool 角色消息，参与后续上下文；
+// 2) 写入 ai_tool_calls 结构化日志，便于审计与追踪。
+func (s *AssistantService) persistRuntimeToolResults(sessionID, userID int64, requestID string, toolResults []*assistantToolResult) []int64 {
+	toolLogIDs := make([]int64, 0, len(toolResults))
+	for _, result := range toolResults {
+		if result == nil {
+			continue
+		}
+
+		toolMessage := &model.AiMessage{
+			SessionID: sessionID,
+			Role:      assistantRoleTool,
+			Content:   nonEmptyJSON(result.OutputJSON),
+			RequestID: requestID,
+			CreatedAt: time.Now(),
+		}
+		if err := s.appendAiMessage(toolMessage); err != nil {
+			log.Error("写入工具消息失败: %v, session_id=%d user_id=%d tool=%s", err, sessionID, userID, result.ToolName)
+		}
+
+		var output *string
+		if strings.TrimSpace(result.OutputJSON) != "" {
+			// 仅在非空时记录工具输出，数据库可区分“无输出”和“空 JSON”。
+			value := result.OutputJSON
+			output = &value
+		}
+
+		toolCall := &model.AiToolCall{
+			SessionID:  sessionID,
+			ToolName:   result.ToolName,
+			ToolInput:  nonEmptyJSON(result.InputJSON),
+			ToolOutput: output,
+			Success:    boolToInt32(result.Success),
+			ErrorCode:  util.TruncateText(result.ErrorCode, 64),
+			ErrorMsg:   util.TruncateText(result.ErrorMsg, 255),
+			LatencyMs:  result.LatencyMS,
+		}
+		if err := s.repo.CreateAiToolCall(s.repo.DB, toolCall); err != nil {
+			log.Error("写入工具调用日志失败: %v, session_id=%d tool=%s", err, sessionID, result.ToolName)
+			continue
+		}
+
+		// 回写 logID，后续会绑定到 assistant 消息形成闭环。
+		result.LogID = toolCall.ID
+		toolLogIDs = append(toolLogIDs, toolCall.ID)
+	}
+	return toolLogIDs
+}
+
 func (s *AssistantService) resolveRequestID() string {
 	if s.c != nil {
+		// 优先透传网关/上游注入的请求 ID，便于链路追踪。
 		if rid := strings.TrimSpace(string(s.c.GetHeader("X-Request-Id"))); rid != "" {
 			return rid
 		}
@@ -559,6 +612,7 @@ func (s *AssistantService) estimateCost(modelName string, tokenIn, tokenOut int3
 		return 0
 	}
 
+	// 这里是估算模型成本，不作为计费依据，仅用于运营观测。
 	name := strings.ToLower(strings.TrimSpace(modelName))
 	inputRate := 0.00015
 	outputRate := 0.00060
@@ -579,6 +633,7 @@ func (s *AssistantService) generateSessionTitle(message, scene string) string {
 	if base == "" {
 		return defaultSessionTitle(scene)
 	}
+	// 标题去换行并截断，避免 UI 显示过长。
 	base = strings.ReplaceAll(base, "\n", " ")
 	base = strings.TrimSpace(base)
 	if len(base) > 24 {
@@ -680,19 +735,6 @@ func isDuplicateSeqError(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "uk_ai_messages_session_seq") || strings.Contains(msg, "duplicate entry")
-}
-
-func truncateText(s string, max int) string {
-	if max <= 0 {
-		return ""
-	}
-	if len(s) <= max {
-		return s
-	}
-	if max <= 3 {
-		return s[:max]
-	}
-	return s[:max-3] + "..."
 }
 
 func normalizeUserMessage(raw string) (string, error) {

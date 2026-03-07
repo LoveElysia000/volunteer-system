@@ -1,0 +1,4 @@
+interface:
+  display_name: "Volunteer AI Assistant"
+  short_description: "AI runtime and tool workflow backend."
+  default_prompt: "Use this skill to implement AI assistant runtime, tool orchestration, and usage tracking in volunteer-system."

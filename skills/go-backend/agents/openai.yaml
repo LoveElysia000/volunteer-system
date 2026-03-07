@@ -1,0 +1,4 @@
+interface:
+  display_name: "Volunteer System Backend"
+  short_description: "Develop and modify Go backend modules in volunteer-system."
+  default_prompt: "Use this skill to implement backend changes in the volunteer-system Go project."

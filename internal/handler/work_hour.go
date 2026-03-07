@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // WorkHourLogList 工时流水查询
@@ -18,7 +19,7 @@ func WorkHourLogList(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewWorkHourService(ctx, c).WorkHourLogList(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -33,7 +34,7 @@ func VoidWorkHour(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewWorkHourService(ctx, c).VoidWorkHour(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -48,7 +49,7 @@ func RecalculateWorkHour(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewWorkHourService(ctx, c).RecalculateWorkHour(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

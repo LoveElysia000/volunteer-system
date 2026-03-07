@@ -93,11 +93,6 @@ func (r *Repository) ListRecentAiMessagesBySession(db *gorm.DB, sessionID int64,
 		return nil, err
 	}
 
-	// 反转为正序
-	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-		messages[i], messages[j] = messages[j], messages[i]
-	}
-
 	return messages, nil
 }
 
@@ -173,6 +168,73 @@ INSERT INTO ai_usage_daily (
 VALUES (?, ?, 1, ?, ?, ?, ?, ?, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
 	request_count = request_count + 1,
+	success_count = success_count + VALUES(success_count),
+	failed_count = failed_count + VALUES(failed_count),
+	token_in_total = token_in_total + VALUES(token_in_total),
+	token_out_total = token_out_total + VALUES(token_out_total),
+	estimated_cost = estimated_cost + VALUES(estimated_cost),
+	updated_at = NOW()
+	`, bizDate.Format("2006-01-02"), userID, successCount, failedCount, tokenIn, tokenOut, estimatedCost).Error
+}
+
+// ConsumeAiRequestQuota 尝试原子增加当日请求数，并在配置了配额时校验上限。
+// 返回值 consumed=false 表示达到配额上限。
+func (r *Repository) ConsumeAiRequestQuota(db *gorm.DB, bizDate time.Time, userID int64, dailyQuota int) (bool, error) {
+	result := db.WithContext(r.ctx).Exec(`
+INSERT INTO ai_usage_daily (
+	biz_date,
+	user_id,
+	request_count,
+	success_count,
+	failed_count,
+	token_in_total,
+	token_out_total,
+	estimated_cost,
+	created_at,
+	updated_at
+)
+VALUES (?, ?, 1, 0, 0, 0, 0, 0, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+	request_count = CASE
+		WHEN ? <= 0 OR request_count < ? THEN request_count + 1
+		ELSE request_count
+	END,
+	updated_at = CASE
+		WHEN ? <= 0 OR request_count < ? THEN NOW()
+		ELSE updated_at
+	END
+`, bizDate.Format("2006-01-02"), userID, dailyQuota, dailyQuota, dailyQuota, dailyQuota)
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	return result.RowsAffected > 0, nil
+}
+
+// AppendAiUsageOutcome 累加当日成功/失败与 token/cost 指标，不重复增加 request_count。
+func (r *Repository) AppendAiUsageOutcome(db *gorm.DB, bizDate time.Time, userID int64, success bool, tokenIn, tokenOut int32, estimatedCost float64) error {
+	successCount := int64(0)
+	failedCount := int64(1)
+	if success {
+		successCount = 1
+		failedCount = 0
+	}
+
+	return db.WithContext(r.ctx).Exec(`
+INSERT INTO ai_usage_daily (
+	biz_date,
+	user_id,
+	request_count,
+	success_count,
+	failed_count,
+	token_in_total,
+	token_out_total,
+	estimated_cost,
+	created_at,
+	updated_at
+)
+VALUES (?, ?, 0, ?, ?, ?, ?, ?, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
 	success_count = success_count + VALUES(success_count),
 	failed_count = failed_count + VALUES(failed_count),
 	token_in_total = token_in_total + VALUES(token_in_total),

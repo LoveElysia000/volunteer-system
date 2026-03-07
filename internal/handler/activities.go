@@ -7,6 +7,7 @@ import (
 	"volunteer-system/internal/service"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 )
 
 // ActivityList 获取活动列表
@@ -18,7 +19,7 @@ func ActivityList(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivityList(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -33,7 +34,7 @@ func ActivitySignup(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivitySignup(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -48,7 +49,7 @@ func ActivityCancel(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivityCancel(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -63,7 +64,7 @@ func ActivityCheckIn(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivityCheckIn(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -78,7 +79,7 @@ func ActivityCheckOut(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivityCheckOut(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -93,7 +94,7 @@ func ActivityDetail(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivityDetail(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -108,7 +109,7 @@ func MyActivities(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).MyActivities(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -125,7 +126,7 @@ func CreateActivity(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).CreateActivity(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -140,7 +141,7 @@ func UpdateActivity(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).UpdateActivity(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -155,7 +156,7 @@ func DeleteActivity(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).DeleteActivity(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -170,7 +171,7 @@ func CancelActivity(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).CancelActivity(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -185,7 +186,7 @@ func FinishActivity(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).FinishActivity(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -200,7 +201,7 @@ func GenerateAttendanceCodes(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).GenerateAttendanceCodes(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -215,7 +216,7 @@ func ResetAttendanceCode(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ResetAttendanceCode(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -230,7 +231,7 @@ func GetActivityAttendanceCodes(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).GetActivityAttendanceCodes(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)
@@ -245,7 +246,7 @@ func ActivitySupplementAttendance(ctx context.Context, c *app.RequestContext) {
 	}
 	data, err := service.NewActivityService(ctx, c).ActivitySupplementAttendance(&req)
 	if err != nil {
-		response.Fail(c, err)
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
 		return
 	}
 	response.Success(c, data)

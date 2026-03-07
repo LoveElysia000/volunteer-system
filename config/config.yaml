@@ -99,7 +99,6 @@ ai:
 
   eino:
     max_steps: 4
-    tool_timeout_ms: 3000
-    enable_stream: false
-    checkpoint_ttl_seconds: 1800
-
+    tool_timeout_ms: 3000      # per-attempt tool execution timeout (ms)
+    enable_stream: false       # runtime event streaming; API remains non-streaming
+    checkpoint_ttl_seconds: 1800 # <0 disables checkpoint store; 0 uses default 1800s

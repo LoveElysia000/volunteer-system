@@ -20,3 +20,20 @@ func UniquePositiveInt64(ids []int64) []int64 {
 	}
 	return uniqueIDs
 }
+
+// ContainsInt64 reports whether target exists in items.
+func ContainsInt64(items []int64, target int64) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+// ReverseInPlace reverses the slice in-place.
+func ReverseInPlace[T any](items []T) {
+	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
+		items[i], items[j] = items[j], items[i]
+	}
+}
