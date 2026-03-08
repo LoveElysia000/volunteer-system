@@ -78,16 +78,14 @@ func (r *Repository) GetVolunteerList(db *gorm.DB, orgIDs []int64, queryMap map[
 	var volunteers []*model.Volunteer
 	var total int64
 
-	if len(orgIDs) == 0 {
-		return volunteers, 0, nil
-	}
-
 	// 创建 base session，通过组织成员关系限制组织范围
 	baseSession := db.WithContext(r.ctx).
 		Table("volunteers as v").
 		Joins("INNER JOIN org_members as m ON m.volunteer_id = v.id").
-		Where("m.org_id IN ?", orgIDs).
 		Where("m.status = ?", model.MemberStatusActive)
+	if len(orgIDs) > 0 {
+		baseSession = baseSession.Where("m.org_id IN ?", orgIDs)
+	}
 
 	// 循环处理所有查询条件
 	for key, value := range queryMap {

@@ -11,6 +11,7 @@ func RegisterAssistantRouter(r *route.RouterGroup) {
 	assistant := r.Group("/assistant")
 	assistant.POST("/sessions", handler.CreateAssistantSession)
 	assistant.POST("/chat", handler.AssistantChat)
+	assistant.POST("/chat/stream", handler.AssistantChatStream)
 	assistant.GET("/sessions/:id/messages", handler.AssistantSessionMessages)
 	assistant.POST("/actions/activity-draft", handler.AssistantActivityDraftAction)
 }

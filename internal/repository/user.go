@@ -26,6 +26,27 @@ func (r *Repository) FindByID(db *gorm.DB, id int64) (*model.SysAccount, error) 
 	return &user, nil
 }
 
+// ListActiveAccounts returns active accounts ordered by id asc.
+func (r *Repository) ListActiveAccounts(db *gorm.DB, limit, offset int) ([]*model.SysAccount, error) {
+	rows := make([]*model.SysAccount, 0)
+	query := db.WithContext(r.ctx).
+		Model(&model.SysAccount{}).
+		Where("status = ?", model.SysAccountNormal).
+		Order("id ASC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	if err := query.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 // UpdateLastLoginTime 更新最后登录时间
 func (r *Repository) UpdateLastLoginTime(db *gorm.DB, userID int64) error {
 	err := db.WithContext(r.ctx).Model(&model.SysAccount{}).

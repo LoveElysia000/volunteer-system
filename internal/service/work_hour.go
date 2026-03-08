@@ -98,15 +98,7 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 		queryMap["volunteer_id = ?"] = volunteer.ID
 
 	case model.RegisterTypeOrganizationCode:
-		// 组织：可查看本组织活动的流水
-		org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, userID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, errors.New("组织信息不存在")
-			}
-			return nil, err
-		}
-
+		// 组织账号：按 RBAC 作用域读取有权限的组织流水。
 		if req.ActivityId > 0 {
 			activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 			if err != nil {
@@ -115,13 +107,43 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 				}
 				return nil, err
 			}
-			if activity.OrgID != org.ID {
+			if err := s.requireOrgPermission(
+				userID,
+				activity.OrgID,
+				model.PermissionResourceOrganization,
+				model.PermissionActionManage,
+			); err != nil {
 				return nil, errors.New("无权查看该活动工时流水")
 			}
 			queryMap["activity_id = ?"] = req.ActivityId
 			activityFilterLocked = true
 		} else {
-			queryMap["activity_id IN (SELECT id FROM activities WHERE org_id = ?)"] = org.ID
+			hasGlobalManage, err := s.hasPermissionByScope(
+				userID,
+				model.RBACScopeGlobal,
+				0,
+				model.PermissionResourceOrganization,
+				model.PermissionActionManage,
+			)
+			if err != nil {
+				return nil, err
+			}
+			if !hasGlobalManage {
+				orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
+					s.repo.DB,
+					userID,
+					model.PermissionResourceOrganization,
+					model.PermissionActionManage,
+					0,
+				)
+				if err != nil {
+					return nil, err
+				}
+				if len(orgIDs) == 0 {
+					return nil, errors.New("无权查看工时流水")
+				}
+				queryMap["activity_id IN (SELECT id FROM activities WHERE org_id IN ?)"] = orgIDs
+			}
 		}
 
 	default:
@@ -613,16 +635,13 @@ func (s *WorkHourService) ensureActivityOperableByCurrentOrgWithTx(tx *gorm.DB, 
 		return nil, err
 	}
 
-	org, err := s.repo.GetOrganizationByAccountID(tx, accountID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("组织信息不存在")
-		}
+	if err := s.requireOrgPermission(
+		accountID,
+		activity.OrgID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
 		return nil, err
-	}
-
-	if activity.OrgID != org.ID {
-		return nil, errors.New("无权操作此活动")
 	}
 	return activity, nil
 }

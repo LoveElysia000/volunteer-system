@@ -58,6 +58,22 @@ func AuditRejection(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+// AuditBatchDecision 处理批量审核决策请求。
+func AuditBatchDecision(ctx context.Context, c *app.RequestContext) {
+	var req api.AuditBatchDecisionRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	data, err := service.NewAuditService(ctx, c).AuditBatchDecision(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 // AuditRecordDetail 处理审核记录详情查询请求。
 func AuditRecordDetail(ctx context.Context, c *app.RequestContext) {
 	var req api.AuditRecordDetailRequest

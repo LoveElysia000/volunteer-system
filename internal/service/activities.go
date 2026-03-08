@@ -57,11 +57,40 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	if req.PageSize <= 0 {
 		req.PageSize = 50
 	}
+	var startFrom *time.Time
+	if strings.TrimSpace(req.StartFrom) != "" {
+		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartFrom))
+		if parseErr != nil {
+			return nil, errors.New("开始时间格式错误")
+		}
+		startFrom = &value
+	}
+	var startTo *time.Time
+	if strings.TrimSpace(req.StartTo) != "" {
+		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartTo))
+		if parseErr != nil {
+			return nil, errors.New("结束时间格式错误")
+		}
+		startTo = &value
+	}
+	if startFrom != nil && startTo != nil && startTo.Before(*startFrom) {
+		return nil, errors.New("结束时间不能早于开始时间")
+	}
 
 	// 查询活动列表
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
-	activities, total, err := s.repo.GetActivitiesByStatus(s.repo.DB, req.Status, pageSize, offset)
+	activities, total, err := s.repo.GetActivitiesByFilters(
+		s.repo.DB,
+		req.Status,
+		req.Keyword,
+		startFrom,
+		startTo,
+		strings.TrimSpace(req.SortBy),
+		strings.TrimSpace(req.SortOrder),
+		pageSize,
+		offset,
+	)
 	if err != nil {
 		log.Error("活动列表查询失败: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
 		return nil, err
@@ -536,8 +565,7 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	}
 
 	// 根据传入的 org_id 查询组织信息
-	org, err := s.repo.GetOrganizationByID(s.repo.DB, req.OrgId)
-	if err != nil {
+	if _, err := s.repo.GetOrganizationByID(s.repo.DB, req.OrgId); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("组织不存在")
 		}
@@ -545,9 +573,13 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		return nil, err
 	}
 
-	// 校验组织是否属于当前登录的管理者
-	if org.AccountID != userID {
-		return nil, errors.New("无权为该组织创建活动")
+	if err := s.requireOrgPermission(
+		userID,
+		req.OrgId,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
 	}
 
 	// 解析时间
@@ -632,16 +664,13 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		return nil, err
 	}
 
-	// 查询组织信息
-	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil {
-		log.Error("更新活动失败: 查询组织信息异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
-		return nil, errors.New("组织信息不存在")
-	}
-
-	// 校验活动归属
-	if activity.OrgID != org.ID {
-		return nil, errors.New("无权操作此活动")
+	if err := s.requireOrgPermission(
+		userID,
+		activity.OrgID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
 	}
 
 	// 校验活动状态
@@ -725,7 +754,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		DedupeKey: fmt.Sprintf("activity.updated:%d:%d", activity.ID, updatedAt.UnixNano()),
 	})
 
-	log.Info("更新活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, org.ID, userID)
+	log.Info("更新活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, activity.OrgID, userID)
 	return &api.UpdateActivityResponse{
 		Message: "更新活动成功",
 	}, nil
@@ -750,16 +779,13 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 		return nil, err
 	}
 
-	// 查询组织信息
-	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil {
-		log.Error("删除活动失败: 查询组织信息异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
-		return nil, errors.New("组织信息不存在")
-	}
-
-	// 校验活动归属
-	if activity.OrgID != org.ID {
-		return nil, errors.New("无权操作此活动")
+	if err := s.requireOrgPermission(
+		userID,
+		activity.OrgID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
 	}
 
 	// 校验活动状态
@@ -778,7 +804,7 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 		return nil, err
 	}
 
-	log.Info("删除活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
+	log.Info("删除活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, activity.OrgID, userID)
 	return &api.DeleteActivityResponse{
 		Message: "删除活动成功",
 	}, nil
@@ -803,16 +829,13 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		return nil, err
 	}
 
-	// 查询组织信息
-	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil {
-		log.Error("取消活动失败: 查询组织信息异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
-		return nil, errors.New("组织信息不存在")
-	}
-
-	// 校验活动归属
-	if activity.OrgID != org.ID {
-		return nil, errors.New("无权操作此活动")
+	if err := s.requireOrgPermission(
+		userID,
+		activity.OrgID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
 	}
 
 	// 校验活动状态
@@ -825,7 +848,20 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		return nil, err
 	}
 
-	log.Info("取消活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, org.ID, userID)
+	PublishNotificationEvent(NotificationEvent{
+		EventType:   model.NotificationEventActivityCanceled,
+		BizType:     model.NotificationBizTypeActivity,
+		BizID:       activity.ID,
+		SourceOrgID: activity.OrgID,
+		ActorID:     userID,
+		CreatedAt:   time.Now(),
+		Payload: map[string]any{
+			"activityTitle": activity.Title,
+		},
+		DedupeKey: fmt.Sprintf("activity.canceled:%d", activity.ID),
+	})
+
+	log.Info("取消活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, activity.OrgID, userID)
 	return &api.CancelActivityResponse{
 		Message: "取消活动成功",
 	}, nil
@@ -1399,17 +1435,13 @@ func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, account
 		return nil, err
 	}
 
-	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, accountID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("组织信息不存在")
-		}
-		log.Error("校验活动归属失败: 查询组织异常: %v, activity_id=%d account_id=%d", err, activityID, accountID)
+	if err := s.requireOrgPermission(
+		accountID,
+		activity.OrgID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
 		return nil, err
-	}
-
-	if activity.OrgID != org.ID {
-		return nil, errors.New("无权操作此活动")
 	}
 	return activity, nil
 }

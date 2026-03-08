@@ -33,6 +33,22 @@ func NewOrganizationService(ctx context.Context, c *app.RequestContext) *Organiz
 	}
 }
 
+func (s *OrganizationService) requireOrganizationManagePermission(orgID int64) (int64, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.requireOrgPermission(
+		userID,
+		orgID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	); err != nil {
+		return 0, err
+	}
+	return userID, nil
+}
+
 func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest) (*api.OrganizationListResponse, error) {
 	// 参数校验
 	if req.Page <= 0 {
@@ -201,6 +217,9 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 	if organization == nil {
 		return nil, errors.New("组织不存在")
 	}
+	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
+		return nil, err
+	}
 
 	// 构建更新查询
 	updateQuery := make(map[string]any)
@@ -260,6 +279,9 @@ func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequ
 	if organization == nil {
 		return nil, errors.New("组织不存在")
 	}
+	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
+		return nil, err
+	}
 
 	// 删除组织
 	err = s.repo.DeleteOrganization(s.repo.DB, req.Id)
@@ -294,6 +316,9 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 	if organization.AccountID <= 0 {
 		return nil, errors.New("组织账号信息异常")
 	}
+	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
+		return nil, err
+	}
 
 	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationDisabled})
 	if err != nil {
@@ -326,6 +351,9 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 	}
 	if organization.AccountID <= 0 {
 		return nil, errors.New("组织账号信息异常")
+	}
+	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
+		return nil, err
 	}
 
 	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationNormal})
@@ -427,6 +455,12 @@ func (s *OrganizationService) BulkDeleteOrganizations(req *api.BulkDeleteOrganiz
 	for _, id := range req.Ids {
 		orgIDs = append(orgIDs, id)
 	}
+	// 批量删除前按组织维度逐条鉴权，支持 super_admin 全局权限。
+	for _, orgID := range orgIDs {
+		if _, err := s.requireOrganizationManagePermission(orgID); err != nil {
+			return nil, err
+		}
+	}
 
 	// 批量删除组织
 	successCount, failedCount, err := s.repo.BulkDeleteOrganizations(s.repo.DB, orgIDs)
@@ -478,16 +512,6 @@ func (s *OrganizationService) resolveOrgBatchOperatorID() (int64, error) {
 	}
 	if userID <= 0 {
 		return 0, errors.New("用户ID无效")
-	}
-
-	account, err := s.repo.FindByID(s.repo.DB, userID)
-	if err != nil {
-		log.Error("组织批量停启失败: 查询账号失败: %v, user_id=%d", err, userID)
-		return 0, errors.New("查询账号信息失败")
-	}
-
-	if account.IdentityType != model.RegisterTypeOrganizationCode {
-		return 0, errors.New("无权执行组织批量停启")
 	}
 	return userID, nil
 }
@@ -547,7 +571,16 @@ func (s *OrganizationService) batchChangeOrganizationStatus(
 	}
 	for _, orgID := range validOrgIDs {
 		org := orgMap[orgID]
-		if org == nil || org.AccountID <= 0 || org.AccountID != operatorID {
+		if org == nil || org.AccountID <= 0 {
+			failed = append(failed, orgID)
+			continue
+		}
+		if err := s.requireOrgPermission(
+			operatorID,
+			org.ID,
+			model.PermissionResourceOrganization,
+			model.PermissionActionManage,
+		); err != nil {
 			failed = append(failed, orgID)
 			continue
 		}

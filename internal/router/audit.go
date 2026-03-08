@@ -11,5 +11,6 @@ func RegisterAuditRouter(r *route.RouterGroup) {
 	r.POST("/audits/pending", handler.PendingAuditList)
 	r.POST("/audits/approval", handler.AuditApproval)
 	r.POST("/audits/rejection", handler.AuditRejection)
+	r.POST("/audits/batch-decision", handler.AuditBatchDecision)
 	r.GET("/audits/records/:id", handler.AuditRecordDetail)
 }

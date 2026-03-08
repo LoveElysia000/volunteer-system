@@ -37,6 +37,13 @@ func NewAuditService(ctx context.Context, c *app.RequestContext) *AuditService {
 
 type ApprovalHandler func(*gorm.DB, *model.AuditRecord) error
 
+const (
+	auditBatchActionApprove  int32 = 1
+	auditBatchActionReject   int32 = 2
+	defaultAuditSLAHours     int32 = 24
+	maxAuditBatchDecisionIDs       = 500
+)
+
 // PendingAuditList 查询统一待审核列表（按目标类型筛选）。
 func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.PendingAuditListResponse, error) {
 	if req == nil {
@@ -44,8 +51,8 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		return nil, errors.New("请求不能为空")
 	}
 
-	// 仅组织管理员可查看统一待审核列表。
-	if _, err := s.getAuditOperatorID(); err != nil {
+	operatorID, err := s.getAuditOperatorID()
+	if err != nil {
 		log.Warn("统一待审核列表查询失败: 权限校验失败: %v", err)
 		return nil, err
 	}
@@ -72,10 +79,28 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		log.Warn("统一待审核列表查询失败: status参数无效: %v", err)
 		return nil, err
 	}
+	slaHours := req.SlaHours
+	if slaHours <= 0 {
+		slaHours = defaultAuditSLAHours
+	}
 
 	queryMap := map[string]any{
 		"target_type = ?": targetType,
 		"status in (?)":   statuses,
+	}
+	if strings.TrimSpace(req.CreatedFrom) != "" {
+		from, parseErr := util.ParseDateTime(strings.TrimSpace(req.CreatedFrom))
+		if parseErr != nil {
+			return nil, errors.New("createdFrom 时间格式错误")
+		}
+		queryMap["created_at >= ?"] = from
+	}
+	if strings.TrimSpace(req.CreatedTo) != "" {
+		to, parseErr := util.ParseDateTime(strings.TrimSpace(req.CreatedTo))
+		if parseErr != nil {
+			return nil, errors.New("createdTo 时间格式错误")
+		}
+		queryMap["created_at <= ?"] = to
 	}
 
 	keyword := strings.TrimSpace(req.Keyword)
@@ -95,18 +120,41 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		queryMap["id in (?)"] = matchedIDs
 	}
 
-	offset := pageSize * (page - 1)
-	records, total, listErr := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, pageSize, offset)
+	records, _, listErr := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
 	if listErr != nil {
 		log.Error("统一待审核列表查询失败: 查询审核记录异常: %v, page=%d page_size=%d", listErr, page, pageSize)
 		return nil, listErr
 	}
 
-	if total == 0 {
+	if len(records) == 0 {
 		return resp, nil
 	}
-	resp.Total = int32(total)
-	resp.List = s.buildPendingAuditItems(records)
+
+	authorizedRecords := make([]*model.AuditRecord, 0, len(records))
+	for _, record := range records {
+		if record == nil {
+			continue
+		}
+		if err := s.requireAuditReviewPermission(operatorID, record); err != nil {
+			continue
+		}
+		authorizedRecords = append(authorizedRecords, record)
+	}
+	if len(authorizedRecords) == 0 {
+		return resp, nil
+	}
+
+	resp.Total = int32(len(authorizedRecords))
+	start := int((page - 1) * pageSize)
+	if start >= len(authorizedRecords) {
+		resp.List = []*api.PendingAuditItem{}
+		return resp, nil
+	}
+	end := start + int(pageSize)
+	if end > len(authorizedRecords) {
+		end = len(authorizedRecords)
+	}
+	resp.List = s.buildPendingAuditItems(authorizedRecords[start:end], slaHours)
 	return resp, nil
 }
 
@@ -142,13 +190,19 @@ func normalizeAuditStatuses(input []int32) ([]int32, error) {
 }
 
 // buildPendingAuditItems 将审核记录列表转换为统一待审核返回项。
-func (s *AuditService) buildPendingAuditItems(records []*model.AuditRecord) []*api.PendingAuditItem {
+func (s *AuditService) buildPendingAuditItems(records []*model.AuditRecord, slaHours int32) []*api.PendingAuditItem {
 	items := make([]*api.PendingAuditItem, 0, len(records))
+	threshold := time.Duration(slaHours) * time.Hour
+	now := time.Now()
 	for _, record := range records {
 		if record == nil {
 			continue
 		}
 		title, subTitle := s.resolvePendingAuditTitle(record)
+		isOverdue := false
+		if threshold > 0 && record.Status == model.AuditStatusPending {
+			isOverdue = now.Sub(record.CreatedAt) > threshold
+		}
 		items = append(items, &api.PendingAuditItem{
 			Id:         record.ID,
 			TargetType: record.TargetType,
@@ -157,6 +211,7 @@ func (s *AuditService) buildPendingAuditItems(records []*model.AuditRecord) []*a
 			SubTitle:   subTitle,
 			CreatorId:  record.CreatorID,
 			CreatedAt:  record.CreatedAt.Format(util.DateTimeLayout),
+			IsOverdue:  isOverdue,
 		})
 	}
 	return items
@@ -356,6 +411,9 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 		log.Warn("审核通过失败: 获取审核人失败, record_id=%d err=%v", record.ID, err)
 		return nil, err
 	}
+	if err := s.requireAuditReviewPermission(auditorID, record); err != nil {
+		return nil, err
+	}
 
 	auditHandlerMap := map[int32]ApprovalHandler{
 		model.AuditTargetVolunteer: s.applyVolunteerAuditApproval,
@@ -437,6 +495,9 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 		log.Warn("审核驳回失败: 获取审核人失败, record_id=%d err=%v", record.ID, err)
 		return nil, err
 	}
+	if err := s.requireAuditReviewPermission(auditorID, record); err != nil {
+		return nil, err
+	}
 
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		if err := s.applyAuditRejectionSideEffects(tx, record); err != nil {
@@ -457,8 +518,57 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 		return nil, err
 	}
 	log.Info("审核驳回成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", record.ID, record.TargetType, record.TargetID, auditorID)
+	s.handleAuditRejectedSideEffects(record, auditorID, reason)
 
 	return &resp, nil
+}
+
+// AuditBatchDecision executes approval/rejection decisions in batch and returns partial success result.
+func (s *AuditService) AuditBatchDecision(req *api.AuditBatchDecisionRequest) (*api.AuditBatchDecisionResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+	ids := util.UniquePositiveInt64(req.Ids)
+	if len(ids) == 0 {
+		return nil, errors.New("审核记录ID不能为空")
+	}
+	if len(ids) > maxAuditBatchDecisionIDs {
+		return nil, fmt.Errorf("单次最多处理 %d 条审核记录", maxAuditBatchDecisionIDs)
+	}
+	if req.Action != auditBatchActionApprove && req.Action != auditBatchActionReject {
+		return nil, errors.New("批量审核动作不合法")
+	}
+	if req.Action == auditBatchActionReject && strings.TrimSpace(req.Reason) == "" {
+		return nil, errors.New("驳回原因不能为空")
+	}
+
+	successCount := int32(0)
+	failedIDs := make([]int64, 0)
+	for _, id := range ids {
+		var err error
+		switch req.Action {
+		case auditBatchActionApprove:
+			_, err = s.AuditApproval(&api.AuditApprovalRequest{
+				Id:     id,
+				Reason: req.Reason,
+			})
+		case auditBatchActionReject:
+			_, err = s.AuditRejection(&api.AuditRejectionRequest{
+				Id:     id,
+				Reason: req.Reason,
+			})
+		}
+		if err != nil {
+			failedIDs = append(failedIDs, id)
+			continue
+		}
+		successCount++
+	}
+
+	return &api.AuditBatchDecisionResponse{
+		SuccessCount: successCount,
+		FailedIds:    failedIDs,
+	}, nil
 }
 
 // applyVolunteerAuditApproval 处理志愿者目标的审核通过并回写志愿者信息。
@@ -742,6 +852,43 @@ func (s *AuditService) handleAuditApprovedSideEffects(record *model.AuditRecord,
 	})
 }
 
+func (s *AuditService) handleAuditRejectedSideEffects(record *model.AuditRecord, auditorID int64, reason string) {
+	if record == nil {
+		return
+	}
+	if record.TargetType != model.AuditTargetSignup || record.TargetID <= 0 {
+		return
+	}
+
+	signup, err := s.repo.GetActivitySignupByID(s.repo.DB, record.TargetID)
+	if err != nil || signup == nil {
+		return
+	}
+	activity, err := s.repo.GetActivityByID(s.repo.DB, signup.ActivityID)
+	if err != nil || activity == nil {
+		return
+	}
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, signup.VolunteerID)
+	if err != nil || volunteer == nil || volunteer.AccountID <= 0 {
+		return
+	}
+
+	PublishNotificationEvent(NotificationEvent{
+		EventType:   model.NotificationEventSignupRejected,
+		BizType:     model.NotificationBizTypeActivity,
+		BizID:       signup.ID,
+		SourceOrgID: activity.OrgID,
+		ActorID:     auditorID,
+		CreatedAt:   time.Now(),
+		Payload: map[string]any{
+			"receiverAccountID": volunteer.AccountID,
+			"activityTitle":     activity.Title,
+			"reason":            reason,
+		},
+		DedupeKey: fmt.Sprintf("signup.rejected:%d:%d", signup.ID, record.ID),
+	})
+}
+
 // AuditRecordDetail 查询并返回单条审核记录详情。
 func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*api.AuditRecordDetailResponse, error) {
 	if req == nil {
@@ -802,12 +949,117 @@ func (s *AuditService) getAuditOperatorID() (int64, error) {
 		log.Error("获取审核人失败: 查询账号异常, user_id=%d err=%v", auditorID, err)
 		return 0, err
 	}
-	if account.IdentityType != model.RegisterTypeOrganizationCode {
-		log.Warn("获取审核人失败: 身份无权限, user_id=%d identity_type=%d", auditorID, account.IdentityType)
+	if account.Status != model.SysAccountNormal {
+		return 0, errors.New("账号状态异常")
+	}
+
+	hasGlobal, err := s.hasPermissionByScope(
+		auditorID,
+		model.RBACScopeGlobal,
+		0,
+		model.PermissionResourceAudit,
+		model.PermissionActionReview,
+	)
+	if err != nil {
+		return 0, err
+	}
+	if hasGlobal {
+		return auditorID, nil
+	}
+
+	hasAnyOrg, err := s.repo.HasAnyOrgPermission(
+		s.repo.DB,
+		auditorID,
+		model.PermissionResourceAudit,
+		model.PermissionActionReview,
+	)
+	if err != nil {
+		return 0, err
+	}
+	if !hasAnyOrg {
 		return 0, errors.New("无权限执行审核")
 	}
 
 	return auditorID, nil
+}
+
+func (s *AuditService) requireAuditReviewPermission(operatorID int64, record *model.AuditRecord) error {
+	orgID, err := s.resolveAuditRecordOrgID(record)
+	if err != nil {
+		return err
+	}
+	if orgID > 0 {
+		return s.requireOrgPermission(
+			operatorID,
+			orgID,
+			model.PermissionResourceAudit,
+			model.PermissionActionReview,
+		)
+	}
+	return s.requireGlobalPermission(
+		operatorID,
+		model.PermissionResourceAudit,
+		model.PermissionActionReview,
+	)
+}
+
+func (s *AuditService) resolveAuditRecordOrgID(record *model.AuditRecord) (int64, error) {
+	if record == nil {
+		return 0, errors.New("审核记录不能为空")
+	}
+
+	switch record.TargetType {
+	case model.AuditTargetOrg:
+		return record.TargetID, nil
+
+	case model.AuditTargetMember:
+		if record.TargetID > 0 {
+			member, err := s.repo.GetMembershipByID(s.repo.DB, record.TargetID)
+			if err == nil && member != nil {
+				return member.OrgID, nil
+			}
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return 0, err
+			}
+		}
+		var snapshot model.OrgMember
+		if strings.TrimSpace(record.NewContent) != "" && json.Unmarshal([]byte(record.NewContent), &snapshot) == nil {
+			return snapshot.OrgID, nil
+		}
+		return 0, nil
+
+	case model.AuditTargetSignup:
+		activityID := int64(0)
+		if record.TargetID > 0 {
+			signup, err := s.repo.GetActivitySignupByID(s.repo.DB, record.TargetID)
+			if err == nil && signup != nil {
+				activityID = signup.ActivityID
+			}
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return 0, err
+			}
+		}
+		if activityID <= 0 {
+			var snapshot model.ActivitySignup
+			if strings.TrimSpace(record.NewContent) != "" && json.Unmarshal([]byte(record.NewContent), &snapshot) == nil {
+				activityID = snapshot.ActivityID
+			}
+		}
+		if activityID <= 0 {
+			return 0, nil
+		}
+		activity, err := s.repo.GetActivityByID(s.repo.DB, activityID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return 0, nil
+			}
+			return 0, err
+		}
+		return activity.OrgID, nil
+
+	default:
+		return 0, nil
+	}
 }
 
 // ensureAuditRecordPending 校验审核记录是否处于待处理状态。

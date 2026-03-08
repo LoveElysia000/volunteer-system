@@ -56,7 +56,7 @@ func (r *Repository) CreateMembership(db *gorm.DB, member *model.OrgMember) erro
 
 // UpdateMembershipFields updates membership fields by id.
 func (r *Repository) UpdateMembershipFields(db *gorm.DB, id int64, updates map[string]any) error {
-	return db.WithContext(r.ctx).Where("id = ?", id).Updates(updates).Error
+	return db.WithContext(r.ctx).Model(&model.OrgMember{}).Where("id = ?", id).Updates(updates).Error
 }
 
 // GetOrganizationMembers returns members for an organization with filters.

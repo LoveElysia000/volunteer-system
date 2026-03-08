@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package analytics;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+service AnalyticsService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  rpc OrgFunnelSummary(OrgFunnelSummaryRequest) returns (OrgFunnelSummaryResponse) {
+    option (google.api.http) = {
+      get: "/api/analytics/org/funnel"
+    };
+  }
+}
+
+message OrgFunnelSummaryRequest {
+  // 组织ID 必填 @gotags: query:"orgId,required"
+  int64 orgId = 1;
+  // 起始时间 可选 @gotags: query:"start"
+  string start = 2;
+  // 结束时间 可选 @gotags: query:"end"
+  string end = 3;
+}
+
+message OrgFunnelSummaryResponse {
+  int64 registrationCount = 1;
+  int64 membershipCount = 2;
+  int64 signupCount = 3;
+  int64 attendanceCount = 4;
+  int64 workhourCount = 5;
+
+  double registrationToMembershipRate = 6;
+  double membershipToSignupRate = 7;
+  double signupToAttendanceRate = 8;
+  double attendanceToWorkhourRate = 9;
+
+  string start = 10;
+  string end = 11;
+}

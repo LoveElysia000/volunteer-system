@@ -4,7 +4,7 @@
 
 **Goal:** Deliver the 4-week P0 roadmap by hardening authorization, upgrading audit/notification/discovery, and adding operations visibility.
 
-**Architecture:** Keep current layered structure (`router -> handler -> service -> repository`) and evolve each capability behind backward-compatible APIs where possible. Introduce centralized authorization helpers and event-driven notification fan-out without rewriting existing business modules. For AI streaming, add a dedicated SSE endpoint (`/api/assistant/chat/stream`) and keep existing synchronous `/api/assistant/chat` unchanged. Enforce TDD for each behavior change and ship in small commits.
+**Architecture:** Keep current layered structure (`router -> handler -> service -> repository`) and evolve each capability behind backward-compatible APIs where possible. Authorization is RBAC-first: permissions are defined by `resource.action`, assigned to roles, and granted to accounts by scope (`global/org`) with `super_admin` as global governance role. For AI streaming, add a dedicated SSE endpoint (`/api/assistant/chat/stream`) and keep existing synchronous `/api/assistant/chat` unchanged. Enforce TDD for each behavior change and ship in small commits.
 
 **Tech Stack:** Go, Hertz, GORM, MySQL, Redis, Protobuf/OpenAPI, Go test
 
@@ -15,6 +15,40 @@ Execution rules for this plan:
 - Run `@verification-before-completion` at the end of every task.
 - Keep commits small and focused (one task = one commit).
 
+### RBAC Governance Model
+
+- `rbac_permissions`: Defines permission points where `resource + action` is unique (for example, `organization.manage`).
+- `rbac_role_permissions`: Defines the permission set owned by each role.
+- `rbac_account_roles`: Defines role bindings for an account under a scope (`scope_type=global/org`) with `status` and `expires_at` support.
+- `rbac_roles`: Role definitions (this iteration includes `super_admin`, `org_owner`, `org_manager`, and `volunteer`).
+
+Permission check flow:
+1. Handler gets the operator `account_id` from token/middleware and does not trust client-passed account IDs.
+2. Service calls shared `requireOrgPermission/requireGlobalPermission` helper methods.
+3. Repository checks RBAC relations by `account_id + scope + resource + action`.
+4. If `super_admin` is matched with `global` scope, allow globally; otherwise enforce exact org-scope checks.
+5. If no permission is matched, return a unified authorization error code.
+
+`super_admin` responsibilities:
+- Manage role-to-permission mappings (who can operate which features).
+- Handle cross-organization governance operations and emergency actions.
+- Own platform-level capabilities for audit, export, analytics view, and organization management.
+
+### Registration RBAC Resilience (No New Table)
+
+Goal: prevent RBAC dependency failures from blocking account registration while still guaranteeing eventual default-role availability.
+
+Implementation policy:
+- Keep registration transaction focused on core business entities only (`sys_accounts`, `volunteers` / `organizations`).
+- Move default RBAC binding out of the registration transaction and execute it as best-effort with short retries.
+- If RBAC binding still fails, registration remains successful and the failure is logged for follow-up.
+- On login, run default-role self-heal: if the expected default role binding is missing, auto-upsert it.
+- Provide a reconcile entry to scan active accounts and backfill missing default bindings in batches.
+
+Scope and storage decision:
+- Reuse existing RBAC tables (`rbac_roles`, `rbac_account_roles`) and existing business tables.
+- Do not add new DDL or new tables for this resilience upgrade.
+
 ### Task 0: Add RBAC Schema Migration Artifacts
 
 **Files:**
@@ -23,66 +57,68 @@ Execution rules for this plan:
 
 **Step 1: Define DDL scope and naming**
 
-- DDL 版本号：`v1.3.1`
-- 新增表：`rbac_roles`, `rbac_permissions`, `rbac_role_permissions`, `rbac_account_roles`
-- 与现有目录规范保持一致（`sql/ddl` 增量 + `deploy/ddl.sql` 全量）
+- DDL version: `v1.3.1`
+- New tables: `rbac_roles`, `rbac_permissions`, `rbac_role_permissions`, `rbac_account_roles`
+- Keep alignment with existing directory conventions (`sql/ddl` incremental + `deploy/ddl.sql` full schema).
 
 **Step 2: Generate incremental DDL file**
 
-- 生成 `sql/ddl/ddl_v1.3.1.sql`
-- 仅编写建表语句和索引语句，不执行脚本
+- Generate `sql/ddl/ddl_v1.3.1.sql`
+- Only write table-creation and index statements; do not execute scripts.
 
 **Step 3: Sync full schema file**
 
-- 将同样的 4 张表同步到 `deploy/ddl.sql`
-- 保持表注释、字段注释、索引命名风格与现有文件一致
+- Sync the same 4 tables into `deploy/ddl.sql`
+- Keep table comments, column comments, and index naming style consistent with existing files.
 
 **Step 4: Record Change**
 
-- 记录本任务改动文件，进入下一任务。
-- 本任务不执行任何 SQL 或其他脚本。
+- Record changed files for this task, then proceed to the next task.
+- This task does not execute any SQL or any other scripts.
 
 
-### Task 1: Add Centralized Authorization Policy
+### Task 1: Add RBAC Role/Permission Seeds and Service-Level Authorizer
 
 **Files:**
-- Create: `internal/authz/policy.go`
-- Test: `internal/authz/policy_test.go`
+- Create: `sql/dml/dml_v1.3.1.sql`
+- Create: `internal/repository/rbac.go`
+- Create: `internal/service/rbac_helpers.go`
+- Test: `internal/service/authz_helpers_test.go`
 - Modify: `internal/model/consts.go`
 
 **Step 1: Write the failing test**
 
 ```go
-func TestCanManageOrganization(t *testing.T) {
-    t.Run("owner can manage", func(t *testing.T) { /* expect true */ })
-    t.Run("non owner denied", func(t *testing.T) { /* expect false */ })
+func TestHasPermissionByScope(t *testing.T) {
+    t.Run("super admin global allow", func(t *testing.T) { /* expect allow */ })
+    t.Run("org role allow in same org", func(t *testing.T) { /* expect allow */ })
+    t.Run("org role deny in other org", func(t *testing.T) { /* expect deny */ })
 }
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `go test ./internal/authz -run TestCanManageOrganization -v`
-Expected: FAIL with undefined policy symbols.
+Run: `go test ./internal/service -run TestHasPermissionByScope -v`
+Expected: FAIL with undefined RBAC helper symbols.
 
 **Step 3: Write minimal implementation**
 
-```go
-func CanManageOrganization(actorAccountID, ownerAccountID int64) bool {
-    return actorAccountID > 0 && actorAccountID == ownerAccountID
-}
-```
+- Add permission constants in `internal/model/consts.go` (for example: `organization.manage`, `membership.manage`, `audit.review`, `export.manage`, `analytics.org.read`).
+- Generate seed data in `sql/dml/dml_v1.3.1.sql` for `super_admin`, `org_owner`, `org_manager`, and `volunteer`, plus role-permission mappings.
+- Add repository queries in `internal/repository/rbac.go` to evaluate permissions by `account_id + scope + resource + action`.
+- Add service-level authorization helpers in `internal/service/rbac_helpers.go` for reuse across services.
 
 **Step 4: Run test to verify it passes**
 
-Run: `go test ./internal/authz -run TestCanManageOrganization -v`
+Run: `go test ./internal/service -run TestHasPermissionByScope -v`
 Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
-### Task 2: Remove Client-Controlled `accountId` in Member Status Update
+### Task 2: Remove Client-Controlled `accountId` and Enforce `membership.manage`
 
 **Files:**
 - Modify: `internal/api/membership.proto`
@@ -97,7 +133,7 @@ Expected: PASS.
 ```go
 func TestUpdateMemberStatus_UsesTokenUserNotBodyAccountID(t *testing.T) {
     // given body accountId mismatch
-    // expect service uses middleware user id and still enforces owner check
+    // expect service uses middleware user id and checks membership.manage permission
 }
 ```
 
@@ -111,7 +147,10 @@ Expected: FAIL because service still depends on request `accountId`.
 ```go
 operatorID, err := middleware.GetUserIDInt(s.c)
 if err != nil { return nil, err }
-// delete req.AccountId dependency
+// delete req.AccountId dependency and enforce RBAC permission
+if err := s.requireOrgPermission(operatorID, member.OrgID, "membership", "manage"); err != nil {
+    return nil, err
+}
 ```
 
 **Step 4: Regenerate API artifacts and rerun tests**
@@ -122,10 +161,10 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
-### Task 3: Enforce Organization Ownership on All Organization Writes
+### Task 3: Apply RBAC on Organization Write APIs (`organization.manage`)
 
 **Files:**
 - Modify: `internal/service/organization.go`
@@ -134,33 +173,35 @@ Expected: PASS.
 **Step 1: Write the failing test**
 
 ```go
-func TestOrganizationWriteOps_DenyNonOwner(t *testing.T) {
-    // update/delete/disable/enable should fail for non-owner
+func TestOrganizationWriteOps_ByRBAC(t *testing.T) {
+    // super_admin allowed globally
+    // org_owner/org_manager allowed in own org
+    // volunteer denied
 }
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `go test ./internal/service -run TestOrganizationWriteOps_DenyNonOwner -v`
-Expected: FAIL because current methods do not always check owner.
+Run: `go test ./internal/service -run TestOrganizationWriteOps_ByRBAC -v`
+Expected: FAIL because current methods are still owner/identity based.
 
 **Step 3: Write minimal implementation**
 
 ```go
 userID, _ := middleware.GetUserIDInt(s.c)
-if !authz.CanManageOrganization(userID, organization.AccountID) {
-    return nil, errors.New("无权操作该组织")
+if err := s.requireOrgPermission(userID, organization.ID, "organization", "manage"); err != nil {
+    return nil, err
 }
 ```
 
 **Step 4: Run test to verify it passes**
 
-Run: `go test ./internal/service -run TestOrganizationWriteOps_DenyNonOwner -v`
+Run: `go test ./internal/service -run TestOrganizationWriteOps_ByRBAC -v`
 Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 4: Audit Center V2 (Batch Decisions + Time Filters + SLA Flag)
@@ -196,6 +237,7 @@ rpc AuditBatchDecision(AuditBatchDecisionRequest) returns (AuditBatchDecisionRes
 
 Implement service flow:
 - validate ids and action
+- enforce `audit.review` permission by org scope (super_admin global bypass)
 - process each id in transaction-safe path
 - aggregate `successCount` and `failedIds`
 - compute `isOverdue` in list response by SLA hours
@@ -208,7 +250,7 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 5: Expand Notification Event Matrix
@@ -250,14 +292,14 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 6: Add Email Delivery Channel (Config-Gated)
 
 **Files:**
 - Create: `pkg/notify/email_sender.go`
-- Create: `internal/service/notification_channel_email.go`
+- Modify: `internal/service/notification.go` (includes email channel dispatch method)
 - Modify: `internal/service/notification_dispatcher.go`
 - Modify: `config/config.go`
 - Test: `internal/service/notification_channel_email_test.go`
@@ -293,7 +335,7 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 7: Upgrade Activity Discovery Filters and Sorting
@@ -338,7 +380,7 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 8: Add Operations Dashboard API (Funnel + Conversion)
@@ -375,6 +417,7 @@ Response fields:
 - stage counts
 - conversion percentages
 - period metadata
+- enforce `analytics.org.read` permission by scope
 
 **Step 4: Generate artifacts and run tests**
 
@@ -384,7 +427,7 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 9: Add Weekly/Monthly Export Templates
@@ -422,6 +465,7 @@ Request:
 - `start`/`end`
 
 Generate XLSX with frozen columns and standard metric headers.
+- enforce `export.manage` permission by scope (super_admin global or org role)
 
 **Step 4: Generate artifacts and run tests**
 
@@ -431,7 +475,7 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 10: Introduce AI Streaming Endpoint (SSE) with Backward Compatibility
@@ -487,7 +531,7 @@ Expected: PASS.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.
 
 
 ### Task 11: Full Verification and Release Checklist
@@ -521,6 +565,7 @@ Update README sections:
 - new export report API
 - notification channels and config
 - RBAC schema migration (`sql/ddl/ddl_v1.3.1.sql`)
+- RBAC seed data (`sql/dml/dml_v1.3.1.sql`) and role matrix (`super_admin/org_owner/org_manager/volunteer`)
 - AI stream endpoint (`/api/assistant/chat/stream`) and client usage notes
 
 **Step 4: Re-run smoke verification**
@@ -533,4 +578,4 @@ Expected: clean tests + server starts without runtime errors.
 
 **Step 5: Record Change**
 
-- 记录本任务改动文件与验证结果，进入下一任务。
+- Record changed files and verification results for this task, then proceed to the next task.

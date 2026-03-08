@@ -121,6 +121,9 @@ func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (
 		log.Error("志愿者注册 - 事务执行失败: %v", err)
 		return nil, err
 	}
+	if err := s.bindDefaultRoleBestEffort(account.ID, model.RBACRoleVolunteer, model.RBACScopeGlobal, 0); err != nil {
+		log.Warn("志愿者注册 - 默认角色绑定最终失败(不影响注册): account_id=%d, err=%v", account.ID, err)
+	}
 
 	log.Info("志愿者注册成功: 账户ID=%d, 姓名=%s, 手机号=%s", account.ID, req.Name, util.GetMobileMask(req.Phone))
 	return &api.RegisterResponse{}, nil
@@ -171,6 +174,7 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 	}
 
 	var account *model.SysAccount
+	var orgID int64
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建系统账户
 		account = &model.SysAccount{
@@ -205,6 +209,7 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 			log.Error("组织注册 - 创建组织档案失败: %v", err)
 			return err
 		}
+		orgID = org.ID
 
 		return nil
 	})
@@ -212,6 +217,9 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 	if err != nil {
 		log.Error("组织注册 - 事务执行失败: %v", err)
 		return nil, err
+	}
+	if err := s.bindDefaultRoleBestEffort(account.ID, model.RBACRoleOrgOwner, model.RBACScopeOrg, orgID); err != nil {
+		log.Warn("组织注册 - 默认角色绑定最终失败(不影响注册): account_id=%d, org_id=%d, err=%v", account.ID, orgID, err)
 	}
 	log.Info("组织注册成功: 账户ID=%d, 组织名称=%s, 联系人=%s", account.ID, req.OrganizationName, req.Name)
 	return &api.RegisterResponse{}, nil
@@ -300,4 +308,32 @@ func (s *RegisterService) isValidEmail(email string) bool {
 	// 简单的邮箱格式验证
 	matched, _ := regexp.MatchString(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, email)
 	return matched
+}
+
+func (s *RegisterService) bindDefaultRoleBestEffort(accountID int64, roleCode, scopeType string, scopeID int64) error {
+	retryDelays := []time.Duration{0, 100 * time.Millisecond, 300 * time.Millisecond}
+	var lastErr error
+
+	for i, delay := range retryDelays {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		if err := s.bindDefaultRole(s.repo.DB, accountID, roleCode, scopeType, scopeID); err != nil {
+			lastErr = err
+			log.Warn(
+				"默认角色绑定失败: account_id=%d, role=%s, scope=%s:%d, attempt=%d/%d, err=%v",
+				accountID,
+				roleCode,
+				scopeType,
+				scopeID,
+				i+1,
+				len(retryDelays),
+				err,
+			)
+			continue
+		}
+		return nil
+	}
+
+	return lastErr
 }

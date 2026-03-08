@@ -56,3 +56,25 @@ func ExportActivities(ctx context.Context, c *app.RequestContext) {
 	c.Response.SetStatusCode(http.StatusOK)
 	c.Response.SetBody(file.Content)
 }
+
+// ExportOpsReport 导出运营模板报表
+func ExportOpsReport(ctx context.Context, c *app.RequestContext) {
+	var req api.ExportOpsReportRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+
+	file, err := service.NewExportService(ctx, c).ExportOpsReport(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", url.PathEscape(file.FileName)))
+	c.Header("Content-Type", file.ContentType)
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
+	c.Response.SetStatusCode(http.StatusOK)
+	c.Response.SetBody(file.Content)
+}

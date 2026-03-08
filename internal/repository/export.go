@@ -41,6 +41,13 @@ type ActivityExportRecord struct {
 	CreatedAt     time.Time `gorm:"column:created_at"`
 }
 
+type OpsReportMetrics struct {
+	ActivitiesCount int64
+	SignupsCount    int64
+	AttendanceCount int64
+	WorkhoursCount  int64
+}
+
 // ListVolunteerExportRecords queries volunteer rows under current organization scope.
 func (r *Repository) ListVolunteerExportRecords(
 	db *gorm.DB,
@@ -169,4 +176,51 @@ func (r *Repository) ListActivityExportRecords(
 		return nil, err
 	}
 	return rows, nil
+}
+
+func (r *Repository) GetOpsReportMetrics(
+	db *gorm.DB,
+	orgID int64,
+	start, end time.Time,
+) (*OpsReportMetrics, error) {
+	metrics := &OpsReportMetrics{}
+
+	activityQuery := db.WithContext(r.ctx).
+		Model(&model.Activity{}).
+		Where("org_id = ?", orgID).
+		Where("start_time >= ? AND start_time <= ?", start, end)
+	if err := activityQuery.Count(&metrics.ActivitiesCount).Error; err != nil {
+		return nil, err
+	}
+
+	signupQuery := db.WithContext(r.ctx).
+		Table("activity_signups AS s").
+		Joins("INNER JOIN activities a ON a.id = s.activity_id").
+		Where("a.org_id = ?", orgID).
+		Where("s.signup_time >= ? AND s.signup_time <= ?", start, end)
+	if err := signupQuery.Count(&metrics.SignupsCount).Error; err != nil {
+		return nil, err
+	}
+
+	attendanceQuery := db.WithContext(r.ctx).
+		Table("activity_signups AS s").
+		Joins("INNER JOIN activities a ON a.id = s.activity_id").
+		Where("a.org_id = ?", orgID).
+		Where("s.check_in_status = ?", model.ActivityCheckInDone).
+		Where("s.signup_time >= ? AND s.signup_time <= ?", start, end)
+	if err := attendanceQuery.Count(&metrics.AttendanceCount).Error; err != nil {
+		return nil, err
+	}
+
+	workhourQuery := db.WithContext(r.ctx).
+		Table("activity_signups AS s").
+		Joins("INNER JOIN activities a ON a.id = s.activity_id").
+		Where("a.org_id = ?", orgID).
+		Where("s.work_hour_status = ?", model.WorkHourStatusGranted).
+		Where("s.signup_time >= ? AND s.signup_time <= ?", start, end)
+	if err := workhourQuery.Count(&metrics.WorkhoursCount).Error; err != nil {
+		return nil, err
+	}
+
+	return metrics, nil
 }

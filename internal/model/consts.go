@@ -112,11 +112,44 @@ const (
 	// 通知事件类型
 	NotificationEventActivityCreated    = "activity_created"
 	NotificationEventActivityUpdated    = "activity_updated"
+	NotificationEventActivityCanceled   = "activity_canceled"
 	NotificationEventMemberJoinApproved = "member_join"
+	NotificationEventSignupRejected     = "signup_rejected"
 
 	// 通知业务类型
 	NotificationBizTypeActivity   = "activity"
 	NotificationBizTypeMembership = "membership"
+
+	// RBAC 作用域
+	RBACScopeGlobal = "global"
+	RBACScopeOrg    = "org"
+
+	// RBAC 角色编码
+	RBACRoleSuperAdmin = "super_admin"
+	RBACRoleOrgOwner   = "org_owner"
+	RBACRoleOrgManager = "org_manager"
+	RBACRoleVolunteer  = "volunteer"
+
+	// RBAC 权限资源
+	PermissionResourceOrganization = "organization"
+	PermissionResourceMembership   = "membership"
+	PermissionResourceAudit        = "audit"
+	PermissionResourceExport       = "export"
+	PermissionResourceAnalytics    = "analytics"
+	PermissionResourceRBAC         = "rbac"
+
+	// RBAC 权限动作
+	PermissionActionManage  = "manage"
+	PermissionActionReview  = "review"
+	PermissionActionOrgRead = "org.read"
+
+	// RBAC 权限点（resource.action）
+	PermissionOrganizationManage = "organization.manage"
+	PermissionMembershipManage   = "membership.manage"
+	PermissionAuditReview        = "audit.review"
+	PermissionExportManage       = "export.manage"
+	PermissionAnalyticsOrgRead   = "analytics.org.read"
+	PermissionRBACManage         = "rbac.manage"
 )
 
 // IsValidAuditTargetType 返回审核目标类型是否合法

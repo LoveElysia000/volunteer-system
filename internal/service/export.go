@@ -192,6 +192,99 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*mod
 	}, nil
 }
 
+// ExportOpsReport exports weekly/monthly operations report template.
+func (s *ExportService) ExportOpsReport(req *api.ExportOpsReportRequest) (*model.ExportFile, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+	if req.OrgId <= 0 {
+		return nil, errors.New("组织ID不能为空")
+	}
+	periodType := strings.ToLower(strings.TrimSpace(req.PeriodType))
+	if periodType != "weekly" && periodType != "monthly" {
+		return nil, errors.New("periodType 仅支持 weekly/monthly")
+	}
+
+	start, end, err := resolveOpsReportRange(periodType, req.Start, req.End)
+	if err != nil {
+		return nil, err
+	}
+
+	operatorID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireOrgPermission(
+		operatorID,
+		req.OrgId,
+		model.PermissionResourceExport,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
+	}
+
+	metrics, err := s.repo.GetOpsReportMetrics(s.repo.DB, req.OrgId, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := []model.OpsReportExportRow{
+		{
+			PeriodType:      periodType,
+			OrganizationID:  req.OrgId,
+			Start:           util.FormatDateTimeOrEmpty(start),
+			End:             util.FormatDateTimeOrEmpty(end),
+			ActivitiesCount: metrics.ActivitiesCount,
+			SignupsCount:    metrics.SignupsCount,
+			AttendanceCount: metrics.AttendanceCount,
+			WorkhoursCount:  metrics.WorkhoursCount,
+		},
+	}
+	content, err := util.MarshalXLSXWithFrozenHeader(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.ExportFile{
+		FileName:    fmt.Sprintf("ops-report-%s-%s.xlsx", periodType, time.Now().Format("20060102150405")),
+		ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		Content:     content,
+	}, nil
+}
+
+func resolveOpsReportRange(periodType, rawStart, rawEnd string) (time.Time, time.Time, error) {
+	now := time.Now()
+	var start time.Time
+	var end time.Time
+
+	if strings.TrimSpace(rawStart) != "" {
+		value, err := util.ParseDateTime(strings.TrimSpace(rawStart))
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.New("开始时间格式错误")
+		}
+		start = value
+	} else if periodType == "weekly" {
+		start = now.AddDate(0, 0, -7)
+	} else {
+		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	}
+
+	if strings.TrimSpace(rawEnd) != "" {
+		value, err := util.ParseDateTime(strings.TrimSpace(rawEnd))
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.New("结束时间格式错误")
+		}
+		end = value
+	} else {
+		end = now
+	}
+
+	if end.Before(start) {
+		return time.Time{}, time.Time{}, errors.New("结束时间不能早于开始时间")
+	}
+	return start, end, nil
+}
+
 func (s *ExportService) getCurrentOrgID() (int64, error) {
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
@@ -199,11 +292,44 @@ func (s *ExportService) getCurrentOrgID() (int64, error) {
 	}
 
 	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, errors.New("组织信息不存在")
+	if err == nil && org != nil {
+		if err := s.requireOrgPermission(
+			userID,
+			org.ID,
+			model.PermissionResourceExport,
+			model.PermissionActionManage,
+		); err != nil {
+			return 0, err
 		}
+		return org.ID, nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return 0, err
 	}
-	return org.ID, nil
+
+	orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
+		s.repo.DB,
+		userID,
+		model.PermissionResourceExport,
+		model.PermissionActionManage,
+		2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	if len(orgIDs) == 1 {
+		return orgIDs[0], nil
+	}
+	if len(orgIDs) > 1 {
+		return 0, errors.New("存在多个组织作用域，请使用运营报表导出接口并指定组织ID")
+	}
+
+	if err := s.requireGlobalPermission(
+		userID,
+		model.PermissionResourceExport,
+		model.PermissionActionManage,
+	); err == nil {
+		return 0, errors.New("全局导出权限需要显式指定组织ID，请使用运营报表导出接口")
+	}
+	return 0, errors.New("无权导出数据")
 }

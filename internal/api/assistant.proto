@@ -27,6 +27,14 @@ service AssistantService {
     };
   }
 
+  // 流式对话（SSE）
+  rpc ChatStream(AssistantChatRequest) returns (AssistantChatResponse) {
+    option (google.api.http) = {
+      post: "/api/assistant/chat/stream"
+      body: "*"
+    };
+  }
+
   // 会话历史
   rpc SessionMessages(AssistantSessionMessagesRequest) returns (AssistantSessionMessagesResponse) {
     option (google.api.http) = {

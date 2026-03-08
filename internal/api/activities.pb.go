@@ -29,7 +29,17 @@ type ActivityListRequest struct {
 	// 页大小 可选 @gotags: query:"pageSize"
 	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
 	// 状态筛选 可选 @gotags: query:"status"
-	Status        int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status" query:"status"`
+	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status" query:"status"`
+	// 关键词（标题/描述/地点） 可选 @gotags: query:"keyword"
+	Keyword string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
+	// 开始时间起始 可选 @gotags: query:"startFrom"
+	StartFrom string `protobuf:"bytes,5,opt,name=startFrom,proto3" json:"startFrom" query:"startFrom"`
+	// 开始时间结束 可选 @gotags: query:"startTo"
+	StartTo string `protobuf:"bytes,6,opt,name=startTo,proto3" json:"startTo" query:"startTo"`
+	// 排序字段：start_time/created_at 可选 @gotags: query:"sortBy"
+	SortBy string `protobuf:"bytes,7,opt,name=sortBy,proto3" json:"sortBy" query:"sortBy"`
+	// 排序方向：asc/desc 可选 @gotags: query:"sortOrder"
+	SortOrder     string `protobuf:"bytes,8,opt,name=sortOrder,proto3" json:"sortOrder" query:"sortOrder"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -83,6 +93,41 @@ func (x *ActivityListRequest) GetStatus() int32 {
 		return x.Status
 	}
 	return 0
+}
+
+func (x *ActivityListRequest) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
+}
+
+func (x *ActivityListRequest) GetStartFrom() string {
+	if x != nil {
+		return x.StartFrom
+	}
+	return ""
+}
+
+func (x *ActivityListRequest) GetStartTo() string {
+	if x != nil {
+		return x.StartTo
+	}
+	return ""
+}
+
+func (x *ActivityListRequest) GetSortBy() string {
+	if x != nil {
+		return x.SortBy
+	}
+	return ""
+}
+
+func (x *ActivityListRequest) GetSortOrder() string {
+	if x != nil {
+		return x.SortOrder
+	}
+	return ""
 }
 
 type ActivityListResponse struct {
@@ -2627,11 +2672,16 @@ var File_internal_api_activities_proto protoreflect.FileDescriptor
 
 const file_internal_api_activities_proto_rawDesc = "" +
 	"\n" +
-	"\x1dinternal/api/activities.proto\x12\bactivity\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"]\n" +
+	"\x1dinternal/api/activities.proto\x12\bactivity\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\xe5\x01\n" +
 	"\x13ActivityListRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1a\n" +
 	"\bpageSize\x18\x02 \x01(\x05R\bpageSize\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\x05R\x06status\"X\n" +
+	"\x06status\x18\x03 \x01(\x05R\x06status\x12\x18\n" +
+	"\akeyword\x18\x04 \x01(\tR\akeyword\x12\x1c\n" +
+	"\tstartFrom\x18\x05 \x01(\tR\tstartFrom\x12\x18\n" +
+	"\astartTo\x18\x06 \x01(\tR\astartTo\x12\x16\n" +
+	"\x06sortBy\x18\a \x01(\tR\x06sortBy\x12\x1c\n" +
+	"\tsortOrder\x18\b \x01(\tR\tsortOrder\"X\n" +
 	"\x14ActivityListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12*\n" +
 	"\x04list\x18\x02 \x03(\v2\x16.activity.ActivityItemR\x04list\"\xfa\x02\n" +

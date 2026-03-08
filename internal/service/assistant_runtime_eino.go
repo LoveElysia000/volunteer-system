@@ -24,6 +24,93 @@ import (
 // 2. 输入/输出统一走 runtimeChatInput/runtimeChatOutput，便于上层替换运行时实现。
 // 3. 配置项在此文件集中收敛，避免业务层散落 provider 判断。
 
+// runtimeChatInput 是运行时执行器的统一输入。
+type runtimeChatInput struct {
+	UserID    int64
+	SessionID int64
+	Scene     string
+	Message   string
+	History   []*aiMessageSnapshot
+	RequestID string
+}
+
+// aiMessageSnapshot 是用于运行时的轻量历史消息快照。
+type aiMessageSnapshot struct {
+	Role    int32
+	Content string
+}
+
+// runtimeToolCall 表示运行时返回的标准化工具调用结果。
+type runtimeToolCall struct {
+	ToolName   string
+	InputJSON  string
+	OutputJSON string
+	Success    bool
+	ErrorCode  string
+	ErrorMsg   string
+	LatencyMS  int32
+}
+
+// runtimeChatOutput 是运行时输出的统一结构。
+// 业务层只依赖该结构，不感知底层框架细节（Eino/其他）。
+type runtimeChatOutput struct {
+	Reply        string
+	Model        string
+	FinishReason string
+	TokenIn      int32
+	TokenOut     int32
+	LatencyMS    int32
+	Success      bool
+	ToolCalls    []runtimeToolCall
+}
+
+// runtimeToolCallsToAssistantResults 将 runtime 工具结果转换为业务层结果结构。
+func runtimeToolCallsToAssistantResults(calls []runtimeToolCall) []*assistantToolResult {
+	results := make([]*assistantToolResult, 0, len(calls))
+	for _, call := range calls {
+		c := call
+		// 做值拷贝，避免循环变量地址复用导致结果串值。
+		results = append(results, &assistantToolResult{
+			ToolName:   c.ToolName,
+			InputJSON:  nonEmptyJSON(c.InputJSON),
+			OutputJSON: nonEmptyJSON(c.OutputJSON),
+			Success:    c.Success,
+			ErrorCode:  c.ErrorCode,
+			ErrorMsg:   c.ErrorMsg,
+			LatencyMS:  c.LatencyMS,
+		})
+	}
+	return results
+}
+
+// runRuntime 作为运行时路由入口。
+// 当前仅接入 Eino，后续若引入其他 runtime，可在此统一分流。
+func (s *AssistantService) runRuntime(in *runtimeChatInput) (*runtimeChatOutput, error) {
+	return s.runEinoRuntime(in)
+}
+
+// buildRuntimeFallbackOutput 在运行时失败时构建降级输出。
+// 若部分工具已执行完成，会保留其结果用于用户可见回复。
+func (s *AssistantService) buildRuntimeFallbackOutput(partial *runtimeChatOutput, cause error) *runtimeChatOutput {
+	toolCalls := make([]runtimeToolCall, 0)
+	if partial != nil {
+		// 部分成功场景会携带已执行工具结果，用于拼接降级回复。
+		toolCalls = partial.ToolCalls
+	}
+
+	reply := s.buildFallbackReply(runtimeToolCallsToAssistantResults(toolCalls), cause)
+	return &runtimeChatOutput{
+		Reply:        reply,
+		Model:        "fallback",
+		FinishReason: "fallback",
+		TokenIn:      0,
+		TokenOut:     0,
+		LatencyMS:    0,
+		Success:      false,
+		ToolCalls:    toolCalls,
+	}
+}
+
 // runEinoRuntime 做运行前兜底校验（配置与密钥），并进入单次执行流程。
 func (s *AssistantService) runEinoRuntime(in *runtimeChatInput) (*runtimeChatOutput, error) {
 	if in == nil {

@@ -31,7 +31,7 @@ func NewVolunteerService(ctx context.Context, c *app.RequestContext) *VolunteerS
 	}
 }
 
-// VolunteerList 以组织管理者身份查询志愿者列表，仅返回其所管理组织下的志愿者。
+// VolunteerList 按 RBAC 组织作用域查询志愿者列表。
 func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.VolunteerListResponse, error) {
 	// 参数校验
 	if req.Page <= 0 {
@@ -41,25 +41,43 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		req.PageSize = 20
 	}
 
-	// 获取当前组织管理者所属组织列表
+	// 获取当前操作者可管理的组织范围
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
 		log.Error("查询志愿者列表失败: 获取当前用户ID失败: %v", err)
 		return nil, err
 	}
 
-	organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
+	hasGlobalManage, err := s.hasPermissionByScope(
+		userID,
+		model.RBACScopeGlobal,
+		0,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	)
 	if err != nil {
-		log.Error("查询志愿者列表失败: 查询组织异常: %v, user_id=%d", err, userID)
+		log.Error("查询志愿者列表失败: 查询全局权限异常: %v, user_id=%d", err, userID)
 		return nil, err
 	}
-	if len(organizations) == 0 {
-		log.Error("查询志愿者列表失败: 当前用户无组织信息, user_id=%d", userID)
-		return nil, errors.New("当前用户无组织信息")
+
+	orgIDs := make([]int64, 0)
+	if !hasGlobalManage {
+		orgIDs, err = s.repo.ListOrgScopeIDsByPermission(
+			s.repo.DB,
+			userID,
+			model.PermissionResourceOrganization,
+			model.PermissionActionManage,
+			0,
+		)
+		if err != nil {
+			log.Error("查询志愿者列表失败: 查询组织作用域异常: %v, user_id=%d", err, userID)
+			return nil, err
+		}
 	}
-	orgIDs := make([]int64, 0, len(organizations))
-	for _, org := range organizations {
-		orgIDs = append(orgIDs, org.ID)
+
+	if !hasGlobalManage && len(orgIDs) == 0 {
+		log.Error("查询志愿者列表失败: 当前用户无组织管理权限, user_id=%d", userID)
+		return nil, errors.New("当前用户无组织管理权限")
 	}
 
 	// 构建查询参数map
