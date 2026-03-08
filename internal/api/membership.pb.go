@@ -515,14 +515,12 @@ func (x *VolunteerOrganizationsResponse) GetList() []*OrganizationMemberInfo {
 // MemberStatusUpdateRequest 更新成员状态请求
 type MemberStatusUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织管理者ID 必填 @gotags: json:"accountId,required"
-	AccountId int64 `protobuf:"varint,1,opt,name=accountId,proto3" json:"accountId,required"`
 	// 成员关系ID 必填 @gotags: json:"membershipId,required"
-	MembershipId int64 `protobuf:"varint,2,opt,name=membershipId,proto3" json:"membershipId,required"`
+	MembershipId int64 `protobuf:"varint,1,opt,name=membershipId,proto3" json:"membershipId,required"`
 	// 成员状态 必填 @gotags: json:"status,required"
-	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status,required"`
+	Status int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status,required"`
 	// 审核意见 可选 @gotags: json:"reviewComment"
-	ReviewComment string `protobuf:"bytes,4,opt,name=reviewComment,proto3" json:"reviewComment"`
+	ReviewComment string `protobuf:"bytes,3,opt,name=reviewComment,proto3" json:"reviewComment"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -555,13 +553,6 @@ func (x *MemberStatusUpdateRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MemberStatusUpdateRequest.ProtoReflect.Descriptor instead.
 func (*MemberStatusUpdateRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_membership_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *MemberStatusUpdateRequest) GetAccountId() int64 {
-	if x != nil {
-		return x.AccountId
-	}
-	return 0
 }
 
 func (x *MemberStatusUpdateRequest) GetMembershipId() int64 {
@@ -1138,12 +1129,11 @@ const file_internal_api_membership_proto_rawDesc = "" +
 	"\bpageSize\x18\x04 \x01(\x05R\bpageSize\"n\n" +
 	"\x1eVolunteerOrganizationsResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x126\n" +
-	"\x04list\x18\x02 \x03(\v2\".membership.OrganizationMemberInfoR\x04list\"\x9b\x01\n" +
-	"\x19MemberStatusUpdateRequest\x12\x1c\n" +
-	"\taccountId\x18\x01 \x01(\x03R\taccountId\x12\"\n" +
-	"\fmembershipId\x18\x02 \x01(\x03R\fmembershipId\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\x05R\x06status\x12$\n" +
-	"\rreviewComment\x18\x04 \x01(\tR\rreviewComment\"6\n" +
+	"\x04list\x18\x02 \x03(\v2\".membership.OrganizationMemberInfoR\x04list\"}\n" +
+	"\x19MemberStatusUpdateRequest\x12\"\n" +
+	"\fmembershipId\x18\x01 \x01(\x03R\fmembershipId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\x05R\x06status\x12$\n" +
+	"\rreviewComment\x18\x03 \x01(\tR\rreviewComment\"6\n" +
 	"\x1aMemberStatusUpdateResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"@\n" +
 	"\x16MembershipStatsRequest\x12&\n" +

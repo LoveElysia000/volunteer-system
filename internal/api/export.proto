@@ -26,6 +26,14 @@ service ExportService {
       body: "*"
     };
   }
+
+  // ExportOpsReport 导出运营模板报表（周/月）。
+  rpc ExportOpsReport(ExportOpsReportRequest) returns (ExportOpsReportResponse) {
+    option (google.api.http) = {
+      post: "/api/admin/export/ops-report"
+      body: "*"
+    };
+  }
 }
 
 message ExportVolunteersRequest {
@@ -46,3 +54,16 @@ message ExportActivitiesRequest {
 }
 
 message ExportActivitiesResponse {}
+
+message ExportOpsReportRequest {
+  // 周/月模板 必填 @gotags: json:"periodType,required"
+  string periodType = 1; // weekly/monthly
+  // 组织ID 必填 @gotags: json:"orgId,required"
+  int64 orgId = 2;
+  // 开始时间 可选 @gotags: json:"start"
+  string start = 3; // format: 2006-01-02 15:04:05
+  // 结束时间 可选 @gotags: json:"end"
+  string end = 4; // format: 2006-01-02 15:04:05
+}
+
+message ExportOpsReportResponse {}

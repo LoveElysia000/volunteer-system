@@ -146,6 +146,16 @@ message ActivityListRequest {
   int32 pageSize = 2;
   // 状态筛选 可选 @gotags: query:"status"
   int32 status = 3;
+  // 关键词（标题/描述/地点） 可选 @gotags: query:"keyword"
+  string keyword = 4;
+  // 开始时间起始 可选 @gotags: query:"startFrom"
+  string startFrom = 5;
+  // 开始时间结束 可选 @gotags: query:"startTo"
+  string startTo = 6;
+  // 排序字段：start_time/created_at 可选 @gotags: query:"sortBy"
+  string sortBy = 7;
+  // 排序方向：asc/desc 可选 @gotags: query:"sortOrder"
+  string sortOrder = 8;
 }
 
 message ActivityListResponse {

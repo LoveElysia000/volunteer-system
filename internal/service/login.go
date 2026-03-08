@@ -84,6 +84,9 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 		resp.Message = "身份类型不匹配"
 		return &resp, nil
 	}
+	if err := s.ensureDefaultRBACBinding(s.repo.DB, user); err != nil {
+		log.Warn("登录默认角色自愈失败(不影响登录): user_id=%d, err=%v", user.ID, err)
+	}
 
 	// 6. 生成JWT令牌
 	jwtManager := util.GetJWTManager()
@@ -172,6 +175,7 @@ func (s *LoginService) findUserByIdentifier(db *gorm.DB, req *api.LoginRequest) 
 		return nil, errors.New("不支持的登录类型")
 	}
 }
+
 func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, error) {
 	var resp api.LogoutResponse
 

@@ -96,11 +96,16 @@ func initHttpServer(cfg *config.Config) {
 	h := hz.Default(
 		hz.WithHostPorts(fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port)),
 		hz.WithReadTimeout(10*time.Second),
-		hz.WithWriteTimeout(10*time.Second),
+		hz.WithWriteTimeout(2*time.Minute),
 		hz.WithIdleTimeout(60*time.Second),
 	)
 
 	appLog.Info("Hertz服务器启动在 %s:%d", cfg.App.Host, cfg.App.Port)
+
+	if cfg.App.Env == "development" {
+		router.RegisterSwaggerUI(h)
+		appLog.Info("Swagger UI 已启用: /swagger/")
+	}
 
 	router.RegisterRouter(h)
 	// 启动服务器

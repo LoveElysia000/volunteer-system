@@ -92,7 +92,7 @@ func (d *NotificationDispatcher) consume(ctx context.Context, workerID int) {
 			return
 		case evt := <-d.ch:
 			start := time.Now()
-			if err := svc.HandleEvent(evt); err != nil {
+			if err := svc.handleEventAndDispatchEmail(evt); err != nil {
 				log.Error("通知事件消费失败: worker_id=%d event_type=%s biz_type=%s biz_id=%d source_org_id=%d err=%v",
 					workerID, evt.EventType, evt.BizType, evt.BizID, evt.SourceOrgID, err)
 				continue

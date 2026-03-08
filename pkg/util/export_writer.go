@@ -18,6 +18,15 @@ type exportColumn struct {
 // MarshalXLSX marshals a struct slice/array to XLSX bytes.
 // It reads column headers from struct tag `excel:"header"`.
 func MarshalXLSX(rows interface{}) ([]byte, error) {
+	return marshalXLSX(rows, false)
+}
+
+// MarshalXLSXWithFrozenHeader marshals rows and freezes the first header row.
+func MarshalXLSXWithFrozenHeader(rows interface{}) ([]byte, error) {
+	return marshalXLSX(rows, true)
+}
+
+func marshalXLSX(rows interface{}, freezeHeader bool) ([]byte, error) {
 	value, elemType, err := resolveExportRows(rows)
 	if err != nil {
 		return nil, err
@@ -30,6 +39,16 @@ func MarshalXLSX(rows interface{}) ([]byte, error) {
 
 	file := excelize.NewFile()
 	sheetName := file.GetSheetName(file.GetActiveSheetIndex())
+	if freezeHeader {
+		if err := file.SetPanes(sheetName, &excelize.Panes{
+			Freeze:      true,
+			YSplit:      1,
+			TopLeftCell: "A2",
+			ActivePane:  "bottomLeft",
+		}); err != nil {
+			return nil, err
+		}
+	}
 
 	for colIdx, col := range columns {
 		cellName, cellErr := excelize.CoordinatesToCellName(colIdx+1, 1)

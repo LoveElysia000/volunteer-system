@@ -1,4 +1,0 @@
-interface:
-  display_name: "Volunteer Code Review"
-  short_description: "Review completed changes for bugs and regressions."
-  default_prompt: "Use this skill after implementation to review volunteer-system code changes for defects, regressions, and missing tests."

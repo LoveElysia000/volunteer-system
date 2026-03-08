@@ -133,14 +133,12 @@ message VolunteerOrganizationsResponse {
 
 // MemberStatusUpdateRequest 更新成员状态请求
 message MemberStatusUpdateRequest {
-  // 组织管理者ID 必填 @gotags: json:"accountId,required"
-  int64 accountId = 1;
   // 成员关系ID 必填 @gotags: json:"membershipId,required"
-  int64 membershipId = 2;
+  int64 membershipId = 1;
   // 成员状态 必填 @gotags: json:"status,required"
-  int32 status = 3;
+  int32 status = 2;
   // 审核意见 可选 @gotags: json:"reviewComment"
-  string reviewComment = 4;
+  string reviewComment = 3;
 }
 
 // MemberStatusUpdateResponse 更新成员状态响应

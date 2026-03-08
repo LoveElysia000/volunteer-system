@@ -284,13 +284,13 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 		log.Error("查询组织成员列表失败: 获取当前用户失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, err
 	}
-	organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-	if err != nil {
-		log.Error("查询组织成员列表失败: 查询组织异常: %v, organization_id=%d user_id=%d", err, req.OrganizationId, userID)
+	if err := s.requireOrgPermission(
+		userID,
+		req.OrganizationId,
+		model.PermissionResourceMembership,
+		model.PermissionActionManage,
+	); err != nil {
 		return nil, err
-	}
-	if !hasOrganizationPermission(organizations, req.OrganizationId) {
-		return nil, errors.New("无权操作该组织")
 	}
 
 	pageSize := int(req.PageSize)
@@ -474,10 +474,12 @@ func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganiza
 	return resp, nil
 }
 
-// UpdateMemberStatus updates membership status by organization owner.
+// UpdateMemberStatus updates membership status by authorized operator.
 func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateRequest) (*api.MemberStatusUpdateResponse, error) {
-	if req.AccountId <= 0 {
-		return nil, errors.New("组织管理者ID不能为空")
+	operatorID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("更新成员状态失败: 获取当前用户失败: %v", err)
+		return nil, err
 	}
 	if req.MembershipId <= 0 {
 		return nil, errors.New("成员关系ID不能为空")
@@ -502,18 +504,22 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 		return nil, err
 	}
 
-	// Permission: only organization owner for the membership.
 	organization, err := s.repo.GetOrganizationByID(s.repo.DB, member.OrgID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error("更新成员状态失败: 组织不存在, membership_id=%d org_id=%d", req.MembershipId, member.OrgID)
 			return nil, errors.New("组织不存在")
 		}
-		log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d org_id=%d account_id=%d", err, req.MembershipId, member.OrgID, req.AccountId)
+		log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d org_id=%d operator_id=%d", err, req.MembershipId, member.OrgID, operatorID)
 		return nil, err
 	}
-	if organization.AccountID != req.AccountId {
-		return nil, errors.New("无权操作该组织")
+	if err := s.requireOrgPermission(
+		operatorID,
+		organization.ID,
+		model.PermissionResourceMembership,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
 	}
 
 	updates := map[string]any{
@@ -528,7 +534,7 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 		log.Error("更新成员状态失败: 更新成员关系异常: %v, membership_id=%d status=%d", err, member.ID, req.Status)
 		return nil, err
 	}
-	s.handleMemberStatusSideEffects(member, req.Status, req.AccountId)
+	s.handleMemberStatusSideEffects(member, req.Status, operatorID)
 
 	return &api.MemberStatusUpdateResponse{
 		Message: "status updated",
@@ -595,37 +601,52 @@ func (s *MembershipService) handleMemberStatusSideEffects(member *model.OrgMembe
 
 // MembershipStats returns summary counts.
 func (s *MembershipService) MembershipStats(req *api.MembershipStatsRequest) (*api.MembershipStatsResponse, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("查询成员统计失败: 获取当前用户失败: %v", err)
+		return nil, err
+	}
+
 	orgID := req.OrganizationId
 	if orgID <= 0 {
-		// Default to current organization if possible.
-		userID, err := middleware.GetUserIDInt(s.c)
+		// 在未显式传 organizationId 时，默认使用用户可管理的第一个组织作用域。
+		orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
+			s.repo.DB,
+			userID,
+			model.PermissionResourceMembership,
+			model.PermissionActionManage,
+			1,
+		)
 		if err != nil {
-			log.Error("查询成员统计失败: 获取当前用户失败: %v", err)
+			log.Error("查询成员统计失败: 查询RBAC组织作用域异常: %v, user_id=%d", err, userID)
 			return nil, err
 		}
-		organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-		if err != nil {
-			log.Error("查询成员统计失败: 查询组织异常: %v, user_id=%d", err, userID)
-			return nil, err
-		}
-		if len(organizations) == 0 {
-			return nil, errors.New("组织ID不能为空")
-		}
-		orgID = organizations[0].ID
-	} else {
-		userID, err := middleware.GetUserIDInt(s.c)
-		if err != nil {
-			log.Error("查询成员统计失败: 获取当前用户失败: %v, organization_id=%d", err, orgID)
-			return nil, err
-		}
-		organizations, err := s.repo.FindOrganizationByAccountID(s.repo.DB, userID)
-		if err != nil {
-			log.Error("查询成员统计失败: 查询组织异常: %v, organization_id=%d user_id=%d", err, orgID, userID)
-			return nil, err
-		}
-		if !hasOrganizationPermission(organizations, orgID) {
+		if len(orgIDs) == 0 {
+			hasGlobal, perr := s.hasPermissionByScope(
+				userID,
+				model.RBACScopeGlobal,
+				0,
+				model.PermissionResourceMembership,
+				model.PermissionActionManage,
+			)
+			if perr != nil {
+				return nil, perr
+			}
+			if hasGlobal {
+				return nil, errors.New("组织ID不能为空")
+			}
 			return nil, errors.New("无权操作该组织")
 		}
+		orgID = orgIDs[0]
+	}
+
+	if err := s.requireOrgPermission(
+		userID,
+		orgID,
+		model.PermissionResourceMembership,
+		model.PermissionActionManage,
+	); err != nil {
+		return nil, err
 	}
 
 	statusCounts, total, err := s.repo.GetMembershipStatusCounts(s.repo.DB, orgID)

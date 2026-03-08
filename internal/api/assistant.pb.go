@@ -857,10 +857,12 @@ const file_internal_api_assistant_proto_rawDesc = "" +
 	"$AssistantActivityDraftActionResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\x03R\tsessionId\x128\n" +
-	"\x06result\x18\x02 \x01(\v2 .assistant.AssistantChatResponseR\x06result2\xdf\x04\n" +
+	"\x06result\x18\x02 \x01(\v2 .assistant.AssistantChatResponseR\x06result2\xd7\x05\n" +
 	"\x10AssistantService\x12\x88\x01\n" +
 	"\rCreateSession\x12(.assistant.AssistantCreateSessionRequest\x1a).assistant.AssistantCreateSessionResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/assistant/sessions\x12i\n" +
-	"\x04Chat\x12\x1f.assistant.AssistantChatRequest\x1a .assistant.AssistantChatResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/assistant/chat\x12\x98\x01\n" +
+	"\x04Chat\x12\x1f.assistant.AssistantChatRequest\x1a .assistant.AssistantChatResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/assistant/chat\x12v\n" +
+	"\n" +
+	"ChatStream\x12\x1f.assistant.AssistantChatRequest\x1a .assistant.AssistantChatResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/assistant/chat/stream\x12\x98\x01\n" +
 	"\x0fSessionMessages\x12*.assistant.AssistantSessionMessagesRequest\x1a+.assistant.AssistantSessionMessagesResponse\",\x82\xd3\xe4\x93\x02&\x12$/api/assistant/sessions/:id/messages\x12\xa8\x01\n" +
 	"\x13ActivityDraftAction\x12..assistant.AssistantActivityDraftActionRequest\x1a/.assistant.AssistantActivityDraftActionResponse\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/api/assistant/actions/activity-draft\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
@@ -897,14 +899,16 @@ var file_internal_api_assistant_proto_depIdxs = []int32{
 	5,  // 3: assistant.AssistantActivityDraftActionResponse.result:type_name -> assistant.AssistantChatResponse
 	0,  // 4: assistant.AssistantService.CreateSession:input_type -> assistant.AssistantCreateSessionRequest
 	2,  // 5: assistant.AssistantService.Chat:input_type -> assistant.AssistantChatRequest
-	6,  // 6: assistant.AssistantService.SessionMessages:input_type -> assistant.AssistantSessionMessagesRequest
-	9,  // 7: assistant.AssistantService.ActivityDraftAction:input_type -> assistant.AssistantActivityDraftActionRequest
-	1,  // 8: assistant.AssistantService.CreateSession:output_type -> assistant.AssistantCreateSessionResponse
-	5,  // 9: assistant.AssistantService.Chat:output_type -> assistant.AssistantChatResponse
-	8,  // 10: assistant.AssistantService.SessionMessages:output_type -> assistant.AssistantSessionMessagesResponse
-	10, // 11: assistant.AssistantService.ActivityDraftAction:output_type -> assistant.AssistantActivityDraftActionResponse
-	8,  // [8:12] is the sub-list for method output_type
-	4,  // [4:8] is the sub-list for method input_type
+	2,  // 6: assistant.AssistantService.ChatStream:input_type -> assistant.AssistantChatRequest
+	6,  // 7: assistant.AssistantService.SessionMessages:input_type -> assistant.AssistantSessionMessagesRequest
+	9,  // 8: assistant.AssistantService.ActivityDraftAction:input_type -> assistant.AssistantActivityDraftActionRequest
+	1,  // 9: assistant.AssistantService.CreateSession:output_type -> assistant.AssistantCreateSessionResponse
+	5,  // 10: assistant.AssistantService.Chat:output_type -> assistant.AssistantChatResponse
+	5,  // 11: assistant.AssistantService.ChatStream:output_type -> assistant.AssistantChatResponse
+	8,  // 12: assistant.AssistantService.SessionMessages:output_type -> assistant.AssistantSessionMessagesResponse
+	10, // 13: assistant.AssistantService.ActivityDraftAction:output_type -> assistant.AssistantActivityDraftActionResponse
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name

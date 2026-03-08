@@ -34,6 +34,14 @@ service AuditService {
     };
   }
 
+  // 批量审核决策（通过/驳回）
+  rpc AuditBatchDecision(AuditBatchDecisionRequest) returns (AuditBatchDecisionResponse) {
+    option (google.api.http) = {
+      post: "/api/audits/batch-decision"
+      body: "*"
+    };
+  }
+
   // 获取单条审核记录详情
   rpc AuditRecordDetail(AuditRecordDetailRequest) returns (AuditRecordDetailResponse) {
     option (google.api.http) = {
@@ -54,6 +62,12 @@ message PendingAuditListRequest {
   int32 page = 4;
   // 每页条数 @gotags: query:"pageSize"
   int32 pageSize = 5;
+  // 创建时间起始（可选） @gotags: query:"createdFrom"
+  string createdFrom = 6;
+  // 创建时间结束（可选） @gotags: query:"createdTo"
+  string createdTo = 7;
+  // 超时阈值小时（可选，默认24） @gotags: query:"slaHours"
+  int32 slaHours = 8;
 }
 
 // 统一待审核列表查询结果
@@ -80,6 +94,8 @@ message PendingAuditItem {
   int64 creatorId = 6;
   // 创建时间
   string createdAt = 7;
+  // 是否超时
+  bool isOverdue = 8;
 }
 
 // 执行审核请求参数
@@ -104,6 +120,22 @@ message AuditRejectionRequest {
 
 // 执行审核驳回返回结果
 message AuditRejectionResponse {
+}
+
+message AuditBatchDecisionRequest {
+  // 审核记录ID列表 @gotags: json:"ids,required"
+  repeated int64 ids = 1;
+  // 动作: 1-通过 2-驳回 @gotags: json:"action,required"
+  int32 action = 2;
+  // 备注/原因 @gotags: json:"reason"
+  string reason = 3;
+}
+
+message AuditBatchDecisionResponse {
+  // 成功数量
+  int32 successCount = 1;
+  // 失败记录ID列表
+  repeated int64 failedIds = 2;
 }
 
 // 审核记录详情查询参数

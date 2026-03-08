@@ -36,3 +36,14 @@ type ActivityExportRow struct {
 	Organization  string  `excel:"发布组织" csv:"发布组织"`
 	CreatedAt     string  `excel:"创建时间" csv:"创建时间"`
 }
+
+type OpsReportExportRow struct {
+	PeriodType      string `excel:"Period Type" csv:"Period Type"`
+	OrganizationID  int64  `excel:"Organization ID" csv:"Organization ID"`
+	Start           string `excel:"Start" csv:"Start"`
+	End             string `excel:"End" csv:"End"`
+	ActivitiesCount int64  `excel:"Activities Count" csv:"Activities Count"`
+	SignupsCount    int64  `excel:"Signups Count" csv:"Signups Count"`
+	AttendanceCount int64  `excel:"Attendance Count" csv:"Attendance Count"`
+	WorkhoursCount  int64  `excel:"Workhours Count" csv:"Workhours Count"`
+}

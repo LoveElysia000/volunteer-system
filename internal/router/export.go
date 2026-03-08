@@ -10,4 +10,5 @@ import (
 func RegisterExportRouter(r *route.RouterGroup) {
 	r.POST("/admin/export/volunteers", handler.ExportVolunteers)
 	r.POST("/admin/export/activities", handler.ExportActivities)
+	r.POST("/admin/export/ops-report", handler.ExportOpsReport)
 }

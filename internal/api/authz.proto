@@ -1,0 +1,261 @@
+syntax = "proto3";
+
+package authz;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+// RBAC administration service.
+service AuthzService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  rpc ListRoles(RoleListRequest) returns (RoleListResponse) {
+    option (google.api.http) = {
+      get: "/api/authz/roles"
+    };
+  }
+
+  rpc CreateRole(RoleCreateRequest) returns (RoleCreateResponse) {
+    option (google.api.http) = {
+      post: "/api/authz/roles"
+      body: "*"
+    };
+  }
+
+  rpc UpdateRole(RoleUpdateRequest) returns (RoleUpdateResponse) {
+    option (google.api.http) = {
+      put: "/api/authz/roles/{id}"
+      body: "*"
+    };
+  }
+
+  rpc UpdateRoleStatus(RoleStatusUpdateRequest) returns (RoleStatusUpdateResponse) {
+    option (google.api.http) = {
+      post: "/api/authz/roles/{id}/status"
+      body: "*"
+    };
+  }
+
+  rpc ListPermissions(PermissionListRequest) returns (PermissionListResponse) {
+    option (google.api.http) = {
+      get: "/api/authz/permissions"
+    };
+  }
+
+  rpc GetRolePermissions(RolePermissionsRequest) returns (RolePermissionsResponse) {
+    option (google.api.http) = {
+      get: "/api/authz/roles/{roleId}/permissions"
+    };
+  }
+
+  rpc SetRolePermissions(RolePermissionsSetRequest) returns (RolePermissionsSetResponse) {
+    option (google.api.http) = {
+      post: "/api/authz/roles/{roleId}/permissions/set"
+      body: "*"
+    };
+  }
+
+  rpc GrantRole(AccountRoleGrantRequest) returns (AccountRoleGrantResponse) {
+    option (google.api.http) = {
+      post: "/api/authz/grants"
+      body: "*"
+    };
+  }
+
+  rpc RevokeRole(AccountRoleRevokeRequest) returns (AccountRoleRevokeResponse) {
+    option (google.api.http) = {
+      post: "/api/authz/grants/{bindingId}/revoke"
+      body: "*"
+    };
+  }
+
+  rpc ListAccountRoleBindings(AccountRoleBindingListRequest) returns (AccountRoleBindingListResponse) {
+    option (google.api.http) = {
+      get: "/api/authz/grants"
+    };
+  }
+
+  rpc MyAuthorization(MyAuthorizationRequest) returns (MyAuthorizationResponse) {
+    option (google.api.http) = {
+      get: "/api/authz/me"
+    };
+  }
+}
+
+message RoleInfo {
+  int64 id = 1;
+  string roleCode = 2;
+  string roleName = 3;
+  string description = 4;
+  int32 status = 5;
+  string createdAt = 6;
+  string updatedAt = 7;
+}
+
+message RoleListRequest {
+  // 角色关键字（role_code/role_name） @gotags: query:"keyword"
+  string keyword = 1;
+  // 是否包含禁用角色 @gotags: query:"includeDisabled"
+  bool includeDisabled = 2;
+  // 页码 @gotags: query:"page"
+  int32 page = 3;
+  // 每页条数 @gotags: query:"pageSize"
+  int32 pageSize = 4;
+}
+
+message RoleListResponse {
+  int32 total = 1;
+  repeated RoleInfo list = 2;
+}
+
+message RoleCreateRequest {
+  string roleCode = 1;
+  string roleName = 2;
+  string description = 3;
+}
+
+message RoleCreateResponse {
+  int64 id = 1;
+}
+
+message RoleUpdateRequest {
+  // 角色ID @gotags: path:"id,required"
+  int64 id = 1;
+  string roleName = 2;
+  string description = 3;
+}
+
+message RoleUpdateResponse {
+  string message = 1;
+}
+
+message RoleStatusUpdateRequest {
+  // 角色ID @gotags: path:"id,required"
+  int64 id = 1;
+  int32 status = 2;
+}
+
+message RoleStatusUpdateResponse {
+  string message = 1;
+}
+
+message PermissionInfo {
+  int64 id = 1;
+  string resource = 2;
+  string action = 3;
+  string description = 4;
+  int32 status = 5;
+}
+
+message PermissionListRequest {
+  // 权限关键字（resource/action/description） @gotags: query:"keyword"
+  string keyword = 1;
+  // 仅返回启用权限 @gotags: query:"onlyEnabled"
+  bool onlyEnabled = 2;
+}
+
+message PermissionListResponse {
+  repeated PermissionInfo list = 1;
+}
+
+message RolePermissionsRequest {
+  // 角色ID @gotags: path:"roleId,required"
+  int64 roleId = 1;
+}
+
+message RolePermissionItem {
+  int64 permissionId = 1;
+  string resource = 2;
+  string action = 3;
+  string description = 4;
+}
+
+message RolePermissionsResponse {
+  int64 roleId = 1;
+  repeated RolePermissionItem permissions = 2;
+}
+
+message RolePermissionsSetRequest {
+  // 角色ID @gotags: path:"roleId,required"
+  int64 roleId = 1;
+  repeated int64 permissionIds = 2;
+}
+
+message RolePermissionsSetResponse {
+  string message = 1;
+}
+
+message AccountRoleGrantRequest {
+  int64 accountId = 1;
+  int64 roleId = 2;
+  string scopeType = 3;
+  int64 scopeId = 4;
+  string expiresAt = 5;
+  string remark = 6;
+}
+
+message AccountRoleGrantResponse {
+  string message = 1;
+}
+
+message AccountRoleRevokeRequest {
+  // 授权绑定ID @gotags: path:"bindingId,required"
+  int64 bindingId = 1;
+  string remark = 2;
+}
+
+message AccountRoleRevokeResponse {
+  string message = 1;
+}
+
+message AccountRoleBindingListRequest {
+  // 账号ID @gotags: query:"accountId"
+  int64 accountId = 1;
+  // 作用域类型 @gotags: query:"scopeType"
+  string scopeType = 2;
+  // 作用域ID @gotags: query:"scopeId"
+  int64 scopeId = 3;
+  // 是否仅激活授权 @gotags: query:"onlyActive"
+  bool onlyActive = 4;
+  // 页码 @gotags: query:"page"
+  int32 page = 5;
+  // 每页条数 @gotags: query:"pageSize"
+  int32 pageSize = 6;
+}
+
+message AccountRoleBindingInfo {
+  int64 bindingId = 1;
+  int64 accountId = 2;
+  int64 roleId = 3;
+  string roleCode = 4;
+  string roleName = 5;
+  string scopeType = 6;
+  int64 scopeId = 7;
+  int32 status = 8;
+  int64 grantedBy = 9;
+  string expiresAt = 10;
+  string createdAt = 11;
+  string updatedAt = 12;
+}
+
+message AccountRoleBindingListResponse {
+  int32 total = 1;
+  repeated AccountRoleBindingInfo list = 2;
+}
+
+message MyAuthorizationRequest {}
+
+message MyPermissionScope {
+  string resource = 1;
+  string action = 2;
+  string scopeType = 3;
+  int64 scopeId = 4;
+}
+
+message MyAuthorizationResponse {
+  int64 accountId = 1;
+  repeated AccountRoleBindingInfo roles = 2;
+  repeated MyPermissionScope permissions = 3;
+}

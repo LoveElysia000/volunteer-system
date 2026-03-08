@@ -1,4 +1,0 @@
-interface:
-  display_name: "Go Backend Scaffold"
-  short_description: "Scaffold a new Go backend project structure."
-  default_prompt: "Use this skill to create a new Go backend project scaffold based on volunteer-system structure, without business logic."

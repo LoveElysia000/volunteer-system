@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"volunteer-system/config"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
+	"volunteer-system/pkg/notify"
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -26,6 +28,8 @@ const (
 type NotificationService struct {
 	Service
 }
+
+var sendEmailFn = notify.SendEmail
 
 // NewNotificationService 创建通知服务实例。
 func NewNotificationService(ctx context.Context, c *app.RequestContext) *NotificationService {
@@ -131,9 +135,10 @@ func (s *NotificationService) MarkNotificationsRead(req *api.NotificationReadReq
 }
 
 // HandleEvent 异步消费通知事件并落库。
-func (s *NotificationService) HandleEvent(evt NotificationEvent) error {
+// 返回 created=true 表示本次为首次创建通知，可继续触达外部渠道（如邮件）。
+func (s *NotificationService) HandleEvent(evt NotificationEvent) (bool, error) {
 	if err := validateNotificationEvent(evt); err != nil {
-		return err
+		return false, err
 	}
 	// 优先使用业务侧传入的幂等键；为空时按事件类型生成稳定兜底键。
 	dedupeKey := strings.TrimSpace(evt.DedupeKey)
@@ -141,17 +146,17 @@ func (s *NotificationService) HandleEvent(evt NotificationEvent) error {
 		dedupeKey = buildNotificationDedupeKey(evt)
 	}
 	if dedupeKey == "" {
-		return errors.New("通知事件幂等键不能为空")
+		return false, errors.New("通知事件幂等键不能为空")
 	}
 
 	receiverIDs, err := s.resolveReceiverAccountIDs(evt)
 	if err != nil {
-		return err
+		return false, err
 	}
 	receiverIDs = util.UniquePositiveInt64(receiverIDs)
 	if len(receiverIDs) == 0 {
 		log.Info("通知事件跳过: 无可用接收人 event_type=%s biz_type=%s biz_id=%d source_org_id=%d", evt.EventType, evt.BizType, evt.BizID, evt.SourceOrgID)
-		return nil
+		return false, nil
 	}
 
 	title, content := renderNotificationMessage(evt)
@@ -199,16 +204,60 @@ func (s *NotificationService) HandleEvent(evt NotificationEvent) error {
 		return s.repo.CreateNotificationInboxInBatches(tx, inboxes, defaultInboxCreateBatchSize)
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !created {
 		log.Info("通知事件幂等跳过: event_type=%s biz_type=%s biz_id=%d dedupe_key=%s",
 			evt.EventType, evt.BizType, evt.BizID, dedupeKey)
-		return nil
+		return false, nil
 	}
 
 	log.Info("通知事件消费成功: event_type=%s biz_type=%s biz_id=%d source_org_id=%d receiver_count=%d dedupe_key=%s",
 		evt.EventType, evt.BizType, evt.BizID, evt.SourceOrgID, len(receiverIDs), dedupeKey)
+	return true, nil
+}
+
+// handleEventAndDispatchEmail 仅在通知首次创建成功时发送邮件渠道，避免重复事件重复发信。
+func (s *NotificationService) handleEventAndDispatchEmail(evt NotificationEvent) error {
+	created, err := s.HandleEvent(evt)
+	if err != nil {
+		return err
+	}
+	if !created {
+		return nil
+	}
+	return s.sendEventEmail(evt)
+}
+
+func (s *NotificationService) sendEventEmail(evt NotificationEvent) error {
+	cfg := config.GetConfig()
+	if cfg == nil || cfg.Email == nil || !cfg.Email.Enabled {
+		return nil
+	}
+
+	receiverIDs, err := s.resolveReceiverAccountIDs(evt)
+	if err != nil {
+		return err
+	}
+	receiverIDs = util.UniquePositiveInt64(receiverIDs)
+	if len(receiverIDs) == 0 {
+		return nil
+	}
+
+	subject, body := renderNotificationMessage(evt)
+	for _, receiverID := range receiverIDs {
+		account, findErr := s.repo.FindByID(s.repo.DB, receiverID)
+		if findErr != nil || account == nil {
+			continue
+		}
+		email := strings.TrimSpace(account.Email)
+		if email == "" {
+			continue
+		}
+		if err := sendEmailFn(cfg.Email, email, subject, body); err != nil {
+			log.Error("邮件通知发送失败: receiver_id=%d email=%s err=%v", receiverID, email, err)
+		}
+	}
 	return nil
 }
 
@@ -245,6 +294,9 @@ func (s *NotificationService) resolveReceiverAccountIDs(evt NotificationEvent) (
 	case model.NotificationEventActivityUpdated:
 		return s.repo.ListActivitySignupReceiverAccountIDs(s.repo.DB, evt.BizID)
 
+	case model.NotificationEventActivityCanceled:
+		return s.repo.ListActivitySignupReceiverAccountIDs(s.repo.DB, evt.BizID)
+
 	case model.NotificationEventMemberJoinApproved:
 		receiverID := payloadInt64(evt.Payload, "receiverAccountID")
 		if receiverID > 0 {
@@ -256,6 +308,24 @@ func (s *NotificationService) resolveReceiverAccountIDs(evt NotificationEvent) (
 			return nil, err
 		}
 		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, member.VolunteerID)
+		if err != nil {
+			return nil, err
+		}
+		if volunteer.AccountID <= 0 {
+			return nil, errors.New("成员账号ID无效")
+		}
+		return []int64{volunteer.AccountID}, nil
+
+	case model.NotificationEventSignupRejected:
+		receiverID := payloadInt64(evt.Payload, "receiverAccountID")
+		if receiverID > 0 {
+			return []int64{receiverID}, nil
+		}
+		signup, err := s.repo.GetActivitySignupByID(s.repo.DB, evt.BizID)
+		if err != nil {
+			return nil, err
+		}
+		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, signup.VolunteerID)
 		if err != nil {
 			return nil, err
 		}
@@ -293,12 +363,41 @@ func renderNotificationMessage(evt NotificationEvent) (string, string) {
 		}
 		return "活动更新：" + activityTitle, "您报名的活动《" + activityTitle + "》信息已更新，请及时查看最新安排。"
 
+	case model.NotificationEventActivityCanceled:
+		activityTitle := firstNonEmpty(
+			payloadString(evt.Payload, "activityTitle"),
+			payloadString(evt.Payload, "activityName"),
+			payloadString(evt.Payload, "title"),
+		)
+		if activityTitle == "" {
+			return "活动已取消", "您报名的活动已取消，请关注后续安排。"
+		}
+		return "活动已取消：" + activityTitle, "您报名的活动《" + activityTitle + "》已取消，请关注后续安排。"
+
 	case model.NotificationEventMemberJoinApproved:
 		orgName := payloadString(evt.Payload, "organizationName")
 		if orgName == "" {
 			return "加入组织申请已通过", "您提交的加入组织申请已通过审核。"
 		}
 		return "加入组织申请已通过", "您提交的加入「" + orgName + "」申请已通过审核。"
+
+	case model.NotificationEventSignupRejected:
+		activityTitle := firstNonEmpty(
+			payloadString(evt.Payload, "activityTitle"),
+			payloadString(evt.Payload, "activityName"),
+			payloadString(evt.Payload, "title"),
+		)
+		reason := payloadString(evt.Payload, "reason")
+		if activityTitle == "" {
+			if reason == "" {
+				return "活动报名未通过", "您提交的活动报名申请未通过审核。"
+			}
+			return "活动报名未通过", "您提交的活动报名申请未通过审核，原因：" + reason
+		}
+		if reason == "" {
+			return "活动报名未通过：" + activityTitle, "您提交的活动《" + activityTitle + "》报名申请未通过审核。"
+		}
+		return "活动报名未通过：" + activityTitle, "您提交的活动《" + activityTitle + "》报名申请未通过审核，原因：" + reason
 
 	default:
 		return "系统通知", "您有一条新的通知，请及时查看。"
@@ -371,8 +470,12 @@ func buildNotificationDedupeKey(evt NotificationEvent) string {
 			return fmt.Sprintf("activity.updated:%d:%s", evt.BizID, version)
 		}
 		return fmt.Sprintf("activity.updated:%d", evt.BizID)
+	case model.NotificationEventActivityCanceled:
+		return fmt.Sprintf("activity.canceled:%d", evt.BizID)
 	case model.NotificationEventMemberJoinApproved:
 		return fmt.Sprintf("member.join.approved:%d", evt.BizID)
+	case model.NotificationEventSignupRejected:
+		return fmt.Sprintf("signup.rejected:%d", evt.BizID)
 	default:
 		return fmt.Sprintf("%s:%s:%d:%d", evt.EventType, evt.BizType, evt.BizID, evt.SourceOrgID)
 	}

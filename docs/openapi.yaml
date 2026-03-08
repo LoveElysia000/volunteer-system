@@ -31,6 +31,31 @@ paths:
                   schema:
                     type: integer
                     format: int32
+                - name: keyword
+                  in: query
+                  description: '关键词（标题/描述/地点） 可选 @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: startFrom
+                  in: query
+                  description: '开始时间起始 可选 @gotags: query:"startFrom"'
+                  schema:
+                    type: string
+                - name: startTo
+                  in: query
+                  description: '开始时间结束 可选 @gotags: query:"startTo"'
+                  schema:
+                    type: string
+                - name: sortBy
+                  in: query
+                  description: '排序字段：start_time/created_at 可选 @gotags: query:"sortBy"'
+                  schema:
+                    type: string
+                - name: sortOrder
+                  in: query
+                  description: '排序方向：asc/desc 可选 @gotags: query:"sortOrder"'
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK
@@ -355,6 +380,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/exportapi.ExportActivitiesResponse'
+    /api/admin/export/ops-report:
+        post:
+            tags:
+                - ExportService
+            description: ExportOpsReport 导出运营模板报表（周/月）。
+            operationId: ExportService_ExportOpsReport
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/exportapi.ExportOpsReportRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/exportapi.ExportOpsReportResponse'
     /api/admin/export/volunteers:
         post:
             tags:
@@ -374,6 +418,34 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/exportapi.ExportVolunteersResponse'
+    /api/analytics/org/funnel:
+        get:
+            tags:
+                - AnalyticsService
+            operationId: AnalyticsService_OrgFunnelSummary
+            parameters:
+                - name: orgId
+                  in: query
+                  description: '组织ID 必填 @gotags: query:"orgId,required"'
+                  schema:
+                    type: string
+                - name: start
+                  in: query
+                  description: '起始时间 可选 @gotags: query:"start"'
+                  schema:
+                    type: string
+                - name: end
+                  in: query
+                  description: '结束时间 可选 @gotags: query:"end"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/analytics.OrgFunnelSummaryResponse'
     /api/assistant/actions/activity-draft:
         post:
             tags:
@@ -399,6 +471,25 @@ paths:
                 - AssistantService
             description: 对话
             operationId: AssistantService_Chat
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/assistant.AssistantChatRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/assistant.AssistantChatResponse'
+    /api/assistant/chat/stream:
+        post:
+            tags:
+                - AssistantService
+            description: 流式对话（SSE）
+            operationId: AssistantService_ChatStream
             requestBody:
                 content:
                     application/json:
@@ -469,6 +560,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/audit.AuditApprovalResponse'
+    /api/audits/batch-decision:
+        post:
+            tags:
+                - AuditService
+            description: 批量审核决策（通过/驳回）
+            operationId: AuditService_AuditBatchDecision
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/audit.AuditBatchDecisionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/audit.AuditBatchDecisionResponse'
     /api/audits/pending:
         post:
             tags:
@@ -504,6 +614,22 @@ paths:
                 - name: pageSize
                   in: query
                   description: '每页条数 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: createdFrom
+                  in: query
+                  description: '创建时间起始（可选） @gotags: query:"createdFrom"'
+                  schema:
+                    type: string
+                - name: createdTo
+                  in: query
+                  description: '创建时间结束（可选） @gotags: query:"createdTo"'
+                  schema:
+                    type: string
+                - name: slaHours
+                  in: query
+                  description: '超时阈值小时（可选，默认24） @gotags: query:"slaHours"'
                   schema:
                     type: integer
                     format: int32
@@ -552,6 +678,274 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/audit.AuditRejectionResponse'
+    /api/authz/grants:
+        get:
+            tags:
+                - AuthzService
+            operationId: AuthzService_ListAccountRoleBindings
+            parameters:
+                - name: accountId
+                  in: query
+                  description: '账号ID @gotags: query:"accountId"'
+                  schema:
+                    type: string
+                - name: scopeType
+                  in: query
+                  description: '作用域类型 @gotags: query:"scopeType"'
+                  schema:
+                    type: string
+                - name: scopeId
+                  in: query
+                  description: '作用域ID @gotags: query:"scopeId"'
+                  schema:
+                    type: string
+                - name: onlyActive
+                  in: query
+                  description: '是否仅激活授权 @gotags: query:"onlyActive"'
+                  schema:
+                    type: boolean
+                - name: page
+                  in: query
+                  description: '页码 @gotags: query:"page"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '每页条数 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.AccountRoleBindingListResponse'
+        post:
+            tags:
+                - AuthzService
+            operationId: AuthzService_GrantRole
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/authz.AccountRoleGrantRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.AccountRoleGrantResponse'
+    /api/authz/grants/{bindingId}/revoke:
+        post:
+            tags:
+                - AuthzService
+            operationId: AuthzService_RevokeRole
+            parameters:
+                - name: bindingId
+                  in: path
+                  description: '授权绑定ID @gotags: path:"bindingId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/authz.AccountRoleRevokeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.AccountRoleRevokeResponse'
+    /api/authz/me:
+        get:
+            tags:
+                - AuthzService
+            operationId: AuthzService_MyAuthorization
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.MyAuthorizationResponse'
+    /api/authz/permissions:
+        get:
+            tags:
+                - AuthzService
+            operationId: AuthzService_ListPermissions
+            parameters:
+                - name: keyword
+                  in: query
+                  description: '权限关键字（resource/action/description） @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: onlyEnabled
+                  in: query
+                  description: '仅返回启用权限 @gotags: query:"onlyEnabled"'
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.PermissionListResponse'
+    /api/authz/roles:
+        get:
+            tags:
+                - AuthzService
+            operationId: AuthzService_ListRoles
+            parameters:
+                - name: keyword
+                  in: query
+                  description: '角色关键字（role_code/role_name） @gotags: query:"keyword"'
+                  schema:
+                    type: string
+                - name: includeDisabled
+                  in: query
+                  description: '是否包含禁用角色 @gotags: query:"includeDisabled"'
+                  schema:
+                    type: boolean
+                - name: page
+                  in: query
+                  description: '页码 @gotags: query:"page"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '每页条数 @gotags: query:"pageSize"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.RoleListResponse'
+        post:
+            tags:
+                - AuthzService
+            operationId: AuthzService_CreateRole
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/authz.RoleCreateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.RoleCreateResponse'
+    /api/authz/roles/{id}:
+        put:
+            tags:
+                - AuthzService
+            operationId: AuthzService_UpdateRole
+            parameters:
+                - name: id
+                  in: path
+                  description: '角色ID @gotags: path:"id,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/authz.RoleUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.RoleUpdateResponse'
+    /api/authz/roles/{id}/status:
+        post:
+            tags:
+                - AuthzService
+            operationId: AuthzService_UpdateRoleStatus
+            parameters:
+                - name: id
+                  in: path
+                  description: '角色ID @gotags: path:"id,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/authz.RoleStatusUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.RoleStatusUpdateResponse'
+    /api/authz/roles/{roleId}/permissions:
+        get:
+            tags:
+                - AuthzService
+            operationId: AuthzService_GetRolePermissions
+            parameters:
+                - name: roleId
+                  in: path
+                  description: '角色ID @gotags: path:"roleId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.RolePermissionsResponse'
+    /api/authz/roles/{roleId}/permissions/set:
+        post:
+            tags:
+                - AuthzService
+            operationId: AuthzService_SetRolePermissions
+            parameters:
+                - name: roleId
+                  in: path
+                  description: '角色ID @gotags: path:"roleId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/authz.RolePermissionsSetRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/authz.RolePermissionsSetResponse'
     /api/login:
         post:
             tags:
@@ -1848,6 +2242,35 @@ components:
                     type: string
                     description: 消息
             description: UpdateActivityResponse 更新活动响应
+        analytics.OrgFunnelSummaryResponse:
+            type: object
+            properties:
+                registrationCount:
+                    type: string
+                membershipCount:
+                    type: string
+                signupCount:
+                    type: string
+                attendanceCount:
+                    type: string
+                workhourCount:
+                    type: string
+                registrationToMembershipRate:
+                    type: number
+                    format: double
+                membershipToSignupRate:
+                    type: number
+                    format: double
+                signupToAttendanceRate:
+                    type: number
+                    format: double
+                attendanceToWorkhourRate:
+                    type: number
+                    format: double
+                start:
+                    type: string
+                end:
+                    type: string
         api.LoginRequest:
             type: object
             properties:
@@ -2152,6 +2575,33 @@ components:
             type: object
             properties: {}
             description: 执行审核返回结果
+        audit.AuditBatchDecisionRequest:
+            type: object
+            properties:
+                ids:
+                    type: array
+                    items:
+                        type: string
+                    description: '审核记录ID列表 @gotags: json:"ids,required"'
+                action:
+                    type: integer
+                    description: '动作: 1-通过 2-驳回 @gotags: json:"action,required"'
+                    format: int32
+                reason:
+                    type: string
+                    description: '备注/原因 @gotags: json:"reason"'
+        audit.AuditBatchDecisionResponse:
+            type: object
+            properties:
+                successCount:
+                    type: integer
+                    description: 成功数量
+                    format: int32
+                failedIds:
+                    type: array
+                    items:
+                        type: string
+                    description: 失败记录ID列表
         audit.AuditRecordDetail:
             type: object
             properties:
@@ -2239,6 +2689,9 @@ components:
                 createdAt:
                     type: string
                     description: 创建时间
+                isOverdue:
+                    type: boolean
+                    description: 是否超时
             description: 统一待审核项
         audit.PendingAuditListResponse:
             type: object
@@ -2253,6 +2706,228 @@ components:
                         $ref: '#/components/schemas/audit.PendingAuditItem'
                     description: 当前页数据
             description: 统一待审核列表查询结果
+        authz.AccountRoleBindingInfo:
+            type: object
+            properties:
+                bindingId:
+                    type: string
+                accountId:
+                    type: string
+                roleId:
+                    type: string
+                roleCode:
+                    type: string
+                roleName:
+                    type: string
+                scopeType:
+                    type: string
+                scopeId:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                grantedBy:
+                    type: string
+                expiresAt:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        authz.AccountRoleBindingListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authz.AccountRoleBindingInfo'
+        authz.AccountRoleGrantRequest:
+            type: object
+            properties:
+                accountId:
+                    type: string
+                roleId:
+                    type: string
+                scopeType:
+                    type: string
+                scopeId:
+                    type: string
+                expiresAt:
+                    type: string
+                remark:
+                    type: string
+        authz.AccountRoleGrantResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+        authz.AccountRoleRevokeRequest:
+            type: object
+            properties:
+                bindingId:
+                    type: string
+                    description: '授权绑定ID @gotags: path:"bindingId,required"'
+                remark:
+                    type: string
+        authz.AccountRoleRevokeResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+        authz.MyAuthorizationResponse:
+            type: object
+            properties:
+                accountId:
+                    type: string
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authz.AccountRoleBindingInfo'
+                permissions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authz.MyPermissionScope'
+        authz.MyPermissionScope:
+            type: object
+            properties:
+                resource:
+                    type: string
+                action:
+                    type: string
+                scopeType:
+                    type: string
+                scopeId:
+                    type: string
+        authz.PermissionInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                resource:
+                    type: string
+                action:
+                    type: string
+                description:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+        authz.PermissionListResponse:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authz.PermissionInfo'
+        authz.RoleCreateRequest:
+            type: object
+            properties:
+                roleCode:
+                    type: string
+                roleName:
+                    type: string
+                description:
+                    type: string
+        authz.RoleCreateResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+        authz.RoleInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                roleCode:
+                    type: string
+                roleName:
+                    type: string
+                description:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        authz.RoleListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authz.RoleInfo'
+        authz.RolePermissionItem:
+            type: object
+            properties:
+                permissionId:
+                    type: string
+                resource:
+                    type: string
+                action:
+                    type: string
+                description:
+                    type: string
+        authz.RolePermissionsResponse:
+            type: object
+            properties:
+                roleId:
+                    type: string
+                permissions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/authz.RolePermissionItem'
+        authz.RolePermissionsSetRequest:
+            type: object
+            properties:
+                roleId:
+                    type: string
+                    description: '角色ID @gotags: path:"roleId,required"'
+                permissionIds:
+                    type: array
+                    items:
+                        type: string
+        authz.RolePermissionsSetResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+        authz.RoleStatusUpdateRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '角色ID @gotags: path:"id,required"'
+                status:
+                    type: integer
+                    format: int32
+        authz.RoleStatusUpdateResponse:
+            type: object
+            properties:
+                message:
+                    type: string
+        authz.RoleUpdateRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: '角色ID @gotags: path:"id,required"'
+                roleName:
+                    type: string
+                description:
+                    type: string
+        authz.RoleUpdateResponse:
+            type: object
+            properties:
+                message:
+                    type: string
         exportapi.ExportActivitiesRequest:
             type: object
             properties:
@@ -2270,6 +2945,24 @@ components:
                 startTo:
                     type: string
         exportapi.ExportActivitiesResponse:
+            type: object
+            properties: {}
+        exportapi.ExportOpsReportRequest:
+            type: object
+            properties:
+                periodType:
+                    type: string
+                    description: '周/月模板 必填 @gotags: json:"periodType,required"'
+                orgId:
+                    type: string
+                    description: '组织ID 必填 @gotags: json:"orgId,required"'
+                start:
+                    type: string
+                    description: '开始时间 可选 @gotags: json:"start"'
+                end:
+                    type: string
+                    description: '结束时间 可选 @gotags: json:"end"'
+        exportapi.ExportOpsReportResponse:
             type: object
             properties: {}
         exportapi.ExportVolunteersRequest:
@@ -2353,9 +3046,6 @@ components:
         membership.MemberStatusUpdateRequest:
             type: object
             properties:
-                accountId:
-                    type: string
-                    description: '组织管理者ID 必填 @gotags: json:"accountId,required"'
                 membershipId:
                     type: string
                     description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
@@ -3366,12 +4056,15 @@ components:
 tags:
     - name: ActivityService
       description: 活动管理服务端接口
+    - name: AnalyticsService
     - name: AssistantService
       description: AI 助手服务
     - name: AuditService
       description: 审核服务：提供待审核列表、执行审核、审核记录查询等接口
     - name: AuthService
       description: 登录服务定义
+    - name: AuthzService
+      description: RBAC administration service.
     - name: ExportService
       description: 导出功能
     - name: MembershipService

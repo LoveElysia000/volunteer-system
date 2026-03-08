@@ -34,7 +34,13 @@ type PendingAuditListRequest struct {
 	// 页码（从1开始） @gotags: query:"page"
 	Page int32 `protobuf:"varint,4,opt,name=page,proto3" json:"page" query:"page"`
 	// 每页条数 @gotags: query:"pageSize"
-	PageSize      int32 `protobuf:"varint,5,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
+	PageSize int32 `protobuf:"varint,5,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
+	// 创建时间起始（可选） @gotags: query:"createdFrom"
+	CreatedFrom string `protobuf:"bytes,6,opt,name=createdFrom,proto3" json:"createdFrom" query:"createdFrom"`
+	// 创建时间结束（可选） @gotags: query:"createdTo"
+	CreatedTo string `protobuf:"bytes,7,opt,name=createdTo,proto3" json:"createdTo" query:"createdTo"`
+	// 超时阈值小时（可选，默认24） @gotags: query:"slaHours"
+	SlaHours      int32 `protobuf:"varint,8,opt,name=slaHours,proto3" json:"slaHours" query:"slaHours"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -100,6 +106,27 @@ func (x *PendingAuditListRequest) GetPage() int32 {
 func (x *PendingAuditListRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
+	}
+	return 0
+}
+
+func (x *PendingAuditListRequest) GetCreatedFrom() string {
+	if x != nil {
+		return x.CreatedFrom
+	}
+	return ""
+}
+
+func (x *PendingAuditListRequest) GetCreatedTo() string {
+	if x != nil {
+		return x.CreatedTo
+	}
+	return ""
+}
+
+func (x *PendingAuditListRequest) GetSlaHours() int32 {
+	if x != nil {
+		return x.SlaHours
 	}
 	return 0
 }
@@ -175,7 +202,9 @@ type PendingAuditItem struct {
 	// 提交人账号ID
 	CreatorId int64 `protobuf:"varint,6,opt,name=creatorId,proto3" json:"creatorId"`
 	// 创建时间
-	CreatedAt     string `protobuf:"bytes,7,opt,name=createdAt,proto3" json:"createdAt"`
+	CreatedAt string `protobuf:"bytes,7,opt,name=createdAt,proto3" json:"createdAt"`
+	// 是否超时
+	IsOverdue     bool `protobuf:"varint,8,opt,name=isOverdue,proto3" json:"isOverdue"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -257,6 +286,13 @@ func (x *PendingAuditItem) GetCreatedAt() string {
 		return x.CreatedAt
 	}
 	return ""
+}
+
+func (x *PendingAuditItem) GetIsOverdue() bool {
+	if x != nil {
+		return x.IsOverdue
+	}
+	return false
 }
 
 // 执行审核请求参数
@@ -443,6 +479,123 @@ func (*AuditRejectionResponse) Descriptor() ([]byte, []int) {
 	return file_internal_api_audit_proto_rawDescGZIP(), []int{6}
 }
 
+type AuditBatchDecisionRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 审核记录ID列表 @gotags: json:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	// 动作: 1-通过 2-驳回 @gotags: json:"action,required"
+	Action int32 `protobuf:"varint,2,opt,name=action,proto3" json:"action,required"`
+	// 备注/原因 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuditBatchDecisionRequest) Reset() {
+	*x = AuditBatchDecisionRequest{}
+	mi := &file_internal_api_audit_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditBatchDecisionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditBatchDecisionRequest) ProtoMessage() {}
+
+func (x *AuditBatchDecisionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_audit_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuditBatchDecisionRequest.ProtoReflect.Descriptor instead.
+func (*AuditBatchDecisionRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_audit_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AuditBatchDecisionRequest) GetIds() []int64 {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+func (x *AuditBatchDecisionRequest) GetAction() int32 {
+	if x != nil {
+		return x.Action
+	}
+	return 0
+}
+
+func (x *AuditBatchDecisionRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type AuditBatchDecisionResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 成功数量
+	SuccessCount int32 `protobuf:"varint,1,opt,name=successCount,proto3" json:"successCount"`
+	// 失败记录ID列表
+	FailedIds     []int64 `protobuf:"varint,2,rep,packed,name=failedIds,proto3" json:"failedIds"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuditBatchDecisionResponse) Reset() {
+	*x = AuditBatchDecisionResponse{}
+	mi := &file_internal_api_audit_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditBatchDecisionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditBatchDecisionResponse) ProtoMessage() {}
+
+func (x *AuditBatchDecisionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_audit_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuditBatchDecisionResponse.ProtoReflect.Descriptor instead.
+func (*AuditBatchDecisionResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_audit_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AuditBatchDecisionResponse) GetSuccessCount() int32 {
+	if x != nil {
+		return x.SuccessCount
+	}
+	return 0
+}
+
+func (x *AuditBatchDecisionResponse) GetFailedIds() []int64 {
+	if x != nil {
+		return x.FailedIds
+	}
+	return nil
+}
+
 // 审核记录详情查询参数
 type AuditRecordDetailRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -454,7 +607,7 @@ type AuditRecordDetailRequest struct {
 
 func (x *AuditRecordDetailRequest) Reset() {
 	*x = AuditRecordDetailRequest{}
-	mi := &file_internal_api_audit_proto_msgTypes[7]
+	mi := &file_internal_api_audit_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +619,7 @@ func (x *AuditRecordDetailRequest) String() string {
 func (*AuditRecordDetailRequest) ProtoMessage() {}
 
 func (x *AuditRecordDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_audit_proto_msgTypes[7]
+	mi := &file_internal_api_audit_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +632,7 @@ func (x *AuditRecordDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditRecordDetailRequest.ProtoReflect.Descriptor instead.
 func (*AuditRecordDetailRequest) Descriptor() ([]byte, []int) {
-	return file_internal_api_audit_proto_rawDescGZIP(), []int{7}
+	return file_internal_api_audit_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AuditRecordDetailRequest) GetId() int64 {
@@ -500,7 +653,7 @@ type AuditRecordDetailResponse struct {
 
 func (x *AuditRecordDetailResponse) Reset() {
 	*x = AuditRecordDetailResponse{}
-	mi := &file_internal_api_audit_proto_msgTypes[8]
+	mi := &file_internal_api_audit_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -512,7 +665,7 @@ func (x *AuditRecordDetailResponse) String() string {
 func (*AuditRecordDetailResponse) ProtoMessage() {}
 
 func (x *AuditRecordDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_audit_proto_msgTypes[8]
+	mi := &file_internal_api_audit_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -525,7 +678,7 @@ func (x *AuditRecordDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditRecordDetailResponse.ProtoReflect.Descriptor instead.
 func (*AuditRecordDetailResponse) Descriptor() ([]byte, []int) {
-	return file_internal_api_audit_proto_rawDescGZIP(), []int{8}
+	return file_internal_api_audit_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AuditRecordDetailResponse) GetRecord() *AuditRecordDetail {
@@ -566,7 +719,7 @@ type AuditRecordDetail struct {
 
 func (x *AuditRecordDetail) Reset() {
 	*x = AuditRecordDetail{}
-	mi := &file_internal_api_audit_proto_msgTypes[9]
+	mi := &file_internal_api_audit_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +731,7 @@ func (x *AuditRecordDetail) String() string {
 func (*AuditRecordDetail) ProtoMessage() {}
 
 func (x *AuditRecordDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_audit_proto_msgTypes[9]
+	mi := &file_internal_api_audit_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +744,7 @@ func (x *AuditRecordDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditRecordDetail.ProtoReflect.Descriptor instead.
 func (*AuditRecordDetail) Descriptor() ([]byte, []int) {
-	return file_internal_api_audit_proto_rawDescGZIP(), []int{9}
+	return file_internal_api_audit_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AuditRecordDetail) GetId() int64 {
@@ -675,7 +828,7 @@ var File_internal_api_audit_proto protoreflect.FileDescriptor
 
 const file_internal_api_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x18internal/api/audit.proto\x12\x05audit\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\x9b\x01\n" +
+	"\x18internal/api/audit.proto\x12\x05audit\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\xf7\x01\n" +
 	"\x17PendingAuditListRequest\x12\x1e\n" +
 	"\n" +
 	"targetType\x18\x01 \x01(\x05R\n" +
@@ -683,10 +836,13 @@ const file_internal_api_audit_proto_rawDesc = "" +
 	"\x06status\x18\x02 \x03(\x05R\x06status\x12\x18\n" +
 	"\akeyword\x18\x03 \x01(\tR\akeyword\x12\x12\n" +
 	"\x04page\x18\x04 \x01(\x05R\x04page\x12\x1a\n" +
-	"\bpageSize\x18\x05 \x01(\x05R\bpageSize\"]\n" +
+	"\bpageSize\x18\x05 \x01(\x05R\bpageSize\x12 \n" +
+	"\vcreatedFrom\x18\x06 \x01(\tR\vcreatedFrom\x12\x1c\n" +
+	"\tcreatedTo\x18\a \x01(\tR\tcreatedTo\x12\x1a\n" +
+	"\bslaHours\x18\b \x01(\x05R\bslaHours\"]\n" +
 	"\x18PendingAuditListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12+\n" +
-	"\x04list\x18\x02 \x03(\v2\x17.audit.PendingAuditItemR\x04list\"\xcc\x01\n" +
+	"\x04list\x18\x02 \x03(\v2\x17.audit.PendingAuditItemR\x04list\"\xea\x01\n" +
 	"\x10PendingAuditItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1e\n" +
 	"\n" +
@@ -696,7 +852,8 @@ const file_internal_api_audit_proto_rawDesc = "" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12\x1a\n" +
 	"\bsubTitle\x18\x05 \x01(\tR\bsubTitle\x12\x1c\n" +
 	"\tcreatorId\x18\x06 \x01(\x03R\tcreatorId\x12\x1c\n" +
-	"\tcreatedAt\x18\a \x01(\tR\tcreatedAt\">\n" +
+	"\tcreatedAt\x18\a \x01(\tR\tcreatedAt\x12\x1c\n" +
+	"\tisOverdue\x18\b \x01(\bR\tisOverdue\">\n" +
 	"\x14AuditApprovalRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x17\n" +
@@ -704,7 +861,14 @@ const file_internal_api_audit_proto_rawDesc = "" +
 	"\x15AuditRejectionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x18\n" +
-	"\x16AuditRejectionResponse\"*\n" +
+	"\x16AuditRejectionResponse\"]\n" +
+	"\x19AuditBatchDecisionRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x03R\x03ids\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\x05R\x06action\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"^\n" +
+	"\x1aAuditBatchDecisionResponse\x12\"\n" +
+	"\fsuccessCount\x18\x01 \x01(\x05R\fsuccessCount\x12\x1c\n" +
+	"\tfailedIds\x18\x02 \x03(\x03R\tfailedIds\"*\n" +
 	"\x18AuditRecordDetailRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"M\n" +
 	"\x19AuditRecordDetailResponse\x120\n" +
@@ -727,11 +891,12 @@ const file_internal_api_audit_proto_rawDesc = "" +
 	"\frejectReason\x18\t \x01(\tR\frejectReason\x12\x1c\n" +
 	"\tauditTime\x18\n" +
 	" \x01(\tR\tauditTime\x12\x1c\n" +
-	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt2\xe8\x03\n" +
+	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt2\xeb\x04\n" +
 	"\fAuditService\x12p\n" +
 	"\x10PendingAuditList\x12\x1e.audit.PendingAuditListRequest\x1a\x1f.audit.PendingAuditListResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\"\x13/api/audits/pending\x12k\n" +
 	"\rAuditApproval\x12\x1b.audit.AuditApprovalRequest\x1a\x1c.audit.AuditApprovalResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/audits/approval\x12o\n" +
-	"\x0eAuditRejection\x12\x1c.audit.AuditRejectionRequest\x1a\x1d.audit.AuditRejectionResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/audits/rejection\x12w\n" +
+	"\x0eAuditRejection\x12\x1c.audit.AuditRejectionRequest\x1a\x1d.audit.AuditRejectionResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/audits/rejection\x12\x80\x01\n" +
+	"\x12AuditBatchDecision\x12 .audit.AuditBatchDecisionRequest\x1a!.audit.AuditBatchDecisionResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/audits/batch-decision\x12w\n" +
 	"\x11AuditRecordDetail\x12\x1f.audit.AuditRecordDetailRequest\x1a .audit.AuditRecordDetailResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/audits/records/:id\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (
@@ -746,35 +911,39 @@ func file_internal_api_audit_proto_rawDescGZIP() []byte {
 	return file_internal_api_audit_proto_rawDescData
 }
 
-var file_internal_api_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_internal_api_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_internal_api_audit_proto_goTypes = []any{
-	(*PendingAuditListRequest)(nil),   // 0: audit.PendingAuditListRequest
-	(*PendingAuditListResponse)(nil),  // 1: audit.PendingAuditListResponse
-	(*PendingAuditItem)(nil),          // 2: audit.PendingAuditItem
-	(*AuditApprovalRequest)(nil),      // 3: audit.AuditApprovalRequest
-	(*AuditApprovalResponse)(nil),     // 4: audit.AuditApprovalResponse
-	(*AuditRejectionRequest)(nil),     // 5: audit.AuditRejectionRequest
-	(*AuditRejectionResponse)(nil),    // 6: audit.AuditRejectionResponse
-	(*AuditRecordDetailRequest)(nil),  // 7: audit.AuditRecordDetailRequest
-	(*AuditRecordDetailResponse)(nil), // 8: audit.AuditRecordDetailResponse
-	(*AuditRecordDetail)(nil),         // 9: audit.AuditRecordDetail
+	(*PendingAuditListRequest)(nil),    // 0: audit.PendingAuditListRequest
+	(*PendingAuditListResponse)(nil),   // 1: audit.PendingAuditListResponse
+	(*PendingAuditItem)(nil),           // 2: audit.PendingAuditItem
+	(*AuditApprovalRequest)(nil),       // 3: audit.AuditApprovalRequest
+	(*AuditApprovalResponse)(nil),      // 4: audit.AuditApprovalResponse
+	(*AuditRejectionRequest)(nil),      // 5: audit.AuditRejectionRequest
+	(*AuditRejectionResponse)(nil),     // 6: audit.AuditRejectionResponse
+	(*AuditBatchDecisionRequest)(nil),  // 7: audit.AuditBatchDecisionRequest
+	(*AuditBatchDecisionResponse)(nil), // 8: audit.AuditBatchDecisionResponse
+	(*AuditRecordDetailRequest)(nil),   // 9: audit.AuditRecordDetailRequest
+	(*AuditRecordDetailResponse)(nil),  // 10: audit.AuditRecordDetailResponse
+	(*AuditRecordDetail)(nil),          // 11: audit.AuditRecordDetail
 }
 var file_internal_api_audit_proto_depIdxs = []int32{
-	2, // 0: audit.PendingAuditListResponse.list:type_name -> audit.PendingAuditItem
-	9, // 1: audit.AuditRecordDetailResponse.record:type_name -> audit.AuditRecordDetail
-	0, // 2: audit.AuditService.PendingAuditList:input_type -> audit.PendingAuditListRequest
-	3, // 3: audit.AuditService.AuditApproval:input_type -> audit.AuditApprovalRequest
-	5, // 4: audit.AuditService.AuditRejection:input_type -> audit.AuditRejectionRequest
-	7, // 5: audit.AuditService.AuditRecordDetail:input_type -> audit.AuditRecordDetailRequest
-	1, // 6: audit.AuditService.PendingAuditList:output_type -> audit.PendingAuditListResponse
-	4, // 7: audit.AuditService.AuditApproval:output_type -> audit.AuditApprovalResponse
-	6, // 8: audit.AuditService.AuditRejection:output_type -> audit.AuditRejectionResponse
-	8, // 9: audit.AuditService.AuditRecordDetail:output_type -> audit.AuditRecordDetailResponse
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2,  // 0: audit.PendingAuditListResponse.list:type_name -> audit.PendingAuditItem
+	11, // 1: audit.AuditRecordDetailResponse.record:type_name -> audit.AuditRecordDetail
+	0,  // 2: audit.AuditService.PendingAuditList:input_type -> audit.PendingAuditListRequest
+	3,  // 3: audit.AuditService.AuditApproval:input_type -> audit.AuditApprovalRequest
+	5,  // 4: audit.AuditService.AuditRejection:input_type -> audit.AuditRejectionRequest
+	7,  // 5: audit.AuditService.AuditBatchDecision:input_type -> audit.AuditBatchDecisionRequest
+	9,  // 6: audit.AuditService.AuditRecordDetail:input_type -> audit.AuditRecordDetailRequest
+	1,  // 7: audit.AuditService.PendingAuditList:output_type -> audit.PendingAuditListResponse
+	4,  // 8: audit.AuditService.AuditApproval:output_type -> audit.AuditApprovalResponse
+	6,  // 9: audit.AuditService.AuditRejection:output_type -> audit.AuditRejectionResponse
+	8,  // 10: audit.AuditService.AuditBatchDecision:output_type -> audit.AuditBatchDecisionResponse
+	10, // 11: audit.AuditService.AuditRecordDetail:output_type -> audit.AuditRecordDetailResponse
+	7,  // [7:12] is the sub-list for method output_type
+	2,  // [2:7] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_internal_api_audit_proto_init() }
@@ -788,7 +957,7 @@ func file_internal_api_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_api_audit_proto_rawDesc), len(file_internal_api_audit_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
