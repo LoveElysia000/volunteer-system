@@ -14,10 +14,11 @@ database:
   # 活动相关表
   # - "org_members"
   # - "activity_signups"
-   - "ai_sessions"
-   - "ai_messages"
-   - "ai_tool_calls"
-   - "ai_usage_daily"
+   - "rbac_roles"
+   - "rbac_permissions"
+   - "rbac_role_permissions"
+   - "rbac_account_roles"
+   - "rbac_change_logs"
   # 输出目录
   outPath: "./internal/dao"
   # 查询代码文件名，默认: gen.go

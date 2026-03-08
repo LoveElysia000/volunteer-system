@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"context"
-
 	"gorm.io/gorm"
 )
 
@@ -12,17 +10,12 @@ func (r *Repository) HasPermissionByScope(db *gorm.DB, accountID int64, scopeTyp
 		return false, nil
 	}
 
-	ctx := r.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	var count int64
-	err := db.WithContext(ctx).
-		Table("rbac_account_roles as ar").
-		Joins("JOIN rbac_roles as r ON r.id = ar.role_id").
-		Joins("JOIN rbac_role_permissions as rp ON rp.role_id = r.id").
-		Joins("JOIN rbac_permissions as p ON p.id = rp.permission_id").
+	err := db.WithContext(r.ctx).
+		Table(tableRBACAccountRoles+" as ar").
+		Joins("JOIN "+tableRBACRoles+" as r ON r.id = ar.role_id").
+		Joins("JOIN "+tableRBACRolePermissions+" as rp ON rp.role_id = r.id").
+		Joins("JOIN "+tableRBACPermissions+" as p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).
@@ -43,17 +36,12 @@ func (r *Repository) HasAnyOrgPermission(db *gorm.DB, accountID int64, resource,
 		return false, nil
 	}
 
-	ctx := r.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	var count int64
-	err := db.WithContext(ctx).
-		Table("rbac_account_roles as ar").
-		Joins("JOIN rbac_roles as r ON r.id = ar.role_id").
-		Joins("JOIN rbac_role_permissions as rp ON rp.role_id = r.id").
-		Joins("JOIN rbac_permissions as p ON p.id = rp.permission_id").
+	err := db.WithContext(r.ctx).
+		Table(tableRBACAccountRoles+" as ar").
+		Joins("JOIN "+tableRBACRoles+" as r ON r.id = ar.role_id").
+		Joins("JOIN "+tableRBACRolePermissions+" as rp ON rp.role_id = r.id").
+		Joins("JOIN "+tableRBACPermissions+" as p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).
@@ -79,18 +67,13 @@ func (r *Repository) ListOrgScopeIDsByPermission(
 		return []int64{}, nil
 	}
 
-	ctx := r.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	orgIDs := make([]int64, 0)
-	query := db.WithContext(ctx).
-		Table("rbac_account_roles as ar").
+	query := db.WithContext(r.ctx).
+		Table(tableRBACAccountRoles+" as ar").
 		Distinct("ar.scope_id").
-		Joins("JOIN rbac_roles as r ON r.id = ar.role_id").
-		Joins("JOIN rbac_role_permissions as rp ON rp.role_id = r.id").
-		Joins("JOIN rbac_permissions as p ON p.id = rp.permission_id").
+		Joins("JOIN "+tableRBACRoles+" as r ON r.id = ar.role_id").
+		Joins("JOIN "+tableRBACRolePermissions+" as rp ON rp.role_id = r.id").
+		Joins("JOIN "+tableRBACPermissions+" as p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).
