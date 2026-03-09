@@ -8,18 +8,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type RBACRole = model.RbacRole
-
-type RBACPermission = model.RbacPermission
-
-const (
-	tableRBACRoles           = model.TableNameRbacRole
-	tableRBACPermissions     = model.TableNameRbacPermission
-	tableRBACRolePermissions = model.TableNameRbacRolePermission
-	tableRBACAccountRoles    = model.TableNameRbacAccountRole
-	tableRBACChangeLogs      = model.TableNameRbacChangeLog
-)
-
 type RBACRolePermissionItem struct {
 	RoleID       int64  `gorm:"column:role_id"`
 	PermissionID int64  `gorm:"column:permission_id"`
@@ -50,33 +38,33 @@ type RBACPermissionScope struct {
 	ScopeID   int64  `gorm:"column:scope_id"`
 }
 
-func (r *Repository) CreateRBACRole(db *gorm.DB, role *RBACRole) error {
-	return db.WithContext(r.ctx).Table(tableRBACRoles).Create(role).Error
+func (r *Repository) CreateRBACRole(db *gorm.DB, role *model.RbacRole) error {
+	return db.WithContext(r.ctx).Table(model.TableNameRbacRole).Create(role).Error
 }
 
 func (r *Repository) UpdateRBACRoleByID(db *gorm.DB, roleID int64, updates map[string]any) error {
-	return db.WithContext(r.ctx).Table(tableRBACRoles).Where("id = ?", roleID).Updates(updates).Error
+	return db.WithContext(r.ctx).Table(model.TableNameRbacRole).Where("id = ?", roleID).Updates(updates).Error
 }
 
-func (r *Repository) GetRBACRoleByID(db *gorm.DB, roleID int64) (*RBACRole, error) {
-	var role RBACRole
-	if err := db.WithContext(r.ctx).Table(tableRBACRoles).Where("id = ?", roleID).Take(&role).Error; err != nil {
+func (r *Repository) GetRBACRoleByID(db *gorm.DB, roleID int64) (*model.RbacRole, error) {
+	var role model.RbacRole
+	if err := db.WithContext(r.ctx).Table(model.TableNameRbacRole).Where("id = ?", roleID).Take(&role).Error; err != nil {
 		return nil, err
 	}
 	return &role, nil
 }
 
-func (r *Repository) GetRBACRoleByCode(db *gorm.DB, roleCode string) (*RBACRole, error) {
-	var role RBACRole
-	if err := db.WithContext(r.ctx).Table(tableRBACRoles).Where("role_code = ?", roleCode).Take(&role).Error; err != nil {
+func (r *Repository) GetRBACRoleByCode(db *gorm.DB, roleCode string) (*model.RbacRole, error) {
+	var role model.RbacRole
+	if err := db.WithContext(r.ctx).Table(model.TableNameRbacRole).Where("role_code = ?", roleCode).Take(&role).Error; err != nil {
 		return nil, err
 	}
 	return &role, nil
 }
 
-func (r *Repository) ListRBACRoles(db *gorm.DB, keyword string, includeDisabled bool, limit, offset int) ([]*RBACRole, int64, error) {
-	rows := make([]*RBACRole, 0)
-	base := db.WithContext(r.ctx).Table(tableRBACRoles)
+func (r *Repository) ListRBACRoles(db *gorm.DB, keyword string, includeDisabled bool, limit, offset int) ([]*model.RbacRole, int64, error) {
+	rows := make([]*model.RbacRole, 0)
+	base := db.WithContext(r.ctx).Table(model.TableNameRbacRole)
 	if keyword != "" {
 		like := "%" + keyword + "%"
 		base = base.Where("(role_code LIKE ? OR role_name LIKE ?)", like, like)
@@ -105,9 +93,9 @@ func (r *Repository) ListRBACRoles(db *gorm.DB, keyword string, includeDisabled 
 	return rows, total, nil
 }
 
-func (r *Repository) ListRBACPermissions(db *gorm.DB, keyword string, onlyEnabled bool) ([]*RBACPermission, error) {
-	rows := make([]*RBACPermission, 0)
-	query := db.WithContext(r.ctx).Table(tableRBACPermissions)
+func (r *Repository) ListRBACPermissions(db *gorm.DB, keyword string, onlyEnabled bool) ([]*model.RbacPermission, error) {
+	rows := make([]*model.RbacPermission, 0)
+	query := db.WithContext(r.ctx).Table(model.TableNameRbacPermission)
 	if keyword != "" {
 		like := "%" + keyword + "%"
 		query = query.Where("(resource LIKE ? OR action LIKE ? OR description LIKE ?)", like, like, like)
@@ -121,12 +109,12 @@ func (r *Repository) ListRBACPermissions(db *gorm.DB, keyword string, onlyEnable
 	return rows, nil
 }
 
-func (r *Repository) GetRBACPermissionsByIDs(db *gorm.DB, ids []int64) ([]*RBACPermission, error) {
-	rows := make([]*RBACPermission, 0)
+func (r *Repository) GetRBACPermissionsByIDs(db *gorm.DB, ids []int64) ([]*model.RbacPermission, error) {
+	rows := make([]*model.RbacPermission, 0)
 	if len(ids) == 0 {
 		return rows, nil
 	}
-	if err := db.WithContext(r.ctx).Table(tableRBACPermissions).Where("id IN ?", ids).Find(&rows).Error; err != nil {
+	if err := db.WithContext(r.ctx).Table(model.TableNameRbacPermission).Where("id IN ?", ids).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil
@@ -139,9 +127,9 @@ func (r *Repository) ListRBACRolePermissions(db *gorm.DB, roleID int64) ([]*RBAC
 	}
 
 	err := db.WithContext(r.ctx).
-		Table(tableRBACRolePermissions+" rp").
+		Table(model.TableNameRbacRolePermission+" rp").
 		Select("rp.role_id, rp.permission_id, p.resource, p.action, p.description").
-		Joins("JOIN "+tableRBACPermissions+" p ON p.id = rp.permission_id").
+		Joins("JOIN "+model.TableNameRbacPermission+" p ON p.id = rp.permission_id").
 		Where("rp.role_id = ?", roleID).
 		Order("p.resource ASC, p.action ASC, p.id ASC").
 		Scan(&rows).Error
@@ -152,7 +140,7 @@ func (r *Repository) ListRBACRolePermissions(db *gorm.DB, roleID int64) ([]*RBAC
 }
 
 func (r *Repository) ReplaceRBACRolePermissions(tx *gorm.DB, roleID int64, permissionIDs []int64) error {
-	if err := tx.WithContext(r.ctx).Table(tableRBACRolePermissions).Where("role_id = ?", roleID).Delete(nil).Error; err != nil {
+	if err := tx.WithContext(r.ctx).Table(model.TableNameRbacRolePermission).Where("role_id = ?", roleID).Delete(nil).Error; err != nil {
 		return err
 	}
 	if len(permissionIDs) == 0 {
@@ -167,7 +155,7 @@ func (r *Repository) ReplaceRBACRolePermissions(tx *gorm.DB, roleID int64, permi
 		})
 	}
 	return tx.WithContext(r.ctx).
-		Table(tableRBACRolePermissions).
+		Table(model.TableNameRbacRolePermission).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "role_id"}, {Name: "permission_id"}},
 			DoNothing: true,
@@ -194,7 +182,7 @@ func (r *Repository) UpsertRBACAccountRoleBinding(
 		"expires_at": expiresAt,
 	}
 	return tx.WithContext(r.ctx).
-		Table(tableRBACAccountRoles).
+		Table(model.TableNameRbacAccountRole).
 		Clauses(clause.OnConflict{
 			Columns: []clause.Column{
 				{Name: "account_id"},
@@ -215,9 +203,9 @@ func (r *Repository) UpsertRBACAccountRoleBinding(
 func (r *Repository) GetRBACAccountRoleBindingByID(db *gorm.DB, id int64) (*RBACAccountRoleBinding, error) {
 	var row RBACAccountRoleBinding
 	err := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" ar").
+		Table(model.TableNameRbacAccountRole+" ar").
 		Select("ar.*, r.role_code, r.role_name").
-		Joins("JOIN "+tableRBACRoles+" r ON r.id = ar.role_id").
+		Joins("JOIN "+model.TableNameRbacRole+" r ON r.id = ar.role_id").
 		Where("ar.id = ?", id).
 		Take(&row).Error
 	if err != nil {
@@ -227,7 +215,7 @@ func (r *Repository) GetRBACAccountRoleBindingByID(db *gorm.DB, id int64) (*RBAC
 }
 
 func (r *Repository) UpdateRBACAccountRoleBindingByID(tx *gorm.DB, id int64, updates map[string]any) error {
-	return tx.WithContext(r.ctx).Table(tableRBACAccountRoles).Where("id = ?", id).Updates(updates).Error
+	return tx.WithContext(r.ctx).Table(model.TableNameRbacAccountRole).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *Repository) ListRBACAccountRoleBindings(
@@ -240,9 +228,9 @@ func (r *Repository) ListRBACAccountRoleBindings(
 ) ([]*RBACAccountRoleBinding, int64, error) {
 	rows := make([]*RBACAccountRoleBinding, 0)
 	base := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles + " ar").
+		Table(model.TableNameRbacAccountRole + " ar").
 		Select("ar.*, r.role_code, r.role_name").
-		Joins("JOIN " + tableRBACRoles + " r ON r.id = ar.role_id")
+		Joins("JOIN " + model.TableNameRbacRole + " r ON r.id = ar.role_id")
 	if accountID > 0 {
 		base = base.Where("ar.account_id = ?", accountID)
 	}
@@ -281,8 +269,8 @@ func (r *Repository) ListRBACAccountRoleBindings(
 func (r *Repository) CountActiveGlobalBindingsByRoleCode(db *gorm.DB, roleCode string) (int64, error) {
 	var count int64
 	err := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" ar").
-		Joins("JOIN "+tableRBACRoles+" r ON r.id = ar.role_id").
+		Table(model.TableNameRbacAccountRole+" ar").
+		Joins("JOIN "+model.TableNameRbacRole+" r ON r.id = ar.role_id").
 		Where("r.role_code = ?", roleCode).
 		Where("ar.scope_type = ? AND ar.scope_id = ?", "global", 0).
 		Where("ar.status = ?", 1).
@@ -305,8 +293,8 @@ func (r *Repository) HasActiveRBACBindingByRoleCodeAndScope(
 
 	var count int64
 	err := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" ar").
-		Joins("JOIN "+tableRBACRoles+" r ON r.id = ar.role_id").
+		Table(model.TableNameRbacAccountRole+" ar").
+		Joins("JOIN "+model.TableNameRbacRole+" r ON r.id = ar.role_id").
 		Where("ar.account_id = ?", accountID).
 		Where("r.role_code = ?", roleCode).
 		Where("ar.scope_type = ? AND ar.scope_id = ?", scopeType, scopeID).
@@ -321,7 +309,7 @@ func (r *Repository) HasActiveRBACBindingByRoleCodeAndScope(
 }
 
 func (r *Repository) CreateRBACChangeLog(tx *gorm.DB, payload map[string]any) error {
-	return tx.WithContext(r.ctx).Table(tableRBACChangeLogs).Create(payload).Error
+	return tx.WithContext(r.ctx).Table(model.TableNameRbacChangeLog).Create(payload).Error
 }
 
 func (r *Repository) ListAccountPermissionScopes(db *gorm.DB, accountID int64) ([]*RBACPermissionScope, error) {
@@ -330,11 +318,11 @@ func (r *Repository) ListAccountPermissionScopes(db *gorm.DB, accountID int64) (
 		return rows, nil
 	}
 	err := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" ar").
+		Table(model.TableNameRbacAccountRole+" ar").
 		Select("DISTINCT p.resource, p.action, ar.scope_type, ar.scope_id").
-		Joins("JOIN "+tableRBACRoles+" r ON r.id = ar.role_id").
-		Joins("JOIN "+tableRBACRolePermissions+" rp ON rp.role_id = r.id").
-		Joins("JOIN "+tableRBACPermissions+" p ON p.id = rp.permission_id").
+		Joins("JOIN "+model.TableNameRbacRole+" r ON r.id = ar.role_id").
+		Joins("JOIN "+model.TableNameRbacRolePermission+" rp ON rp.role_id = r.id").
+		Joins("JOIN "+model.TableNameRbacPermission+" p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).

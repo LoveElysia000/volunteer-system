@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"volunteer-system/internal/model"
+
 	"gorm.io/gorm"
 )
 
@@ -12,10 +14,10 @@ func (r *Repository) HasPermissionByScope(db *gorm.DB, accountID int64, scopeTyp
 
 	var count int64
 	err := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" as ar").
-		Joins("JOIN "+tableRBACRoles+" as r ON r.id = ar.role_id").
-		Joins("JOIN "+tableRBACRolePermissions+" as rp ON rp.role_id = r.id").
-		Joins("JOIN "+tableRBACPermissions+" as p ON p.id = rp.permission_id").
+		Table(model.TableNameRbacAccountRole+" as ar").
+		Joins("JOIN "+model.TableNameRbacRole+" as r ON r.id = ar.role_id").
+		Joins("JOIN "+model.TableNameRbacRolePermission+" as rp ON rp.role_id = r.id").
+		Joins("JOIN "+model.TableNameRbacPermission+" as p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).
@@ -38,10 +40,10 @@ func (r *Repository) HasAnyOrgPermission(db *gorm.DB, accountID int64, resource,
 
 	var count int64
 	err := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" as ar").
-		Joins("JOIN "+tableRBACRoles+" as r ON r.id = ar.role_id").
-		Joins("JOIN "+tableRBACRolePermissions+" as rp ON rp.role_id = r.id").
-		Joins("JOIN "+tableRBACPermissions+" as p ON p.id = rp.permission_id").
+		Table(model.TableNameRbacAccountRole+" as ar").
+		Joins("JOIN "+model.TableNameRbacRole+" as r ON r.id = ar.role_id").
+		Joins("JOIN "+model.TableNameRbacRolePermission+" as rp ON rp.role_id = r.id").
+		Joins("JOIN "+model.TableNameRbacPermission+" as p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).
@@ -69,11 +71,11 @@ func (r *Repository) ListOrgScopeIDsByPermission(
 
 	orgIDs := make([]int64, 0)
 	query := db.WithContext(r.ctx).
-		Table(tableRBACAccountRoles+" as ar").
+		Table(model.TableNameRbacAccountRole+" as ar").
 		Distinct("ar.scope_id").
-		Joins("JOIN "+tableRBACRoles+" as r ON r.id = ar.role_id").
-		Joins("JOIN "+tableRBACRolePermissions+" as rp ON rp.role_id = r.id").
-		Joins("JOIN "+tableRBACPermissions+" as p ON p.id = rp.permission_id").
+		Joins("JOIN "+model.TableNameRbacRole+" as r ON r.id = ar.role_id").
+		Joins("JOIN "+model.TableNameRbacRolePermission+" as rp ON rp.role_id = r.id").
+		Joins("JOIN "+model.TableNameRbacPermission+" as p ON p.id = rp.permission_id").
 		Where("ar.account_id = ?", accountID).
 		Where("ar.status = ?", 1).
 		Where("r.status = ?", 1).

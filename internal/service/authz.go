@@ -137,7 +137,7 @@ func (s *AuthzService) CreateRole(req *api.RoleCreateRequest) (*api.RoleCreateRe
 	}
 
 	now := time.Now()
-	role := &repository.RBACRole{
+	role := &model.RbacRole{
 		RoleCode:    roleCode,
 		RoleName:    roleName,
 		Description: strings.TrimSpace(req.Description),
