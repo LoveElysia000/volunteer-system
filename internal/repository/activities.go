@@ -2,16 +2,10 @@ package repository
 
 import (
 	"strings"
-	"time"
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-)
-
-const (
-	activitySortByCreatedAt = "created_at"
-	activitySortByStartTime = "start_time"
 )
 
 // GetActivitiesByStatus 根据状态查询活动列表
@@ -21,8 +15,7 @@ func (r *Repository) GetActivitiesByStatus(db *gorm.DB, status int32, limit, off
 
 	// 创建 base session，关联 organizations 表获取组织信息
 	baseSession := db.WithContext(r.ctx).
-		Table("activities as act").
-		Joins("LEFT JOIN organizations as o ON act.org_id = o.id")
+		Table("activities as act")
 
 	// 状态筛选
 	if status > 0 {
@@ -53,34 +46,15 @@ func (r *Repository) GetActivitiesByStatus(db *gorm.DB, status int32, limit, off
 }
 
 // GetActivitiesByFilters queries activity list with keyword/time-range/sort filters.
-func (r *Repository) GetActivitiesByFilters(
-	db *gorm.DB,
-	status int32,
-	keyword string,
-	startFrom, startTo *time.Time,
-	sortBy, sortOrder string,
-	limit, offset int,
-) ([]*model.Activity, int64, error) {
+func (r *Repository) GetActivitiesByFilters(db *gorm.DB, filters map[string]any, limit, offset int) ([]*model.Activity, int64, error) {
 	var activities []*model.Activity
 	var total int64
 
 	baseSession := db.WithContext(r.ctx).
-		Table("activities as act").
-		Joins("LEFT JOIN organizations as o ON act.org_id = o.id")
+		Table("activities as act")
 
-	if status > 0 {
-		baseSession = baseSession.Where("act.status = ?", status)
-	}
-	trimmedKeyword := strings.TrimSpace(keyword)
-	if trimmedKeyword != "" {
-		like := "%" + trimmedKeyword + "%"
-		baseSession = baseSession.Where("(act.title LIKE ? OR act.description LIKE ? OR act.location LIKE ?)", like, like, like)
-	}
-	if startFrom != nil {
-		baseSession = baseSession.Where("act.start_time >= ?", *startFrom)
-	}
-	if startTo != nil {
-		baseSession = baseSession.Where("act.start_time <= ?", *startTo)
+	for query, value := range filters {
+		baseSession = baseSession.Where(query, value)
 	}
 
 	if err := baseSession.Count(&total).Error; err != nil {
@@ -90,29 +64,35 @@ func (r *Repository) GetActivitiesByFilters(
 		return activities, 0, nil
 	}
 
-	column := activitySortByCreatedAt
-	switch sortBy {
-	case activitySortByStartTime:
-		column = activitySortByStartTime
-	case activitySortByCreatedAt:
-		column = activitySortByCreatedAt
-	}
-	orderDirection := "DESC"
-	if strings.EqualFold(sortOrder, "asc") {
-		orderDirection = "ASC"
-	}
-	orderBy := "act." + column + " " + orderDirection
-
 	err := baseSession.Select("act.*").
 		Offset(offset).
 		Limit(limit).
-		Order(orderBy).
+		Order("act.created_at DESC").
 		Find(&activities).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
 	return activities, total, nil
+}
+
+// ListActivityIDsByKeyword returns activity ids matched by keyword in title/description/location.
+func (r *Repository) ListActivityIDsByKeyword(db *gorm.DB, keyword string) ([]int64, error) {
+	trimmedKeyword := strings.TrimSpace(keyword)
+	if trimmedKeyword == "" {
+		return []int64{}, nil
+	}
+
+	like := "%" + trimmedKeyword + "%"
+	ids := make([]int64, 0)
+	err := db.WithContext(r.ctx).
+		Table("activities as act").
+		Where("(act.title LIKE ? OR act.description LIKE ? OR act.location LIKE ?)", like, like, like).
+		Pluck("act.id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 // GetActivityByID 根据ID查询活动

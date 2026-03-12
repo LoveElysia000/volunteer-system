@@ -952,16 +952,16 @@ func (*VolunteerUpdateResponse) Descriptor() ([]byte, []int) {
 // VolunteerProfileChangeSubmitRequest 志愿者资料变更提审请求
 type VolunteerProfileChangeSubmitRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 真实姓名 可选 @gotags: json:"realName"
-	RealName *string `protobuf:"bytes,1,opt,name=realName,proto3,oneof" json:"realName"`
-	// 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
-	Gender *int32 `protobuf:"varint,2,opt,name=gender,proto3,oneof" json:"gender"`
-	// 出生日期 可选 @gotags: json:"birthday"
-	Birthday *string `protobuf:"bytes,3,opt,name=birthday,proto3,oneof" json:"birthday"`
-	// 头像URL 可选 @gotags: json:"avatarUrl"
-	AvatarUrl *string `protobuf:"bytes,4,opt,name=avatarUrl,proto3,oneof" json:"avatarUrl"`
-	// 个人简介 可选 @gotags: json:"introduction"
-	Introduction  *string `protobuf:"bytes,5,opt,name=introduction,proto3,oneof" json:"introduction"`
+	// 真实姓名 可选 @gotags: query:"realName"
+	RealName *string `protobuf:"bytes,1,opt,name=realName,proto3,oneof" json:"realName" query:"realName"`
+	// 性别: 0-未知, 1-男, 2-女 可选 @gotags: query:"gender"
+	Gender *int32 `protobuf:"varint,2,opt,name=gender,proto3,oneof" json:"gender" query:"gender"`
+	// 出生日期 可选 @gotags: query:"birthday"
+	Birthday *string `protobuf:"bytes,3,opt,name=birthday,proto3,oneof" json:"birthday" query:"birthday"`
+	// 头像URL 可选 @gotags: query:"avatarUrl"
+	AvatarUrl *string `protobuf:"bytes,4,opt,name=avatarUrl,proto3,oneof" json:"avatarUrl" query:"avatarUrl"`
+	// 个人简介 可选 @gotags: query:"introduction"
+	Introduction  *string `protobuf:"bytes,5,opt,name=introduction,proto3,oneof" json:"introduction" query:"introduction"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1089,10 +1089,10 @@ func (x *VolunteerProfileChangeSubmitResponse) GetStatus() int32 {
 // VolunteerRealNameSubmitRequest 志愿者实名认证提审请求
 type VolunteerRealNameSubmitRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 真实姓名 @gotags: json:"realName"
-	RealName string `protobuf:"bytes,1,opt,name=realName,proto3" json:"realName"`
-	// 身份证号 @gotags: json:"idCard"
-	IdCard        string `protobuf:"bytes,2,opt,name=idCard,proto3" json:"idCard"`
+	// 真实姓名 @gotags: query:"realName"
+	RealName string `protobuf:"bytes,1,opt,name=realName,proto3" json:"realName" query:"realName"`
+	// 身份证号 @gotags: query:"idCard"
+	IdCard        string `protobuf:"bytes,2,opt,name=idCard,proto3" json:"idCard" query:"idCard"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1420,9 +1420,9 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"statusName\x18\a \x01(\tR\n" +
 	"statusName\x12\x1a\n" +
 	"\bjoinDate\x18\b \x01(\tR\bjoinDate\x12\x1c\n" +
-	"\tleaveDate\x18\t \x01(\tR\tleaveDate2\xe1\a\n" +
-	"\x10VolunteerService\x12p\n" +
-	"\rVolunteerList\x12\x1f.volunteer.VolunteerListRequest\x1a .volunteer.VolunteerListResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\"\x14/api/volunteers/list\x12|\n" +
+	"\tleaveDate\x18\t \x01(\tR\tleaveDate2\xe4\a\n" +
+	"\x10VolunteerService\x12s\n" +
+	"\rVolunteerList\x12\x1f.volunteer.VolunteerListRequest\x1a .volunteer.VolunteerListResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/volunteers/list\x12|\n" +
 	"\x0fVolunteerDetail\x12!.volunteer.VolunteerDetailRequest\x1a\".volunteer.VolunteerDetailResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/volunteers/detail/:id\x12n\n" +
 	"\tMyProfile\x12\x1b.volunteer.MyProfileRequest\x1a\x1c.volunteer.MyProfileResponse\"&\x82\xd3\xe4\x93\x02 \x12\x1e/api/volunteers/my/profile/:id\x12\x8d\x01\n" +
 	"\x14VolunteerHomeSummary\x12&.volunteer.VolunteerHomeSummaryRequest\x1a'.volunteer.VolunteerHomeSummaryResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/volunteers/home/summary\x12x\n" +

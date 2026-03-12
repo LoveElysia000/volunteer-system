@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -24,10 +22,6 @@ var log = logger.GetLogger()
 
 const (
 	volunteerCheckoutEarliestWindow = 30 * time.Minute
-	attendanceCodeLength            = 6
-	attendanceCodeDigits            = "23456789"
-	attendanceCodeLetters           = "ABCDEFGHJKLMNPQRSTUVWXYZ"
-	attendanceCodeCharset           = attendanceCodeDigits + attendanceCodeLetters
 )
 
 type ActivityService struct {
@@ -48,6 +42,8 @@ func NewActivityService(ctx context.Context, c *app.RequestContext) *ActivitySer
 	}
 }
 
+// ========== 志愿者端：活动浏览与报名 ==========
+
 // ActivityList 获取活动列表（活动总览）
 func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.ActivityListResponse, error) {
 	// 设置默认分页参数
@@ -57,40 +53,31 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	if req.PageSize <= 0 {
 		req.PageSize = 50
 	}
-	var startFrom *time.Time
-	if strings.TrimSpace(req.StartFrom) != "" {
-		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartFrom))
-		if parseErr != nil {
-			return nil, errors.New("开始时间格式错误")
-		}
-		startFrom = &value
+	// 构建查询map
+	actMap, err := buildActivityListFilterMap(req)
+	if err != nil {
+		return nil, err
 	}
-	var startTo *time.Time
-	if strings.TrimSpace(req.StartTo) != "" {
-		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartTo))
-		if parseErr != nil {
-			return nil, errors.New("结束时间格式错误")
+	keyword := strings.TrimSpace(req.Keyword)
+	if keyword != "" {
+		activityIDs, idErr := s.repo.ListActivityIDsByKeyword(s.repo.DB, keyword)
+		if idErr != nil {
+			log.Error("活动列表查询失败: 关键字查询活动ID异常: %v, keyword=%s", idErr, keyword)
+			return nil, idErr
 		}
-		startTo = &value
-	}
-	if startFrom != nil && startTo != nil && startTo.Before(*startFrom) {
-		return nil, errors.New("结束时间不能早于开始时间")
+		if len(activityIDs) == 0 {
+			return &api.ActivityListResponse{
+				Total: 0,
+				List:  []*api.ActivityItem{},
+			}, nil
+		}
+		actMap["act.id IN ?"] = activityIDs
 	}
 
 	// 查询活动列表
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
-	activities, total, err := s.repo.GetActivitiesByFilters(
-		s.repo.DB,
-		req.Status,
-		req.Keyword,
-		startFrom,
-		startTo,
-		strings.TrimSpace(req.SortBy),
-		strings.TrimSpace(req.SortOrder),
-		pageSize,
-		offset,
-	)
+	activities, total, err := s.repo.GetActivitiesByFilters(s.repo.DB, actMap, pageSize, offset)
 	if err != nil {
 		log.Error("活动列表查询失败: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
 		return nil, err
@@ -187,100 +174,57 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		return nil, err
 	}
 
-	// 查询活动信息
-	activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("活动不存在")
+	var recordID int64
+	err = s.withTransaction(func(tx *gorm.DB) error {
+		// 锁定活动，串行化同活动报名请求，避免并发穿透重复校验。
+		activity, activityErr := s.repo.GetActivityByIDForUpdate(tx, req.ActivityId)
+		if activityErr != nil {
+			if errors.Is(activityErr, gorm.ErrRecordNotFound) {
+				return errors.New("活动不存在")
+			}
+			return activityErr
 		}
-		log.Error("活动报名失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
-		return nil, err
-	}
 
-	// 校验活动状态
-	if activity.Status != model.ActivityStatusRecruiting {
-		return nil, errors.New("活动已结束或已取消")
-	}
+		existing, signupErr := s.repo.GetSignup(tx, req.ActivityId, volunteerID)
+		if signupErr != nil {
+			return signupErr
+		}
 
-	// 校验名额
-	if activity.MaxPeople > 0 && activity.CurrentPeople >= activity.MaxPeople {
-		return nil, errors.New("名额已满")
-	}
+		hasPendingAudit, pendingErr := s.hasPendingSignupCreateAudit(tx, req.ActivityId, volunteerID, userID)
+		if pendingErr != nil {
+			return pendingErr
+		}
+		if canErr := canSignupActivity(activity, existing, hasPendingAudit); canErr != nil {
+			return canErr
+		}
 
-	// 第一层去重：检查报名表（activity_signups）里是否已有有效报名记录（已落库）
-	existing, signupErr := s.repo.GetSignup(s.repo.DB, req.ActivityId, volunteerID)
-	if signupErr != nil {
-		log.Error("活动报名前检查失败: 查询报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", signupErr, req.ActivityId, userID, volunteerID)
-		return nil, signupErr
-	}
-	if existing != nil && (existing.Status == model.ActivitySignupStatusPending || existing.Status == model.ActivitySignupStatusSuccess) {
-		return nil, errors.New("请勿重复报名")
-	}
-
-	// 第二层去重：检查审核表（audit_records）里是否已有待审核的创建申请（未落库）
-	hasPendingAudit, err := s.hasPendingSignupCreateAudit(req.ActivityId, volunteerID, userID)
+		signupSnapshot := &model.ActivitySignup{
+			ActivityID:  req.ActivityId,
+			VolunteerID: volunteerID,
+			Status:      model.ActivitySignupStatusPending,
+		}
+		record, buildErr := buildPendingCreateAuditRecordByModel(
+			model.AuditTargetSignup,
+			userID,
+			signupSnapshot,
+			time.Now(),
+		)
+		if buildErr != nil {
+			return buildErr
+		}
+		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
+			return createErr
+		}
+		recordID = record.ID
+		return nil
+	})
 	if err != nil {
-		log.Error("活动报名失败: 查询待审核报名异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
-		return nil, err
-	}
-	if hasPendingAudit {
-		return nil, errors.New("请勿重复报名")
-	}
-
-	signupSnapshot := &model.ActivitySignup{
-		ActivityID:  req.ActivityId,
-		VolunteerID: volunteerID,
-		Status:      model.ActivitySignupStatusPending,
-	}
-	record, err := buildPendingCreateAuditRecordByModel(
-		model.AuditTargetSignup,
-		userID,
-		signupSnapshot,
-		time.Now(),
-	)
-	if err != nil {
-		log.Error("活动报名失败: 构建审核记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
-		return nil, err
-	}
-	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
-		log.Error("活动报名失败: 创建审核记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		log.Error("活动报名失败: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
 		return nil, err
 	}
 
-	log.Info("活动报名申请已提交: activity_id=%d user_id=%d volunteer_id=%d record_id=%d", req.ActivityId, userID, volunteerID, record.ID)
+	log.Info("活动报名申请已提交: activity_id=%d user_id=%d volunteer_id=%d record_id=%d", req.ActivityId, userID, volunteerID, recordID)
 	return &api.ActivitySignupResponse{Success: true}, nil
-}
-
-// hasPendingSignupCreateAudit 检查当前用户是否已有同活动同志愿者的待审核报名创建记录。
-func (s *ActivityService) hasPendingSignupCreateAudit(activityID, volunteerID, userID int64) (bool, error) {
-	// 仅查询“活动报名 + 新增 + 待审核”的记录，再从快照中匹配 activity_id/volunteer_id。
-	queryMap := map[string]any{
-		"target_type = ?":    model.AuditTargetSignup,
-		"operation_type = ?": model.OperationTypeCreate,
-		"status = ?":         model.AuditStatusPending,
-		"creator_id = ?":     userID,
-	}
-	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
-	if err != nil {
-		log.Error("活动报名前检查失败: 查询审核记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, activityID, userID, volunteerID)
-		return false, err
-	}
-
-	for _, record := range records {
-		if record == nil || record.TargetID > 0 {
-			continue
-		}
-
-		var signup model.ActivitySignup
-		if err := json.Unmarshal([]byte(record.NewContent), &signup); err != nil {
-			continue
-		}
-		if signup.ActivityID == activityID && signup.VolunteerID == volunteerID {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // ActivityCancel 取消报名
@@ -297,25 +241,20 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 		return nil, err
 	}
 
-	// 查询报名记录
-	signup, err := s.repo.GetSignup(s.repo.DB, req.ActivityId, volunteerID)
-	if err != nil {
-		log.Error("取消报名失败: 查询报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
-		return nil, err
-	}
-
-	// 校验报名记录是否存在
-	if signup == nil {
-		return nil, errors.New("报名记录不存在")
-	}
-
-	// 校验报名状态
-	if signup.Status != model.ActivitySignupStatusPending && signup.Status != model.ActivitySignupStatusSuccess {
-		return nil, errors.New("当前状态不允许取消")
-	}
-
-	// 事务处理
+	var signupID int64
+	// 事务处理：在行锁下读取并判断，避免并发重复取消导致的人数重复扣减。
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
+		signup, getErr := s.repo.GetSignupForUpdate(tx, req.ActivityId, volunteerID)
+		if getErr != nil {
+			return getErr
+		}
+		if canErr := canCancelSignup(signup); canErr != nil {
+			return canErr
+		}
+
+		originalStatus := signup.Status
+		signupID = signup.ID
+
 		// 更新报名状态为已取消
 		signup.Status = model.ActivitySignupStatusCanceled
 		if err := s.repo.UpdateSignupStatus(tx, signup); err != nil {
@@ -323,10 +262,12 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 			return err
 		}
 
-		// 减少活动当前报名人数（原子操作）
-		if err := s.repo.DecrementActivityPeople(tx, req.ActivityId); err != nil {
-			log.Error("取消报名失败: 减少活动人数异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
-			return err
+		// 仅“报名成功”记录占用名额，取消时才扣减人数。
+		if originalStatus == model.ActivitySignupStatusSuccess {
+			if err := s.repo.DecrementActivityPeople(tx, req.ActivityId); err != nil {
+				log.Error("取消报名失败: 减少活动人数异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+				return err
+			}
 		}
 
 		return nil
@@ -337,7 +278,7 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 		return nil, err
 	}
 
-	log.Info("取消报名成功: activity_id=%d user_id=%d volunteer_id=%d signup_id=%d", req.ActivityId, userID, volunteerID, signup.ID)
+	log.Info("取消报名成功: activity_id=%d user_id=%d volunteer_id=%d signup_id=%d", req.ActivityId, userID, volunteerID, signupID)
 	return &api.ActivityCancelResponse{Success: true}, nil
 }
 
@@ -360,6 +301,56 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 		return nil, err
 	}
 
+	isRegistered := false
+	checkInStatus := model.ActivityCheckInPending
+	checkInTime := util.FormatDateTimePtr(nil)
+	checkOutStatus := model.ActivityCheckOutPending
+	checkOutTime := util.FormatDateTimePtr(nil)
+	workHourStatus := model.WorkHourStatusPending
+	grantedHours := float64(0)
+
+	account, findErr := s.repo.FindByID(s.repo.DB, userID)
+	if findErr != nil {
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			log.Warn("活动详情查询失败: 账号不存在, user_id=%d", userID)
+			return nil, errors.New("账号不存在")
+		}
+		log.Error("活动详情查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
+		return nil, findErr
+	}
+
+	if account.IdentityType == model.RegisterTypeVolunteerCode {
+		volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)
+		if getVolunteerErr != nil {
+			log.Error("活动详情查询失败: 查询志愿者身份异常: %v, user_id=%d", getVolunteerErr, userID)
+			return nil, getVolunteerErr
+		}
+		signup, signupErr := s.repo.GetSignup(s.repo.DB, req.Id, volunteerID)
+		if signupErr != nil {
+			log.Error("活动详情查询失败: 查询报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", signupErr, req.Id, userID, volunteerID)
+			return nil, signupErr
+		}
+		if signup != nil {
+			if signup.Status == model.ActivitySignupStatusPending || signup.Status == model.ActivitySignupStatusSuccess {
+				isRegistered = true
+				checkInStatus = signup.CheckInStatus
+				checkInTime = util.FormatDateTimePtr(signup.CheckInTime)
+				checkOutStatus = signup.CheckOutStatus
+				checkOutTime = util.FormatDateTimePtr(signup.CheckOutTime)
+				workHourStatus = signup.WorkHourStatus
+				grantedHours = signup.GrantedHours
+			}
+		}
+		if !isRegistered {
+			pendingAudit, auditErr := s.hasPendingSignupCreateAudit(s.repo.DB, req.Id, volunteerID, userID)
+			if auditErr != nil {
+				log.Error("活动详情查询失败: 查询待审核报名异常: %v, activity_id=%d user_id=%d volunteer_id=%d", auditErr, req.Id, userID, volunteerID)
+				return nil, auditErr
+			}
+			isRegistered = pendingAudit
+		}
+	}
+
 	// 组装返回数据
 	resp := &api.ActivityDetailResponse{
 		Activity: &api.ActivityInfo{
@@ -377,14 +368,14 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 			MaxPeople:      activity.MaxPeople,
 			CurrentPeople:  activity.CurrentPeople,
 			Status:         activity.Status,
-			IsRegistered:   false,
+			IsRegistered:   isRegistered,
 			CreatedAt:      util.FormatDateTimeOrEmpty(activity.CreatedAt),
-			CheckInStatus:  model.ActivityCheckInPending,
-			CheckInTime:    util.FormatDateTimePtr(nil),
-			CheckOutStatus: model.ActivityCheckOutPending,
-			CheckOutTime:   util.FormatDateTimePtr(nil),
-			WorkHourStatus: model.WorkHourStatusPending,
-			GrantedHours:   0,
+			CheckInStatus:  checkInStatus,
+			CheckInTime:    checkInTime,
+			CheckOutStatus: checkOutStatus,
+			CheckOutTime:   checkOutTime,
+			WorkHourStatus: workHourStatus,
+			GrantedHours:   grantedHours,
 		},
 	}
 
@@ -548,7 +539,7 @@ func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyAct
 	return resp, nil
 }
 
-// ========== 组织端活动管理 ==========
+// ========== 组织端：活动基础管理 ==========
 
 // CreateActivity 创建活动
 func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.CreateActivityResponse, error) {
@@ -673,9 +664,8 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		return nil, err
 	}
 
-	// 校验活动状态
-	if activity.Status == model.ActivityStatusFinished || activity.Status == model.ActivityStatusCanceled {
-		return nil, errors.New("已结束或已取消的活动不能修改")
+	if canErr := canUpdateActivity(activity); canErr != nil {
+		return nil, canErr
 	}
 
 	// 解析时间
@@ -720,7 +710,10 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.Duration > 0 {
 		activity.Duration = req.Duration
 	}
-	if req.MaxPeople >= 0 {
+	if isRequestFieldProvided(s.c, "maxPeople") {
+		if req.MaxPeople < 0 {
+			return nil, errors.New("最大招募人数不能为负数")
+		}
 		// 检查是否会导致报名人数超过新设定的最大人数
 		if req.MaxPeople > 0 && activity.CurrentPeople > req.MaxPeople {
 			return nil, errors.New("当前报名人数超过新设定的最大人数")
@@ -838,9 +831,8 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		return nil, err
 	}
 
-	// 校验活动状态
-	if activity.Status == model.ActivityStatusFinished || activity.Status == model.ActivityStatusCanceled {
-		return nil, errors.New("已结束或已取消的活动不能取消")
+	if canErr := canCancelActivity(activity); canErr != nil {
+		return nil, canErr
 	}
 
 	if err := s.repo.CancelActivity(s.repo.DB, req.Id); err != nil {
@@ -880,11 +872,8 @@ func (s *ActivityService) FinishActivity(req *api.FinishActivityRequest) (*api.F
 		log.Error("完结活动失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
 		return nil, err
 	}
-	if activity.Status == model.ActivityStatusFinished {
-		return nil, errors.New("活动已结束")
-	}
-	if activity.Status == model.ActivityStatusCanceled {
-		return nil, errors.New("已取消活动不能完结")
+	if canErr := canFinishActivity(activity); canErr != nil {
+		return nil, canErr
 	}
 
 	if err := s.repo.FinishActivity(s.repo.DB, req.Id); err != nil {
@@ -895,6 +884,8 @@ func (s *ActivityService) FinishActivity(req *api.FinishActivityRequest) (*api.F
 	log.Info("完结活动成功: activity_id=%d user_id=%d", req.Id, userID)
 	return &api.FinishActivityResponse{Message: "完结活动成功"}, nil
 }
+
+// ========== 组织端：签到签退码管理 ==========
 
 // GenerateAttendanceCodes 生成签到码/签退码（组织侧，初次生成同时生成两个码）
 func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCodesRequest) (*api.GenerateAttendanceCodesResponse, error) {
@@ -1084,6 +1075,8 @@ func (s *ActivityService) GetActivityAttendanceCodes(req *api.GetActivityAttenda
 	return resp, nil
 }
 
+// ========== 志愿者端：签到签退 ==========
+
 // ActivityCheckIn 活动签到（志愿者侧）
 func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api.ActivityCheckInResponse, error) {
 	if req.ActivityId <= 0 {
@@ -1104,36 +1097,28 @@ func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api
 		return nil, err
 	}
 
-	activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("活动不存在")
-		}
-		log.Error("活动签到失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
-		return nil, err
-	}
-	if activity.Status == model.ActivityStatusCanceled {
-		return nil, errors.New("已取消活动不允许签到")
-	}
-	if err := validateAttendanceCodeForActivity(activity, req.CheckInCode, model.AttendanceCodeTypeCheckIn); err != nil {
-		log.Error("活动签到失败: 校验签到码异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
-		return nil, err
-	}
-
 	var checkInTime time.Time
 	err = s.withTransaction(func(tx *gorm.DB) error {
+		activity, activityErr := s.repo.GetActivityByIDForUpdate(tx, req.ActivityId)
+		if activityErr != nil {
+			if errors.Is(activityErr, gorm.ErrRecordNotFound) {
+				return errors.New("活动不存在")
+			}
+			return activityErr
+		}
+		if activity.Status == model.ActivityStatusCanceled {
+			return errors.New("已取消活动不允许签到")
+		}
+		if codeErr := validateAttendanceCodeForActivity(activity, req.CheckInCode, model.AttendanceCodeTypeCheckIn); codeErr != nil {
+			return codeErr
+		}
+
 		signup, err := s.repo.GetSignupForUpdate(tx, req.ActivityId, volunteerID)
 		if err != nil {
 			return err
 		}
-		if signup == nil {
-			return errors.New("报名记录不存在")
-		}
-		if signup.Status != model.ActivitySignupStatusSuccess {
-			return errors.New("当前报名状态不允许签到")
-		}
-		if signup.CheckOutStatus == model.ActivityCheckOutDone {
-			return errors.New("已签退，无法再次签到")
+		if canErr := canCheckIn(activity, signup); canErr != nil {
+			return canErr
 		}
 		if signup.CheckInStatus == model.ActivityCheckInDone {
 			if signup.CheckInTime != nil {
@@ -1206,38 +1191,34 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		log.Error("活动签退失败: 预检查报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
 		return nil, err
 	}
-
-	if preSignup == nil {
-		return nil, errors.New("报名记录不存在")
-	}
-	if preSignup.Status != model.ActivitySignupStatusSuccess {
-		return nil, errors.New("当前报名状态不允许签退")
-	}
-	if preSignup.CheckInStatus != model.ActivityCheckInDone || preSignup.CheckInTime == nil {
-		return nil, errors.New("未签到，无法签退")
-	}
-
-	// 签退时间校验
 	now := time.Now()
-	if now.Before(activity.EndTime.Add(-volunteerCheckoutEarliestWindow)) {
-		return nil, errors.New("未到签退开始时间，还不能签退")
+	if canErr := canCheckOut(activity, preSignup, now, volunteerCheckoutEarliestWindow); canErr != nil {
+		return nil, canErr
 	}
 
 	// Re-check under row lock to prevent races between pre-check and final write.
 	err = s.withTransaction(func(tx *gorm.DB) error {
+		lockedActivity, activityErr := s.repo.GetActivityByIDForUpdate(tx, req.ActivityId)
+		if activityErr != nil {
+			if errors.Is(activityErr, gorm.ErrRecordNotFound) {
+				return errors.New("活动不存在")
+			}
+			return activityErr
+		}
+		if lockedActivity.Status == model.ActivityStatusCanceled {
+			return errors.New("已取消活动不允许签退")
+		}
+		if codeErr := validateAttendanceCodeForActivity(lockedActivity, req.CheckOutCode, model.AttendanceCodeTypeCheckOut); codeErr != nil {
+			return codeErr
+		}
+
 		// 事务内二次校验：防止预检查与加锁之间的并发状态变化。
 		signup, err := s.repo.GetSignupForUpdate(tx, req.ActivityId, volunteerID)
 		if err != nil {
 			return err
 		}
-		if signup == nil {
-			return errors.New("报名记录不存在")
-		}
-		if signup.Status != model.ActivitySignupStatusSuccess {
-			return errors.New("当前报名状态不允许签退")
-		}
-		if signup.CheckInStatus != model.ActivityCheckInDone || signup.CheckInTime == nil {
-			return errors.New("未签到，无法签退")
+		if canErr := canCheckOut(lockedActivity, signup, time.Now(), volunteerCheckoutEarliestWindow); canErr != nil {
+			return canErr
 		}
 
 		// Idempotent return for repeated checkout requests.
@@ -1249,16 +1230,16 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 			return nil
 		}
 
-		now = time.Now()
-		if now.Before(*signup.CheckInTime) {
-			now = *signup.CheckInTime
+		currentTime := time.Now()
+		if currentTime.Before(*signup.CheckInTime) {
+			currentTime = *signup.CheckInTime
 		}
-		checkOutTime = now
+		checkOutTime = currentTime
 		nextVersion := signup.WorkHourVersion + 1
 		idempotencyKey := fmt.Sprintf("checkout:%d:%d", signup.ID, nextVersion)
 		grantedHours, err = s.settleSignupWorkHours(
 			tx,
-			activity,
+			lockedActivity,
 			signup,
 			*signup.CheckInTime,
 			checkOutTime,
@@ -1281,6 +1262,8 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		GrantedHours: grantedHours,
 	}, nil
 }
+
+// ========== 组织端：签到签退补录 ==========
 
 // ActivitySupplementAttendance 活动签到签退补录（组织侧）
 func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySupplementAttendanceRequest) (*api.ActivitySupplementAttendanceResponse, error) {
@@ -1321,8 +1304,8 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 		log.Error("活动补录失败: 校验活动归属异常: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, req.VolunteerId, userID)
 		return nil, err
 	}
-	if activity.Status == model.ActivityStatusCanceled {
-		return nil, errors.New("已取消活动不允许补录")
+	if canErr := canSupplementAttendance(activity, nil); canErr != nil {
+		return nil, canErr
 	}
 
 	reason := strings.TrimSpace(req.Reason)
@@ -1336,15 +1319,20 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 
 	// Keep signup status, work-hour log and volunteer aggregate in one atomic transaction.
 	err = s.withTransaction(func(tx *gorm.DB) error {
+		lockedActivity, activityErr := s.repo.GetActivityByIDForUpdate(tx, req.ActivityId)
+		if activityErr != nil {
+			if errors.Is(activityErr, gorm.ErrRecordNotFound) {
+				return errors.New("活动不存在")
+			}
+			return activityErr
+		}
+
 		signup, err := s.repo.GetSignupForUpdate(tx, req.ActivityId, req.VolunteerId)
 		if err != nil {
 			return err
 		}
-		if signup == nil {
-			return errors.New("报名记录不存在")
-		}
-		if signup.Status != model.ActivitySignupStatusSuccess {
-			return errors.New("当前报名状态不允许补录")
+		if canErr := canSupplementAttendance(lockedActivity, signup); canErr != nil {
+			return canErr
 		}
 
 		// 已签退场景直接视为幂等成功，返回已有结果。
@@ -1383,7 +1371,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 		idempotencyKey := fmt.Sprintf("org-supplement:%d:%d:%d", signup.ID, nextVersion, finalCheckOut.Unix())
 		grantedHours, err = s.settleSignupWorkHours(
 			tx,
-			activity,
+			lockedActivity,
 			signup,
 			finalCheckIn,
 			finalCheckOut,
@@ -1406,272 +1394,4 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 		CheckOutTime: util.FormatDateTimeOrEmpty(finalCheckOut),
 		GrantedHours: grantedHours,
 	}, nil
-}
-
-// getVolunteerIDByAccountID 根据账号ID查询并返回对应志愿者ID。
-func (s *ActivityService) getVolunteerIDByAccountID(accountID int64) (int64, error) {
-	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, accountID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, errors.New("志愿者信息不存在")
-		}
-		log.Error("查询志愿者ID失败: 查询志愿者信息异常: %v, account_id=%d", err, accountID)
-		return 0, err
-	}
-	if volunteer == nil || volunteer.ID <= 0 {
-		return 0, errors.New("志愿者信息不存在")
-	}
-	return volunteer.ID, nil
-}
-
-// ensureActivityOperableByCurrentOrg 校验活动存在、组织存在且当前组织对该活动有操作权限。
-func (s *ActivityService) ensureActivityOperableByCurrentOrg(activityID, accountID int64) (*model.Activity, error) {
-	activity, err := s.repo.GetActivityByID(s.repo.DB, activityID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("活动不存在")
-		}
-		log.Error("校验活动归属失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, activityID, accountID)
-		return nil, err
-	}
-
-	if err := s.requireOrgPermission(
-		accountID,
-		activity.OrgID,
-		model.PermissionResourceOrganization,
-		model.PermissionActionManage,
-	); err != nil {
-		return nil, err
-	}
-	return activity, nil
-}
-
-// settleSignupWorkHours 统一完成签退结算：计算工时、写流水、更新志愿者统计及报名记录。
-func (s *ActivityService) settleSignupWorkHours(
-	tx *gorm.DB,
-	activity *model.Activity,
-	signup *model.ActivitySignup,
-	checkInTime time.Time,
-	checkOutTime time.Time,
-	operatorID int64,
-	idempotencyKey string,
-	reason string,
-	syncCheckIn bool,
-) (float64, error) {
-	if activity == nil || signup == nil {
-		return 0, errors.New("报名记录不存在")
-	}
-	if checkOutTime.Before(checkInTime) {
-		return 0, errors.New("签退时间不能早于签到时间")
-	}
-
-	grantedHours := util.CalcGrantedHours(activity.Duration, checkInTime, checkOutTime)
-	volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
-	if err != nil {
-		return 0, err
-	}
-
-	beforeHours := volunteer.TotalHours
-	beforeCount := int64(volunteer.ServiceCount)
-	afterHours := util.RoundHours(beforeHours + grantedHours)
-	afterCount := beforeCount + 1
-	if afterHours < 0 || afterCount < 0 {
-		return 0, errors.New("志愿者统计字段异常")
-	}
-
-	newVersion := signup.WorkHourVersion + 1
-	workHourLog := &model.WorkHourLog{
-		VolunteerID:        signup.VolunteerID,
-		ActivityID:         signup.ActivityID,
-		SignupID:           signup.ID,
-		OperationType:      model.WorkHourOperationGrant,
-		HoursDelta:         grantedHours,
-		ServiceCountDelta:  1,
-		BeforeTotalHours:   beforeHours,
-		AfterTotalHours:    afterHours,
-		BeforeServiceCount: beforeCount,
-		AfterServiceCount:  afterCount,
-		WorkHourVersion:    newVersion,
-		IdempotencyKey:     idempotencyKey,
-		RefLogID:           signup.LastWorkHourLogID,
-		Reason:             reason,
-		OperatorID:         operatorID,
-	}
-	if err := s.repo.CreateWorkHourLog(tx, workHourLog); err != nil {
-		return 0, err
-	}
-
-	levelID, err := s.repo.ResolveLevelIDByTotalHours(tx, afterHours)
-	if err != nil {
-		return 0, err
-	}
-
-	if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
-		"total_hours":   afterHours,
-		"service_count": int32(afterCount),
-		"level_id":      levelID,
-	}); err != nil {
-		return 0, err
-	}
-
-	if err := s.repo.CreateRecord(tx, &model.Record{
-		VolunteerID: signup.VolunteerID,
-		Type:        "HOUR",
-		Amount:      grantedHours,
-		CreateTime:  workHourLog.CreatedAt,
-	}); err != nil {
-		return 0, err
-	}
-
-	signupUpdates := map[string]any{
-		"check_out_status":      model.ActivityCheckOutDone,
-		"check_out_time":        checkOutTime,
-		"work_hour_status":      model.WorkHourStatusGranted,
-		"work_hour_version":     newVersion,
-		"last_work_hour_log_id": workHourLog.ID,
-		"granted_hours":         grantedHours,
-		"granted_at":            checkOutTime,
-	}
-	if syncCheckIn {
-		signupUpdates["check_in_status"] = model.ActivityCheckInDone
-		signupUpdates["check_in_time"] = checkInTime
-	}
-	if err := s.repo.UpdateActivitySignupByID(tx, signup.ID, signupUpdates); err != nil {
-		return 0, err
-	}
-
-	return grantedHours, nil
-}
-
-// validateAttendanceCodeForActivity 根据码类型校验活动签到码或签退码是否匹配且未过期。
-func validateAttendanceCodeForActivity(activity *model.Activity, inputCode string, codeType int32) error {
-	if activity == nil {
-		return errors.New("活动不存在")
-	}
-
-	switch codeType {
-	case model.AttendanceCodeTypeCheckIn:
-		return validateAttendanceCodeValue(
-			inputCode,
-			activity.CheckInCode,
-			activity.CheckInCodeHash,
-			activity.CheckInCodeExpireAt,
-			"签到码错误或已过期",
-		)
-	case model.AttendanceCodeTypeCheckOut:
-		return validateAttendanceCodeValue(
-			inputCode,
-			activity.CheckOutCode,
-			activity.CheckOutCodeHash,
-			activity.CheckOutCodeExpireAt,
-			"签退码错误或已过期",
-		)
-	default:
-		return errors.New("码类型不合法")
-	}
-}
-
-// validateAttendanceCodeValue 统一处理码存在性、过期性与值匹配校验。
-func validateAttendanceCodeValue(inputCode, expectedCode, expectedCodeHash string, expireAt *time.Time, errMsg string) error {
-	normalizedInputCode := strings.TrimSpace(inputCode)
-	normalizedExpectedCode := strings.TrimSpace(expectedCode)
-	normalizedExpectedCodeHash := strings.TrimSpace(expectedCodeHash)
-	if expireAt != nil && time.Now().After(*expireAt) {
-		return errors.New(errMsg)
-	}
-
-	// 优先使用哈希字段校验；保留明文字段回退以兼容历史数据。
-	if normalizedExpectedCodeHash != "" {
-		// Prefer hashed comparison when hash exists; plaintext fallback is for legacy rows only.
-		inputCodeHash, err := util.HashSensitiveField(normalizedInputCode)
-		if err != nil {
-			return err
-		}
-		if subtle.ConstantTimeCompare([]byte(inputCodeHash), []byte(normalizedExpectedCodeHash)) != 1 {
-			return errors.New(errMsg)
-		}
-		return nil
-	}
-
-	if normalizedExpectedCode == "" {
-		return errors.New(errMsg)
-	}
-	if subtle.ConstantTimeCompare([]byte(normalizedInputCode), []byte(normalizedExpectedCode)) != 1 {
-		return errors.New(errMsg)
-	}
-	return nil
-}
-
-// generateAttendanceCodeForWrite 生成随机码、哈希值和过期时间，用于写入活动码字段。
-func generateAttendanceCodeForWrite(now time.Time, validMinutes int32) (string, string, *time.Time, error) {
-	code, err := generateRandomAttendanceCode(attendanceCodeLength)
-	if err != nil {
-		return "", "", nil, err
-	}
-	codeHash, err := util.HashSensitiveField(strings.TrimSpace(code))
-	if err != nil {
-		return "", "", nil, err
-	}
-	return code, codeHash, buildAttendanceCodeExpireAt(now, validMinutes), nil
-}
-
-// buildAttendanceCodeExpireAt 根据有效分钟数计算过期时间；<=0 表示不过期。
-func buildAttendanceCodeExpireAt(now time.Time, validMinutes int32) *time.Time {
-	if validMinutes <= 0 {
-		return nil
-	}
-	expireAt := now.Add(time.Duration(validMinutes) * time.Minute)
-	return &expireAt
-}
-
-// generateRandomAttendanceCode 生成固定长度码，且至少包含 1 位数字与 1 位字母。
-
-func generateRandomAttendanceCode(length int) (string, error) {
-	if length < 2 {
-		return "", errors.New("无效的签到签退码长度")
-	}
-
-	digitPos, err := util.RandomIndex(length)
-	if err != nil {
-		return "", err
-	}
-	letterPos, err := util.RandomIndex(length)
-	if err != nil {
-		return "", err
-	}
-	for letterPos == digitPos {
-		letterPos, err = util.RandomIndex(length)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	chars := []byte(attendanceCodeCharset)
-	digits := []byte(attendanceCodeDigits)
-	letters := []byte(attendanceCodeLetters)
-
-	result := make([]byte, length)
-	// 先固定一个数字位和一个字母位，确保复杂度下限。
-	digitIdx, err := util.RandomIndex(len(digits))
-	if err != nil {
-		return "", err
-	}
-	letterIdx, err := util.RandomIndex(len(letters))
-	if err != nil {
-		return "", err
-	}
-	result[digitPos] = digits[digitIdx]
-	result[letterPos] = letters[letterIdx]
-
-	for i := range result {
-		if i == digitPos || i == letterPos {
-			continue
-		}
-		charIdx, idxErr := util.RandomIndex(len(chars))
-		if idxErr != nil {
-			return "", idxErr
-		}
-		result[i] = chars[charIdx]
-	}
-	return string(result), nil
 }

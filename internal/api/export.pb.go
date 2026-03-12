@@ -23,11 +23,15 @@ const (
 )
 
 type ExportVolunteersRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	IdList        []int64                `protobuf:"varint,1,rep,packed,name=idList,proto3" json:"idList"`    // optional selected volunteer ids
-	Keyword       string                 `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword"`          // volunteer real_name keyword
-	AuditStatus   int32                  `protobuf:"varint,3,opt,name=auditStatus,proto3" json:"auditStatus"` // 0 means no filter
-	Status        int32                  `protobuf:"varint,4,opt,name=status,proto3" json:"status"`           // 0 means no filter
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 可选导出志愿者ID列表 @gotags: query:"idList"
+	IdList []int64 `protobuf:"varint,1,rep,packed,name=idList,proto3" json:"idList" query:"idList"` // optional selected volunteer ids
+	// 志愿者姓名关键字 @gotags: query:"keyword"
+	Keyword string `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword" query:"keyword"` // volunteer real_name keyword
+	// 审核状态（0=不过滤） @gotags: query:"auditStatus"
+	AuditStatus int32 `protobuf:"varint,3,opt,name=auditStatus,proto3" json:"auditStatus" query:"auditStatus"` // 0 means no filter
+	// 状态（0=不过滤） @gotags: query:"status"
+	Status        int32 `protobuf:"varint,4,opt,name=status,proto3" json:"status" query:"status"` // 0 means no filter
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -127,12 +131,17 @@ func (*ExportVolunteersResponse) Descriptor() ([]byte, []int) {
 }
 
 type ExportActivitiesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	IdList        []int64                `protobuf:"varint,1,rep,packed,name=idList,proto3" json:"idList"` // optional selected activity ids
-	Keyword       string                 `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword"`       // activity title/description keyword
-	Status        int32                  `protobuf:"varint,3,opt,name=status,proto3" json:"status"`        // 0 means no filter
-	StartFrom     string                 `protobuf:"bytes,4,opt,name=startFrom,proto3" json:"startFrom"`   // format: 2006-01-02 15:04:05
-	StartTo       string                 `protobuf:"bytes,5,opt,name=startTo,proto3" json:"startTo"`       // format: 2006-01-02 15:04:05
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 可选导出活动ID列表 @gotags: query:"idList"
+	IdList []int64 `protobuf:"varint,1,rep,packed,name=idList,proto3" json:"idList" query:"idList"` // optional selected activity ids
+	// 活动关键字 @gotags: query:"keyword"
+	Keyword string `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword" query:"keyword"` // activity title/description keyword
+	// 状态（0=不过滤） @gotags: query:"status"
+	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status" query:"status"` // 0 means no filter
+	// 开始时间（可选） @gotags: query:"startFrom"
+	StartFrom string `protobuf:"bytes,4,opt,name=startFrom,proto3" json:"startFrom" query:"startFrom"` // format: 2006-01-02 15:04:05
+	// 结束时间（可选） @gotags: query:"startTo"
+	StartTo       string `protobuf:"bytes,5,opt,name=startTo,proto3" json:"startTo" query:"startTo"` // format: 2006-01-02 15:04:05
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -240,14 +249,14 @@ func (*ExportActivitiesResponse) Descriptor() ([]byte, []int) {
 
 type ExportOpsReportRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 周/月模板 必填 @gotags: json:"periodType,required"
-	PeriodType string `protobuf:"bytes,1,opt,name=periodType,proto3" json:"periodType,required"` // weekly/monthly
-	// 组织ID 必填 @gotags: json:"orgId,required"
-	OrgId int64 `protobuf:"varint,2,opt,name=orgId,proto3" json:"orgId,required"`
-	// 开始时间 可选 @gotags: json:"start"
-	Start string `protobuf:"bytes,3,opt,name=start,proto3" json:"start"` // format: 2006-01-02 15:04:05
-	// 结束时间 可选 @gotags: json:"end"
-	End           string `protobuf:"bytes,4,opt,name=end,proto3" json:"end"` // format: 2006-01-02 15:04:05
+	// 周/月模板 必填 @gotags: query:"periodType,required"
+	PeriodType string `protobuf:"bytes,1,opt,name=periodType,proto3" json:"periodType" query:"periodType,required"` // weekly/monthly
+	// 组织ID 必填 @gotags: query:"orgId,required"
+	OrgId int64 `protobuf:"varint,2,opt,name=orgId,proto3" json:"orgId" query:"orgId,required"`
+	// 开始时间 可选 @gotags: query:"start"
+	Start string `protobuf:"bytes,3,opt,name=start,proto3" json:"start" query:"start"` // format: 2006-01-02 15:04:05
+	// 结束时间 可选 @gotags: query:"end"
+	End           string `protobuf:"bytes,4,opt,name=end,proto3" json:"end" query:"end"` // format: 2006-01-02 15:04:05
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

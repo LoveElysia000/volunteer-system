@@ -54,6 +54,18 @@ func (r *Repository) GetRBACRoleByID(db *gorm.DB, roleID int64) (*model.RbacRole
 	return &role, nil
 }
 
+func (r *Repository) GetRBACRoleByIDForUpdate(db *gorm.DB, roleID int64) (*model.RbacRole, error) {
+	var role model.RbacRole
+	if err := db.WithContext(r.ctx).
+		Table(model.TableNameRbacRole).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ?", roleID).
+		Take(&role).Error; err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
 func (r *Repository) GetRBACRoleByCode(db *gorm.DB, roleCode string) (*model.RbacRole, error) {
 	var role model.RbacRole
 	if err := db.WithContext(r.ctx).Table(model.TableNameRbacRole).Where("role_code = ?", roleCode).Take(&role).Error; err != nil {

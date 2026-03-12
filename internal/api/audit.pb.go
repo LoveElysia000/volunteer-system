@@ -298,10 +298,10 @@ func (x *PendingAuditItem) GetIsOverdue() bool {
 // 执行审核请求参数
 type AuditApprovalRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核记录id @gotags: json:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,required"`
-	// 原因 @gotags: json:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
+	// 审核记录id @gotags: query:"id,required"
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" query:"id,required"`
+	// 原因 @gotags: query:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -390,10 +390,10 @@ func (*AuditApprovalResponse) Descriptor() ([]byte, []int) {
 // 执行审核驳回请求参数
 type AuditRejectionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核记录id @gotags: json:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,required"`
-	// 原因 @gotags: json:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
+	// 审核记录id @gotags: query:"id,required"
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" query:"id,required"`
+	// 原因 @gotags: query:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -481,12 +481,12 @@ func (*AuditRejectionResponse) Descriptor() ([]byte, []int) {
 
 type AuditBatchDecisionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核记录ID列表 @gotags: json:"ids,required"
-	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
-	// 动作: 1-通过 2-驳回 @gotags: json:"action,required"
-	Action int32 `protobuf:"varint,2,opt,name=action,proto3" json:"action,required"`
-	// 备注/原因 @gotags: json:"reason"
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason"`
+	// 审核记录ID列表 @gotags: query:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids" query:"ids,required"`
+	// 动作: 1-通过 2-驳回 @gotags: query:"action,required"
+	Action int32 `protobuf:"varint,2,opt,name=action,proto3" json:"action" query:"action,required"`
+	// 备注/原因 @gotags: query:"reason"
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason" query:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -891,9 +891,9 @@ const file_internal_api_audit_proto_rawDesc = "" +
 	"\frejectReason\x18\t \x01(\tR\frejectReason\x12\x1c\n" +
 	"\tauditTime\x18\n" +
 	" \x01(\tR\tauditTime\x12\x1c\n" +
-	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt2\xeb\x04\n" +
-	"\fAuditService\x12p\n" +
-	"\x10PendingAuditList\x12\x1e.audit.PendingAuditListRequest\x1a\x1f.audit.PendingAuditListResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\"\x13/api/audits/pending\x12k\n" +
+	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt2\xee\x04\n" +
+	"\fAuditService\x12s\n" +
+	"\x10PendingAuditList\x12\x1e.audit.PendingAuditListRequest\x1a\x1f.audit.PendingAuditListResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/audits/pending\x12k\n" +
 	"\rAuditApproval\x12\x1b.audit.AuditApprovalRequest\x1a\x1c.audit.AuditApprovalResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/audits/approval\x12o\n" +
 	"\x0eAuditRejection\x12\x1c.audit.AuditRejectionRequest\x1a\x1d.audit.AuditRejectionResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/audits/rejection\x12\x80\x01\n" +
 	"\x12AuditBatchDecision\x12 .audit.AuditBatchDecisionRequest\x1a!.audit.AuditBatchDecisionResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/audits/batch-decision\x12w\n" +

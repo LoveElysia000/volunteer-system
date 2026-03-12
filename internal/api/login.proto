@@ -38,16 +38,16 @@ service AuthService {
 }
 // LoginRequest 登录请求
 message LoginRequest {
-  // 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
+  // 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: query:"loginType,required"
   string loginType = 1;
   
-  // 登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"
+  // 登录标识（用户名/邮箱/手机号） 必填 @gotags: query:"identifier,required"
   string identifier = 2;
 
-  // 密码 必填 @gotags: json:"password,required"
+  // 密码 必填 @gotags: query:"password,required"
   string password = 3;
   
-  // 身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: json:"identity,required"
+  // 身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: query:"identity,required"
   string identity = 4;
 }
 
@@ -91,7 +91,7 @@ message UserInfo {
 
 // LogoutRequest 登出请求
 message LogoutRequest {
-  // 要注销的令牌 必填 @gotags: json:"token,required"
+  // 要注销的令牌 必填 @gotags: query:"token,required"
   string token = 1;
 }
 
@@ -105,7 +105,7 @@ message LogoutResponse {
 
 // RefreshTokenRequest 刷新令牌请求
 message RefreshTokenRequest {
-  // 刷新令牌 必填 @gotags: json:"refreshToken,required"
+  // 刷新令牌 必填 @gotags: query:"refreshToken,required"
   string refreshToken = 1;
 }
 

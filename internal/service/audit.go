@@ -44,6 +44,8 @@ const (
 	maxAuditBatchDecisionIDs       = 500
 )
 
+var errAuditRecordNotFound = errors.New("audit record not found")
+
 // PendingAuditList 查询统一待审核列表（按目标类型筛选）。
 func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.PendingAuditListResponse, error) {
 	if req == nil {
@@ -391,27 +393,10 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 		log.Warn("审核通过失败: 审核记录ID为空")
 		return nil, errors.New("审核记录ID不能为空")
 	}
-	record, err := s.repo.GetAuditRecordByID(s.repo.DB, req.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("审核通过失败: 审核记录不存在, record_id=%d", req.Id)
-			return nil, errors.New("审核记录不存在")
-		}
-		log.Error("审核通过失败: 查询审核记录异常: %v, record_id=%d", err, req.Id)
-		return nil, err
-	}
-
-	if err := ensureAuditRecordPending(record); err != nil {
-		log.Warn("审核通过失败: 审核记录不可处理, record_id=%d status=%d audit_result=%d", record.ID, record.Status, record.AuditResult)
-		return nil, err
-	}
 
 	auditorID, err := s.getAuditOperatorID()
 	if err != nil {
-		log.Warn("审核通过失败: 获取审核人失败, record_id=%d err=%v", record.ID, err)
-		return nil, err
-	}
-	if err := s.requireAuditReviewPermission(auditorID, record); err != nil {
+		log.Warn("审核通过失败: 获取审核人失败, record_id=%d err=%v", req.Id, err)
 		return nil, err
 	}
 
@@ -421,8 +406,23 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 		model.AuditTargetSignup:    s.applySignupAuditApproval,
 	}
 	reason := strings.TrimSpace(req.Reason)
+	var approvedRecord *model.AuditRecord
 
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
+		record, lockErr := s.repo.GetAuditRecordByIDForUpdate(tx, req.Id)
+		if lockErr != nil {
+			if errors.Is(lockErr, gorm.ErrRecordNotFound) {
+				return errAuditRecordNotFound
+			}
+			return lockErr
+		}
+		if pendingErr := ensureAuditRecordPending(record); pendingErr != nil {
+			return pendingErr
+		}
+		if permissionErr := s.requireAuditReviewPermission(auditorID, record); permissionErr != nil {
+			return permissionErr
+		}
+
 		handler, ok := auditHandlerMap[record.TargetType]
 		if !ok {
 			return errors.New("不支持的审核目标类型")
@@ -442,18 +442,26 @@ func (s *AuditService) AuditApproval(req *api.AuditApprovalRequest) (*api.AuditA
 		if record.TargetID > 0 {
 			updates["target_id"] = record.TargetID
 		}
-		return s.repo.UpdateAuditRecordByID(tx, record.ID, updates)
+		if err := s.repo.UpdateAuditRecordByID(tx, record.ID, updates); err != nil {
+			return err
+		}
+		approvedRecord = record
+		return nil
 	})
 	if err != nil {
+		if errors.Is(err, errAuditRecordNotFound) {
+			log.Warn("审核通过失败: 审核记录不存在, record_id=%d", req.Id)
+			return nil, errors.New("审核记录不存在")
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("审核通过失败: 审核目标不存在, record_id=%d", record.ID)
+			log.Warn("审核通过失败: 审核目标不存在, record_id=%d", req.Id)
 			return nil, errors.New("审核目标不存在")
 		}
-		log.Error("审核通过失败: 事务执行异常: %v, record_id=%d", err, record.ID)
+		log.Warn("审核通过失败: %v, record_id=%d", err, req.Id)
 		return nil, err
 	}
-	log.Info("审核通过成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", record.ID, record.TargetType, record.TargetID, auditorID)
-	s.handleAuditApprovedSideEffects(record, auditorID)
+	log.Info("审核通过成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", approvedRecord.ID, approvedRecord.TargetType, approvedRecord.TargetID, auditorID)
+	s.handleAuditApprovedSideEffects(approvedRecord, auditorID)
 
 	return &resp, nil
 }
@@ -475,31 +483,27 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 		log.Warn("审核驳回失败: 驳回原因为空, record_id=%d", req.Id)
 		return nil, errors.New("驳回原因不能为空")
 	}
-	record, err := s.repo.GetAuditRecordByID(s.repo.DB, req.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("审核驳回失败: 审核记录不存在, record_id=%d", req.Id)
-			return nil, errors.New("审核记录不存在")
-		}
-		log.Error("审核驳回失败: 查询审核记录异常: %v, record_id=%d", err, req.Id)
-		return nil, err
-	}
-
-	if err := ensureAuditRecordPending(record); err != nil {
-		log.Warn("审核驳回失败: 审核记录不可处理, record_id=%d status=%d audit_result=%d", record.ID, record.Status, record.AuditResult)
-		return nil, err
-	}
-
 	auditorID, err := s.getAuditOperatorID()
 	if err != nil {
-		log.Warn("审核驳回失败: 获取审核人失败, record_id=%d err=%v", record.ID, err)
+		log.Warn("审核驳回失败: 获取审核人失败, record_id=%d err=%v", req.Id, err)
 		return nil, err
 	}
-	if err := s.requireAuditReviewPermission(auditorID, record); err != nil {
-		return nil, err
-	}
+	var rejectedRecord *model.AuditRecord
 
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
+		record, lockErr := s.repo.GetAuditRecordByIDForUpdate(tx, req.Id)
+		if lockErr != nil {
+			if errors.Is(lockErr, gorm.ErrRecordNotFound) {
+				return errAuditRecordNotFound
+			}
+			return lockErr
+		}
+		if pendingErr := ensureAuditRecordPending(record); pendingErr != nil {
+			return pendingErr
+		}
+		if permissionErr := s.requireAuditReviewPermission(auditorID, record); permissionErr != nil {
+			return permissionErr
+		}
 		if err := s.applyAuditRejectionSideEffects(tx, record); err != nil {
 			return err
 		}
@@ -511,14 +515,29 @@ func (s *AuditService) AuditRejection(req *api.AuditRejectionRequest) (*api.Audi
 			"audit_time":    time.Now(),
 			"status":        model.AuditStatusRejected,
 		}
-		return s.repo.UpdateAuditRecordByID(tx, record.ID, updates)
+		if record.TargetID > 0 {
+			updates["target_id"] = record.TargetID
+		}
+		if err := s.repo.UpdateAuditRecordByID(tx, record.ID, updates); err != nil {
+			return err
+		}
+		rejectedRecord = record
+		return nil
 	})
 	if err != nil {
-		log.Error("审核驳回失败: 事务执行异常: %v, record_id=%d", err, record.ID)
+		if errors.Is(err, errAuditRecordNotFound) {
+			log.Warn("审核驳回失败: 审核记录不存在, record_id=%d", req.Id)
+			return nil, errors.New("审核记录不存在")
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn("审核驳回失败: 审核目标不存在, record_id=%d", req.Id)
+			return nil, errors.New("审核目标不存在")
+		}
+		log.Warn("审核驳回失败: %v, record_id=%d", err, req.Id)
 		return nil, err
 	}
-	log.Info("审核驳回成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", record.ID, record.TargetType, record.TargetID, auditorID)
-	s.handleAuditRejectedSideEffects(record, auditorID, reason)
+	log.Info("审核驳回成功: record_id=%d target_type=%d target_id=%d auditor_id=%d", rejectedRecord.ID, rejectedRecord.TargetType, rejectedRecord.TargetID, auditorID)
+	s.handleAuditRejectedSideEffects(rejectedRecord, auditorID, reason)
 
 	return &resp, nil
 }
@@ -618,25 +637,84 @@ func (s *AuditService) applyVolunteerAuditApproval(tx *gorm.DB, record *model.Au
 
 // applyAuditRejectionSideEffects 处理审核驳回后的附加副作用。
 func (s *AuditService) applyAuditRejectionSideEffects(tx *gorm.DB, record *model.AuditRecord) error {
-	if record.TargetType != model.AuditTargetVolunteer || record.OperationType != model.OperationTypeUpdate {
+	if record.TargetType == model.AuditTargetVolunteer && record.OperationType == model.OperationTypeUpdate {
+		scene, err := resolveVolunteerUpdateAuditScene(record.NewContent)
+		if err != nil {
+			return err
+		}
+		if scene == model.AuditSceneVolunteerRealNameVerify {
+			volunteer, err := s.repo.FindVolunteerByID(tx, record.TargetID)
+			if err != nil {
+				return err
+			}
+			if err := s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
+				"audit_status": model.VolunteerAuditStatusRejected,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return s.applySignupAuditRejection(tx, record)
+}
+
+// applySignupAuditRejection materializes or updates signup status for rejected signup audits.
+func (s *AuditService) applySignupAuditRejection(tx *gorm.DB, record *model.AuditRecord) error {
+	if record.TargetType != model.AuditTargetSignup {
 		return nil
 	}
 
-	scene, err := resolveVolunteerUpdateAuditScene(record.NewContent)
-	if err != nil {
-		return err
+	if record.OperationType == model.OperationTypeCreate && record.TargetID <= 0 {
+		if strings.TrimSpace(record.NewContent) == "" {
+			return errors.New("报名快照无效")
+		}
+		var signupSnapshot model.ActivitySignup
+		if err := json.Unmarshal([]byte(record.NewContent), &signupSnapshot); err != nil {
+			return err
+		}
+		if signupSnapshot.ActivityID <= 0 || signupSnapshot.VolunteerID <= 0 {
+			return errors.New("报名快照无效")
+		}
+
+		signup, err := s.repo.GetSignup(tx, signupSnapshot.ActivityID, signupSnapshot.VolunteerID)
+		if err != nil {
+			return err
+		}
+		if signup == nil {
+			signup = &model.ActivitySignup{
+				ActivityID:  signupSnapshot.ActivityID,
+				VolunteerID: signupSnapshot.VolunteerID,
+				Status:      model.ActivitySignupStatusRejected,
+			}
+			if err := s.repo.CreateSignup(tx, signup); err != nil {
+				return err
+			}
+			record.TargetID = signup.ID
+			return nil
+		}
+
+		record.TargetID = signup.ID
+		switch signup.Status {
+		case model.ActivitySignupStatusSuccess, model.ActivitySignupStatusCanceled, model.ActivitySignupStatusRejected:
+			return nil
+		default:
+			return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusRejected)
+		}
 	}
-	if scene != model.AuditSceneVolunteerRealNameVerify {
+
+	if record.TargetID <= 0 {
 		return nil
 	}
 
-	volunteer, err := s.repo.FindVolunteerByID(tx, record.TargetID)
+	signup, err := s.repo.GetActivitySignupByID(tx, record.TargetID)
 	if err != nil {
 		return err
 	}
-	return s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
-		"audit_status": model.VolunteerAuditStatusRejected,
-	})
+	switch signup.Status {
+	case model.ActivitySignupStatusSuccess, model.ActivitySignupStatusCanceled, model.ActivitySignupStatusRejected:
+		return nil
+	default:
+		return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusRejected)
+	}
 }
 
 // applyMemberAuditApproval 处理组织成员目标的审核通过逻辑。
@@ -742,6 +820,16 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 		if signupSnapshot.ActivityID <= 0 || signupSnapshot.VolunteerID <= 0 {
 			return errors.New("报名快照无效")
 		}
+		activity, err := s.repo.GetActivityByIDForUpdate(tx, signupSnapshot.ActivityID)
+		if err != nil {
+			return err
+		}
+		if activity.Status != model.ActivityStatusRecruiting {
+			return errors.New("活动已结束或已取消")
+		}
+		if activity.MaxPeople > 0 && activity.CurrentPeople >= activity.MaxPeople {
+			return errors.New("活动名额已满")
+		}
 
 		needIncrementPeople := false
 		signup, err := s.repo.GetSignup(tx, signupSnapshot.ActivityID, signupSnapshot.VolunteerID)
@@ -779,7 +867,23 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 	if err != nil {
 		return err
 	}
-	return s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusSuccess)
+	activity, err := s.repo.GetActivityByIDForUpdate(tx, signup.ActivityID)
+	if err != nil {
+		return err
+	}
+	if activity.Status != model.ActivityStatusRecruiting {
+		return errors.New("活动已结束或已取消")
+	}
+	if signup.Status == model.ActivitySignupStatusSuccess {
+		return nil
+	}
+	if activity.MaxPeople > 0 && activity.CurrentPeople >= activity.MaxPeople {
+		return errors.New("活动名额已满")
+	}
+	if err := s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, model.ActivitySignupStatusSuccess); err != nil {
+		return err
+	}
+	return s.repo.IncrementActivityPeople(tx, signup.ActivityID)
 }
 
 func (s *AuditService) handleAuditApprovedSideEffects(record *model.AuditRecord, auditorID int64) {
@@ -864,6 +968,9 @@ func (s *AuditService) handleAuditRejectedSideEffects(record *model.AuditRecord,
 	if err != nil || signup == nil {
 		return
 	}
+	if signup.Status != model.ActivitySignupStatusRejected {
+		return
+	}
 	activity, err := s.repo.GetActivityByID(s.repo.DB, signup.ActivityID)
 	if err != nil || activity == nil {
 		return
@@ -903,6 +1010,13 @@ func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*ap
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("审核记录不存在")
 		}
+		return nil, err
+	}
+	operatorID, err := s.getAuditOperatorID()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireAuditReviewPermission(operatorID, record); err != nil {
 		return nil, err
 	}
 
@@ -1064,6 +1178,9 @@ func (s *AuditService) resolveAuditRecordOrgID(record *model.AuditRecord) (int64
 
 // ensureAuditRecordPending 校验审核记录是否处于待处理状态。
 func ensureAuditRecordPending(record *model.AuditRecord) error {
+	if record == nil {
+		return errors.New("审核记录不存在")
+	}
 	if !model.IsValidAuditTargetType(record.TargetType) {
 		return errors.New("审核目标类型不合法")
 	}

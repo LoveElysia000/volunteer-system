@@ -61,9 +61,9 @@ service MembershipService {
 
 // VolunteerJoinRequest 志愿者加入组织请求
 message VolunteerJoinRequest {
-  // 志愿者ID 必填 @gotags: json:"volunteerId,required"
+  // 志愿者ID 必填 @gotags: query:"volunteerId,required"
   int64 volunteerId = 1;
-  // 组织ID 必填 @gotags: json:"organizationId,required"
+  // 组织ID 必填 @gotags: query:"organizationId,required"
   int64 organizationId = 2;
 }
 
@@ -79,9 +79,9 @@ message VolunteerJoinResponse {
 
 // VolunteerLeaveRequest 志愿者退出组织请求
 message VolunteerLeaveRequest {
-  // 成员关系ID 必填 @gotags: json:"membershipId,required"
+  // 成员关系ID 必填 @gotags: query:"membershipId,required"
   int64 membershipId = 1;
-  // 退出原因 可选 @gotags: json:"reason"
+  // 退出原因 可选 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -133,11 +133,11 @@ message VolunteerOrganizationsResponse {
 
 // MemberStatusUpdateRequest 更新成员状态请求
 message MemberStatusUpdateRequest {
-  // 成员关系ID 必填 @gotags: json:"membershipId,required"
+  // 成员关系ID 必填 @gotags: query:"membershipId,required"
   int64 membershipId = 1;
-  // 成员状态 必填 @gotags: json:"status,required"
+  // 成员状态 必填 @gotags: query:"status,required"
   int32 status = 2;
-  // 审核意见 可选 @gotags: json:"reviewComment"
+  // 审核意见 可选 @gotags: query:"reviewComment"
   string reviewComment = 3;
 }
 

@@ -25,14 +25,14 @@ const (
 // LoginRequest 登录请求
 type LoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
-	LoginType string `protobuf:"bytes,1,opt,name=loginType,proto3" json:"loginType,required"`
-	// 登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"
-	Identifier string `protobuf:"bytes,2,opt,name=identifier,proto3" json:"identifier,required"`
-	// 密码 必填 @gotags: json:"password,required"
-	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,required"`
-	// 身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: json:"identity,required"
-	Identity      string `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,required"`
+	// 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: query:"loginType,required"
+	LoginType string `protobuf:"bytes,1,opt,name=loginType,proto3" json:"loginType" query:"loginType,required"`
+	// 登录标识（用户名/邮箱/手机号） 必填 @gotags: query:"identifier,required"
+	Identifier string `protobuf:"bytes,2,opt,name=identifier,proto3" json:"identifier" query:"identifier,required"`
+	// 密码 必填 @gotags: query:"password,required"
+	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password" query:"password,required"`
+	// 身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: query:"identity,required"
+	Identity      string `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity" query:"identity,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -307,8 +307,8 @@ func (x *UserInfo) GetUpdatedAt() int64 {
 // LogoutRequest 登出请求
 type LogoutRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 要注销的令牌 必填 @gotags: json:"token,required"
-	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,required"`
+	// 要注销的令牌 必填 @gotags: query:"token,required"
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token" query:"token,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -408,8 +408,8 @@ func (x *LogoutResponse) GetMessage() string {
 // RefreshTokenRequest 刷新令牌请求
 type RefreshTokenRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 刷新令牌 必填 @gotags: json:"refreshToken,required"
-	RefreshToken  string `protobuf:"bytes,1,opt,name=refreshToken,proto3" json:"refreshToken,required"`
+	// 刷新令牌 必填 @gotags: query:"refreshToken,required"
+	RefreshToken  string `protobuf:"bytes,1,opt,name=refreshToken,proto3" json:"refreshToken" query:"refreshToken,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

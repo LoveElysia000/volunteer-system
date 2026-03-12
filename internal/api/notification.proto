@@ -71,7 +71,7 @@ message NotificationItem {
 
 // NotificationReadRequest 批量已读请求
 message NotificationReadRequest {
-  // 收件箱ID列表 @gotags: json:"ids,required"
+  // 收件箱ID列表 @gotags: query:"ids,required"
   repeated int64 ids = 1;
 }
 

@@ -15,6 +15,7 @@ service OrganizationService {
   rpc OrganizationList(OrganizationListRequest) returns (OrganizationListResponse) {
     option (google.api.http) = {
       post: "/api/organizations/list"
+      body: "*"
     };
   }
 
@@ -195,27 +196,27 @@ message OrganizationInfo {
 
 // OrganizationCreateRequest 创建组织请求
 message OrganizationCreateRequest {
-  // 组织名称 必填 @gotags: json:"name,required"
+  // 组织名称 必填 @gotags: query:"name,required"
   string name = 1;
-  // 组织代码 可选 @gotags: json:"organizationCode"
+  // 组织代码 可选 @gotags: query:"organizationCode"
   string organizationCode = 2;
-  // 联系人 必填 @gotags: json:"contactPerson,required"
+  // 联系人 必填 @gotags: query:"contactPerson,required"
   string contactPerson = 3;
-  // 联系电话 必填 @gotags: json:"contactPhone,required"
+  // 联系电话 必填 @gotags: query:"contactPhone,required"
   string contactPhone = 4;
-  // 邮箱 可选 @gotags: json:"email"
+  // 邮箱 可选 @gotags: query:"email"
   string email = 5;
-  // 地址 可选 @gotags: json:"address"
+  // 地址 可选 @gotags: query:"address"
   string address = 6;
-  // 组织类型 可选 @gotags: json:"organizationType"
+  // 组织类型 可选 @gotags: query:"organizationType"
   string organizationType = 7;
-  // 地区 可选 @gotags: json:"region"
+  // 地区 可选 @gotags: query:"region"
   string region = 8;
-  // 描述 可选 @gotags: json:"description"
+  // 描述 可选 @gotags: query:"description"
   string description = 9;
-  // 网站地址 可选 @gotags: json:"websiteUrl"
+  // 网站地址 可选 @gotags: query:"websiteUrl"
   string websiteUrl = 10;
-  // Logo地址 可选 @gotags: json:"logoUrl"
+  // Logo地址 可选 @gotags: query:"logoUrl"
   string logoUrl = 11;
 }
 
@@ -275,22 +276,22 @@ message DeleteOrganizationResponse {
 
 // OrganizationSearchRequest 搜索组织请求
 message OrganizationSearchRequest {
-  // 搜索关键字 可选 @gotags: json:"keyword"
+  // 搜索关键字 可选 @gotags: query:"keyword"
   string keyword = 1;
-  // 状态筛选 可选 @gotags: json:"status"
+  // 状态筛选 可选 @gotags: query:"status"
   repeated int32 status = 2;
-  // 组织类型筛选 可选 @gotags: json:"organizationType"
+  // 组织类型筛选 可选 @gotags: query:"organizationType"
   string organizationType = 3;
-  // 地区筛选 可选 @gotags: json:"region"
+  // 地区筛选 可选 @gotags: query:"region"
   string region = 4;
   reserved 5;
-  // 创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"
+  // 创建时间范围筛选 开始时间 可选 @gotags: query:"startDate"
   string startDate = 6;
-  // 创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"
+  // 创建时间范围筛选 结束时间 可选 @gotags: query:"endDate"
   string endDate = 7;
-  // 页码 必填 @gotags: json:"page,required"
+  // 页码 必填 @gotags: query:"page,required"
   int32 page = 8;
-  // 页大小 必填 @gotags: json:"pageSize,required"
+  // 页大小 必填 @gotags: query:"pageSize,required"
   int32 pageSize = 9;
 }
 
@@ -302,7 +303,7 @@ message OrganizationSearchResponse {
 
 // BulkDeleteOrganizationRequest 批量删除组织请求
 message BulkDeleteOrganizationRequest {
-  // 组织ID列表 必填 @gotags: json:"ids,required"
+  // 组织ID列表 必填 @gotags: query:"ids,required"
   repeated int64 ids = 1;
 }
 
@@ -318,9 +319,9 @@ message BulkDeleteOrganizationResponse {
 
 // BatchDisableOrganizationRequest 批量停用组织请求
 message BatchDisableOrganizationRequest {
-  // 组织ID列表 必填 @gotags: json:"ids,required"
+  // 组织ID列表 必填 @gotags: query:"ids,required"
   repeated int64 ids = 1;
-  // 停用原因 可选 @gotags: json:"reason"
+  // 停用原因 可选 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -336,9 +337,9 @@ message BatchDisableOrganizationResponse {
 
 // BatchEnableOrganizationRequest 批量启用组织请求
 message BatchEnableOrganizationRequest {
-  // 组织ID列表 必填 @gotags: json:"ids,required"
+  // 组织ID列表 必填 @gotags: query:"ids,required"
   repeated int64 ids = 1;
-  // 启用原因 可选 @gotags: json:"reason"
+  // 启用原因 可选 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -356,7 +357,7 @@ message BatchEnableOrganizationResponse {
 message DisableOrganizationRequest {
   // 组织ID 必填 @gotags: path:"id,required"
   int64 id = 1;
-  // 停用原因 可选 @gotags: json:"reason"
+  // 停用原因 可选 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -370,7 +371,7 @@ message DisableOrganizationResponse {
 message EnableOrganizationRequest {
   // 组织ID 必填 @gotags: path:"id,required"
   int64 id = 1;
-  // 启用原因 可选 @gotags: json:"reason"
+  // 启用原因 可选 @gotags: query:"reason"
   string reason = 2;
 }
 

@@ -74,12 +74,16 @@ func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (
 		return nil, errors.New("密码加密失败")
 	}
 
-	// 转换性别
-	genderCode, ok := model.GenderCodeByText[req.Gender]
-	if !ok {
-		err = errors.New("不支持的性别")
-		log.Warn("志愿者注册 - 性别转换失败: %v", err)
-		return nil, err
+	// 转换性别（未传时默认未知）。
+	genderCode := model.GenderCodeByText[model.DefaultUnknownText]
+	if req.Gender != "" {
+		var ok bool
+		genderCode, ok = model.GenderCodeByText[req.Gender]
+		if !ok {
+			err = errors.New("不支持的性别")
+			log.Warn("志愿者注册 - 性别转换失败: %v", err)
+			return nil, err
+		}
 	}
 
 	var account *model.SysAccount
@@ -119,6 +123,17 @@ func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (
 	})
 	if err != nil {
 		log.Error("志愿者注册 - 事务执行失败: %v", err)
+		if util.IsDuplicateEntryErr(err) {
+			mobileExists, mobileErr := s.repo.CheckMobileExists(s.repo.DB, mobilePair.Hash)
+			if mobileErr == nil && mobileExists {
+				return nil, errors.New("手机号已存在")
+			}
+			emailExists, emailErr := s.repo.CheckEmailExists(s.repo.DB, req.Email)
+			if emailErr == nil && emailExists {
+				return nil, errors.New("邮箱已存在")
+			}
+			return nil, errors.New("账号信息已存在")
+		}
 		return nil, err
 	}
 	if err := s.bindDefaultRoleBestEffort(account.ID, model.RBACRoleVolunteer, model.RBACScopeGlobal, 0); err != nil {
@@ -216,6 +231,17 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 
 	if err != nil {
 		log.Error("组织注册 - 事务执行失败: %v", err)
+		if util.IsDuplicateEntryErr(err) {
+			mobileExists, mobileErr := s.repo.CheckMobileExists(s.repo.DB, mobilePair.Hash)
+			if mobileErr == nil && mobileExists {
+				return nil, errors.New("手机号已存在")
+			}
+			emailExists, emailErr := s.repo.CheckEmailExists(s.repo.DB, req.Email)
+			if emailErr == nil && emailExists {
+				return nil, errors.New("邮箱已存在")
+			}
+			return nil, errors.New("账号信息已存在")
+		}
 		return nil, err
 	}
 	if err := s.bindDefaultRoleBestEffort(account.ID, model.RBACRoleOrgOwner, model.RBACScopeOrg, orgID); err != nil {
@@ -227,6 +253,9 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 
 // validateVolunteerRequest 验证志愿者注册请求
 func (s *RegisterService) validateVolunteerRequest(req *api.VolunteerRegisterRequest) error {
+	if req == nil {
+		return errors.New("请求不能为空")
+	}
 	if req.Name == "" {
 		return errors.New("姓名不能为空")
 	}
@@ -249,17 +278,16 @@ func (s *RegisterService) validateVolunteerRequest(req *api.VolunteerRegisterReq
 		return errors.New("邮箱格式不正确")
 	}
 
-	if req.Age <= 0 || req.Age > 120 {
+	// 年龄为可选字段：传值时才做范围校验。
+	if req.Age > 0 && req.Age > 120 {
 		return errors.New("年龄必须在1-120岁之间")
 	}
 
-	if req.Gender == "" {
-		return errors.New("性别不能为空")
-	}
-
-	// 验证性别格式
-	if _, ok := model.GenderCodeByText[req.Gender]; !ok {
-		return errors.New("性别格式不正确，支持：男、女、未知")
+	// 性别为可选字段：传值时才做枚举校验。
+	if req.Gender != "" {
+		if _, ok := model.GenderCodeByText[req.Gender]; !ok {
+			return errors.New("性别格式不正确，支持：男、女、未知")
+		}
 	}
 
 	return nil
@@ -267,6 +295,9 @@ func (s *RegisterService) validateVolunteerRequest(req *api.VolunteerRegisterReq
 
 // validateOrganizationRequest 验证组织注册请求
 func (s *RegisterService) validateOrganizationRequest(req *api.OrganizationRegisterRequest) error {
+	if req == nil {
+		return errors.New("请求不能为空")
+	}
 	if req.Name == "" {
 		return errors.New("联系人姓名不能为空")
 	}

@@ -111,8 +111,11 @@ message RoleListResponse {
 }
 
 message RoleCreateRequest {
+  // 角色编码 @gotags: query:"roleCode"
   string roleCode = 1;
+  // 角色名称 @gotags: query:"roleName"
   string roleName = 2;
+  // 描述 @gotags: query:"description"
   string description = 3;
 }
 
@@ -123,7 +126,9 @@ message RoleCreateResponse {
 message RoleUpdateRequest {
   // 角色ID @gotags: path:"id,required"
   int64 id = 1;
+  // 角色名称 @gotags: query:"roleName"
   string roleName = 2;
+  // 描述 @gotags: query:"description"
   string description = 3;
 }
 
@@ -134,6 +139,7 @@ message RoleUpdateResponse {
 message RoleStatusUpdateRequest {
   // 角色ID @gotags: path:"id,required"
   int64 id = 1;
+  // 状态 @gotags: query:"status"
   int32 status = 2;
 }
 
@@ -180,6 +186,7 @@ message RolePermissionsResponse {
 message RolePermissionsSetRequest {
   // 角色ID @gotags: path:"roleId,required"
   int64 roleId = 1;
+  // 权限ID列表 @gotags: query:"permissionIds"
   repeated int64 permissionIds = 2;
 }
 
@@ -188,11 +195,17 @@ message RolePermissionsSetResponse {
 }
 
 message AccountRoleGrantRequest {
+  // 账号ID @gotags: query:"accountId"
   int64 accountId = 1;
+  // 角色ID @gotags: query:"roleId"
   int64 roleId = 2;
+  // 作用域类型 @gotags: query:"scopeType"
   string scopeType = 3;
+  // 作用域ID @gotags: query:"scopeId"
   int64 scopeId = 4;
+  // 过期时间 @gotags: query:"expiresAt"
   string expiresAt = 5;
+  // 备注 @gotags: query:"remark"
   string remark = 6;
 }
 
@@ -203,6 +216,7 @@ message AccountRoleGrantResponse {
 message AccountRoleRevokeRequest {
   // 授权绑定ID @gotags: path:"bindingId,required"
   int64 bindingId = 1;
+  // 备注 @gotags: query:"remark"
   string remark = 2;
 }
 

@@ -5,6 +5,7 @@ import (
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // FindMembershipByOrgAndVolunteer finds membership by org and volunteer.
@@ -30,6 +31,20 @@ func (r *Repository) GetMembershipByID(db *gorm.DB, id int64) (*model.OrgMember,
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
+		return nil, err
+	}
+	return &member, nil
+}
+
+// GetMembershipByIDForUpdate finds membership by id and locks the row for update.
+func (r *Repository) GetMembershipByIDForUpdate(db *gorm.DB, id int64) (*model.OrgMember, error) {
+	var member model.OrgMember
+	err := db.WithContext(r.ctx).
+		Model(&model.OrgMember{}).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ?", id).
+		First(&member).Error
+	if err != nil {
 		return nil, err
 	}
 	return &member, nil

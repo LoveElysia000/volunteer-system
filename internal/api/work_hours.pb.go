@@ -28,12 +28,12 @@ type WorkHourLogListRequest struct {
 	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page" query:"page"`
 	// 页大小 可选 @gotags: query:"pageSize"
 	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
-	// 活动ID 可选 @gotags: json:"activityId"
-	ActivityId int64 `protobuf:"varint,3,opt,name=activityId,proto3" json:"activityId"`
-	// 报名ID 可选 @gotags: json:"signupId"
-	SignupId int64 `protobuf:"varint,4,opt,name=signupId,proto3" json:"signupId"`
-	// 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
-	OperationType int32 `protobuf:"varint,5,opt,name=operationType,proto3" json:"operationType"`
+	// 活动ID 可选 @gotags: query:"activityId"
+	ActivityId int64 `protobuf:"varint,3,opt,name=activityId,proto3" json:"activityId" query:"activityId"`
+	// 报名ID 可选 @gotags: query:"signupId"
+	SignupId int64 `protobuf:"varint,4,opt,name=signupId,proto3" json:"signupId" query:"signupId"`
+	// 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: query:"operationType"
+	OperationType int32 `protobuf:"varint,5,opt,name=operationType,proto3" json:"operationType" query:"operationType"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -346,12 +346,12 @@ func (x *WorkHourLogItem) GetCreatedAt() string {
 
 type VoidWorkHourRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 报名ID 必填 @gotags: json:"signupId,required"
-	SignupId int64 `protobuf:"varint,1,opt,name=signupId,proto3" json:"signupId,required"`
-	// 作废原因 必填 @gotags: json:"reason,required"
-	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,required"`
-	// 幂等键 必填 @gotags: json:"idempotencyKey,required"
-	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotencyKey,proto3" json:"idempotencyKey,required"`
+	// 报名ID 必填 @gotags: query:"signupId,required"
+	SignupId int64 `protobuf:"varint,1,opt,name=signupId,proto3" json:"signupId" query:"signupId,required"`
+	// 作废原因 必填 @gotags: query:"reason,required"
+	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason,required"`
+	// 幂等键 必填 @gotags: query:"idempotencyKey,required"
+	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotencyKey,proto3" json:"idempotencyKey" query:"idempotencyKey,required"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -461,14 +461,14 @@ func (x *VoidWorkHourResponse) GetWorkHourLogId() int64 {
 
 type RecalculateWorkHourRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 报名ID 必填 @gotags: json:"signupId,required"
-	SignupId int64 `protobuf:"varint,1,opt,name=signupId,proto3" json:"signupId,required"`
-	// 重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: json:"hours"
-	Hours float64 `protobuf:"fixed64,2,opt,name=hours,proto3" json:"hours"`
-	// 重算原因 必填 @gotags: json:"reason,required"
-	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,required"`
-	// 幂等键 必填 @gotags: json:"idempotencyKey,required"
-	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotencyKey,proto3" json:"idempotencyKey,required"`
+	// 报名ID 必填 @gotags: query:"signupId,required"
+	SignupId int64 `protobuf:"varint,1,opt,name=signupId,proto3" json:"signupId" query:"signupId,required"`
+	// 重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: query:"hours"
+	Hours float64 `protobuf:"fixed64,2,opt,name=hours,proto3" json:"hours" query:"hours"`
+	// 重算原因 必填 @gotags: query:"reason,required"
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason" query:"reason,required"`
+	// 幂等键 必填 @gotags: query:"idempotencyKey,required"
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotencyKey,proto3" json:"idempotencyKey" query:"idempotencyKey,required"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }

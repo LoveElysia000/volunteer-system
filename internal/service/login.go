@@ -159,15 +159,21 @@ func (s *LoginService) findUserByIdentifier(db *gorm.DB, req *api.LoginRequest) 
 		}
 
 		user, err := s.repo.FindByMobile(db, mobileHash)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		if err != nil {
-			return nil, errors.New("用户不存在")
+			return nil, err
 		}
 		return user, nil
 	case "email":
 		// 邮箱登录
 		user, err := s.repo.FindByEmail(db, req.Identifier)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		if err != nil {
-			return nil, errors.New("用户不存在")
+			return nil, err
 		}
 		return user, nil
 	default:

@@ -25,10 +25,10 @@ const (
 // 创建会话请求
 type AssistantCreateSessionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 场景：general/activity_draft/ops_advisor 必填 @gotags: json:"scene,required"
-	Scene string `protobuf:"bytes,1,opt,name=scene,proto3" json:"scene,required"`
-	// 会话标题 可选 @gotags: json:"title"
-	Title         string `protobuf:"bytes,2,opt,name=title,proto3" json:"title"`
+	// 场景：general/activity_draft/ops_advisor 必填 @gotags: query:"scene,required"
+	Scene string `protobuf:"bytes,1,opt,name=scene,proto3" json:"scene" query:"scene,required"`
+	// 会话标题 可选 @gotags: query:"title"
+	Title         string `protobuf:"bytes,2,opt,name=title,proto3" json:"title" query:"title"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -126,12 +126,12 @@ func (x *AssistantCreateSessionResponse) GetSessionId() int64 {
 // 对话请求
 type AssistantChatRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 会话ID 必填 @gotags: json:"session_id,required"
-	SessionId int64 `protobuf:"varint,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,required"`
-	// 用户消息 必填 @gotags: json:"message,required"
-	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,required"`
-	// 是否流式（当前仅占位） @gotags: json:"stream"
-	Stream        bool `protobuf:"varint,3,opt,name=stream,proto3" json:"stream"`
+	// 会话ID 必填 @gotags: query:"session_id,required"
+	SessionId int64 `protobuf:"varint,1,opt,name=session_id,json=sessionId,proto3" json:"session_id" query:"session_id,required"`
+	// 用户消息 必填 @gotags: query:"message,required"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message" query:"message,required"`
+	// 是否流式（当前仅占位） @gotags: query:"stream"
+	Stream        bool `protobuf:"varint,3,opt,name=stream,proto3" json:"stream" query:"stream"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -427,7 +427,7 @@ func (x *AssistantChatResponse) GetUsage() *AssistantUsage {
 // 会话历史请求
 type AssistantSessionMessagesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 会话ID 必填 @gotags: path:"id,required" json:"id"
+	// 会话ID 必填 @gotags: path:"id,required"
 	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -664,14 +664,14 @@ func (x *AssistantSessionMessagesResponse) GetList() []*AssistantMessageItem {
 // 活动草案快捷入口请求
 type AssistantActivityDraftActionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 可选会话ID @gotags: json:"session_id"
-	SessionId int64 `protobuf:"varint,1,opt,name=session_id,json=sessionId,proto3" json:"session_id"`
-	// 活动主题 必填 @gotags: json:"topic,required"
-	Topic string `protobuf:"bytes,2,opt,name=topic,proto3" json:"topic,required"`
-	// 目标人群 @gotags: json:"target_people"
-	TargetPeople string `protobuf:"bytes,3,opt,name=target_people,json=targetPeople,proto3" json:"target_people"`
-	// 地点 @gotags: json:"location"
-	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location"`
+	// 可选会话ID @gotags: query:"session_id"
+	SessionId int64 `protobuf:"varint,1,opt,name=session_id,json=sessionId,proto3" json:"session_id" query:"session_id"`
+	// 活动主题 必填 @gotags: query:"topic,required"
+	Topic string `protobuf:"bytes,2,opt,name=topic,proto3" json:"topic" query:"topic,required"`
+	// 目标人群 @gotags: query:"target_people"
+	TargetPeople string `protobuf:"bytes,3,opt,name=target_people,json=targetPeople,proto3" json:"target_people" query:"target_people"`
+	// 地点 @gotags: query:"location"
+	Location      string `protobuf:"bytes,4,opt,name=location,proto3" json:"location" query:"location"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

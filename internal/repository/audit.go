@@ -4,6 +4,7 @@ import (
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // CreateAuditRecord inserts an audit record.
@@ -44,6 +45,19 @@ func (r *Repository) GetAuditRecordsList(db *gorm.DB, queryMap map[string]any, l
 func (r *Repository) GetAuditRecordByID(db *gorm.DB, id int64) (*model.AuditRecord, error) {
 	var record model.AuditRecord
 	if err := db.WithContext(r.ctx).
+		Model(&model.AuditRecord{}).
+		Where("id = ?", id).
+		First(&record).Error; err != nil {
+		return nil, err
+	}
+	return &record, nil
+}
+
+// GetAuditRecordByIDForUpdate finds one audit record by id and locks the row for update.
+func (r *Repository) GetAuditRecordByIDForUpdate(db *gorm.DB, id int64) (*model.AuditRecord, error) {
+	var record model.AuditRecord
+	if err := db.WithContext(r.ctx).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Model(&model.AuditRecord{}).
 		Where("id = ?", id).
 		First(&record).Error; err != nil {

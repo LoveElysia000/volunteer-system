@@ -37,32 +37,41 @@ service ExportService {
 }
 
 message ExportVolunteersRequest {
-  repeated int64 idList      = 1; // optional selected volunteer ids
-  string         keyword     = 2; // volunteer real_name keyword
-  int32          auditStatus = 3; // 0 means no filter
-  int32          status      = 4; // 0 means no filter
+  // 可选导出志愿者ID列表 @gotags: query:"idList"
+  repeated int64 idList = 1; // optional selected volunteer ids
+  // 志愿者姓名关键字 @gotags: query:"keyword"
+  string keyword = 2; // volunteer real_name keyword
+  // 审核状态（0=不过滤） @gotags: query:"auditStatus"
+  int32 auditStatus = 3; // 0 means no filter
+  // 状态（0=不过滤） @gotags: query:"status"
+  int32 status = 4; // 0 means no filter
 }
 
 message ExportVolunteersResponse {}
 
 message ExportActivitiesRequest {
-  repeated int64 idList    = 1; // optional selected activity ids
-  string         keyword   = 2; // activity title/description keyword
-  int32          status    = 3; // 0 means no filter
-  string         startFrom = 4; // format: 2006-01-02 15:04:05
-  string         startTo   = 5; // format: 2006-01-02 15:04:05
+  // 可选导出活动ID列表 @gotags: query:"idList"
+  repeated int64 idList = 1; // optional selected activity ids
+  // 活动关键字 @gotags: query:"keyword"
+  string keyword = 2; // activity title/description keyword
+  // 状态（0=不过滤） @gotags: query:"status"
+  int32 status = 3; // 0 means no filter
+  // 开始时间（可选） @gotags: query:"startFrom"
+  string startFrom = 4; // format: 2006-01-02 15:04:05
+  // 结束时间（可选） @gotags: query:"startTo"
+  string startTo = 5; // format: 2006-01-02 15:04:05
 }
 
 message ExportActivitiesResponse {}
 
 message ExportOpsReportRequest {
-  // 周/月模板 必填 @gotags: json:"periodType,required"
+  // 周/月模板 必填 @gotags: query:"periodType,required"
   string periodType = 1; // weekly/monthly
-  // 组织ID 必填 @gotags: json:"orgId,required"
+  // 组织ID 必填 @gotags: query:"orgId,required"
   int64 orgId = 2;
-  // 开始时间 可选 @gotags: json:"start"
+  // 开始时间 可选 @gotags: query:"start"
   string start = 3; // format: 2006-01-02 15:04:05
-  // 结束时间 可选 @gotags: json:"end"
+  // 结束时间 可选 @gotags: query:"end"
   string end = 4; // format: 2006-01-02 15:04:05
 }
 

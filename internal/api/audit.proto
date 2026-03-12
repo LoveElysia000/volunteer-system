@@ -15,6 +15,7 @@ service AuditService {
   rpc PendingAuditList(PendingAuditListRequest) returns (PendingAuditListResponse) {
     option (google.api.http) = {
       post: "/api/audits/pending"
+      body: "*"
     };
   }
 
@@ -100,9 +101,9 @@ message PendingAuditItem {
 
 // 执行审核请求参数
 message AuditApprovalRequest {
-  // 审核记录id @gotags: json:"id,required"
+  // 审核记录id @gotags: query:"id,required"
   int64 id = 1;
-  // 原因 @gotags: json:"reason"
+  // 原因 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -112,9 +113,9 @@ message AuditApprovalResponse {
 
 // 执行审核驳回请求参数
 message AuditRejectionRequest {
-  // 审核记录id @gotags: json:"id,required"
+  // 审核记录id @gotags: query:"id,required"
   int64 id = 1;
-  // 原因 @gotags: json:"reason"
+  // 原因 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -123,11 +124,11 @@ message AuditRejectionResponse {
 }
 
 message AuditBatchDecisionRequest {
-  // 审核记录ID列表 @gotags: json:"ids,required"
+  // 审核记录ID列表 @gotags: query:"ids,required"
   repeated int64 ids = 1;
-  // 动作: 1-通过 2-驳回 @gotags: json:"action,required"
+  // 动作: 1-通过 2-驳回 @gotags: query:"action,required"
   int32 action = 2;
-  // 备注/原因 @gotags: json:"reason"
+  // 备注/原因 @gotags: query:"reason"
   string reason = 3;
 }
 

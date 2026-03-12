@@ -31,6 +31,70 @@ func NewVolunteerService(ctx context.Context, c *app.RequestContext) *VolunteerS
 	}
 }
 
+func (s *VolunteerService) hasVolunteerAccess(operatorID int64, volunteer *model.Volunteer) (bool, error) {
+	if operatorID <= 0 || volunteer == nil {
+		return false, nil
+	}
+	if volunteer.AccountID == operatorID {
+		return true, nil
+	}
+
+	operator, err := s.repo.FindByID(s.repo.DB, operatorID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	if operator == nil {
+		return false, nil
+	}
+	// 志愿者账号仅允许访问自己的资料，避免越权读写他人信息。
+	if operator.IdentityType == model.RegisterTypeVolunteerCode {
+		return false, nil
+	}
+
+	hasGlobalManage, err := s.hasPermissionByScope(
+		operatorID,
+		model.RBACScopeGlobal,
+		0,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	)
+	if err != nil {
+		return false, err
+	}
+	if hasGlobalManage {
+		return true, nil
+	}
+
+	orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
+		s.repo.DB,
+		operatorID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+		0,
+	)
+	if err != nil {
+		return false, err
+	}
+	if len(orgIDs) == 0 {
+		return false, nil
+	}
+
+	_, total, err := s.repo.GetVolunteerList(
+		s.repo.DB,
+		orgIDs,
+		map[string]any{"v.id = ?": volunteer.ID},
+		1,
+		0,
+	)
+	if err != nil {
+		return false, err
+	}
+	return total > 0, nil
+}
+
 // VolunteerList 按 RBAC 组织作用域查询志愿者列表。
 func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.VolunteerListResponse, error) {
 	// 参数校验
@@ -149,6 +213,17 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 	if volunteer == nil {
 		log.Error("查询志愿者信息失败: 志愿者不存在, id=%d", req.Id)
 		return nil, errors.New("志愿者不存在")
+	}
+	operatorID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return nil, err
+	}
+	allowed, err := s.hasVolunteerAccess(operatorID, volunteer)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, errors.New("无权查看该志愿者信息")
 	}
 
 	// 格式化生日
@@ -383,6 +458,17 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 		log.Error("更新志愿者信息失败: 志愿者不存在, volunteer_id=%d", req.VolunteerId)
 		return nil, errors.New("志愿者不存在")
 	}
+	operatorID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return nil, err
+	}
+	allowed, err := s.hasVolunteerAccess(operatorID, volunteer)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, errors.New("无权更新该志愿者信息")
+	}
 
 	// 调用 repository 层更新
 	err = s.repo.UpdateVolunteer(s.repo.DB, req.VolunteerId, updateQuery)
@@ -416,45 +502,59 @@ func (s *VolunteerService) VolunteerProfileChangeSubmit(req *api.VolunteerProfil
 		return nil, err
 	}
 
-	hasPending, err := s.hasPendingVolunteerUpdateAuditByScene(volunteer.ID, userID, model.AuditSceneVolunteerProfileUpdate)
-	if err != nil {
-		log.Error("提交资料变更失败: 查询待审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
-		return nil, err
-	}
-	if hasPending {
-		return nil, errors.New("您有正在审核中的申请，请耐心等待")
-	}
+	var resp *api.VolunteerProfileChangeSubmitResponse
+	err = s.withTransaction(func(tx *gorm.DB) error {
+		lockedVolunteer, lockErr := s.repo.FindVolunteerByIDForUpdate(tx, volunteer.ID)
+		if lockErr != nil {
+			if errors.Is(lockErr, gorm.ErrRecordNotFound) {
+				return errors.New("志愿者信息不存在")
+			}
+			return lockErr
+		}
 
-	oldPayload, newPayload, err := buildVolunteerProfileChangeAuditPayloads(req, volunteer)
-	if err != nil {
-		return nil, err
-	}
-	if newPayload.IsEmpty() {
-		return nil, errors.New("没有需要变更的字段")
-	}
+		hasPending, pendingErr := s.hasPendingVolunteerUpdateAuditByScene(tx, lockedVolunteer.ID, userID, model.AuditSceneVolunteerProfileUpdate)
+		if pendingErr != nil {
+			return pendingErr
+		}
+		if hasPending {
+			return errors.New("您有正在审核中的申请，请耐心等待")
+		}
 
-	record, err := buildPendingUpdateAuditRecordByPatch(
-		model.AuditTargetVolunteer,
-		volunteer.ID,
-		userID,
-		model.AuditSceneVolunteerProfileUpdate,
-		oldPayload,
-		newPayload,
-		time.Now(),
-	)
-	if err != nil {
-		log.Error("提交资料变更失败: 构建审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
-		return nil, err
-	}
-	if err := s.repo.CreateAuditRecord(s.repo.DB, record); err != nil {
-		log.Error("提交资料变更失败: 创建审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
-		return nil, err
-	}
+		oldPayload, newPayload, payloadErr := buildVolunteerProfileChangeAuditPayloads(req, lockedVolunteer)
+		if payloadErr != nil {
+			return payloadErr
+		}
+		if newPayload.IsEmpty() {
+			return errors.New("没有需要变更的字段")
+		}
 
-	return &api.VolunteerProfileChangeSubmitResponse{
-		AuditId: record.ID,
-		Status:  model.AuditStatusPending,
-	}, nil
+		record, recordErr := buildPendingUpdateAuditRecordByPatch(
+			model.AuditTargetVolunteer,
+			lockedVolunteer.ID,
+			userID,
+			model.AuditSceneVolunteerProfileUpdate,
+			oldPayload,
+			newPayload,
+			time.Now(),
+		)
+		if recordErr != nil {
+			return recordErr
+		}
+		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
+			return createErr
+		}
+
+		resp = &api.VolunteerProfileChangeSubmitResponse{
+			AuditId: record.ID,
+			Status:  model.AuditStatusPending,
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error("提交资料变更失败: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		return nil, err
+	}
+	return resp, nil
 }
 
 // VolunteerRealNameSubmit 提交志愿者实名认证申请（走审核流，不直接写主表）。
@@ -478,52 +578,63 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 		return nil, err
 	}
 
-	hasPending, err := s.hasPendingVolunteerUpdateAuditByScene(volunteer.ID, userID, model.AuditSceneVolunteerRealNameVerify)
-	if err != nil {
-		log.Error("提交实名认证失败: 查询待审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
-		return nil, err
-	}
-	if hasPending {
-		return nil, errors.New("您有正在审核中的实名认证申请，请耐心等待")
-	}
+	var resp *api.VolunteerRealNameSubmitResponse
+	err = s.withTransaction(func(tx *gorm.DB) error {
+		lockedVolunteer, lockErr := s.repo.FindVolunteerByIDForUpdate(tx, volunteer.ID)
+		if lockErr != nil {
+			if errors.Is(lockErr, gorm.ErrRecordNotFound) {
+				return errors.New("志愿者信息不存在")
+			}
+			return lockErr
+		}
 
-	oldPayload, newPayload, err := buildVolunteerRealNameVerifyAuditPayloads(req, volunteer)
-	if err != nil {
-		return nil, err
-	}
-	record, err := buildPendingUpdateAuditRecordByPatch(
-		model.AuditTargetVolunteer,
-		volunteer.ID,
-		userID,
-		model.AuditSceneVolunteerRealNameVerify,
-		oldPayload,
-		newPayload,
-		time.Now(),
-	)
-	if err != nil {
-		log.Error("提交实名认证失败: 构建审核记录异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
-		return nil, err
-	}
-	if err := s.repo.DB.Transaction(func(tx *gorm.DB) error {
+		hasPending, pendingErr := s.hasPendingVolunteerUpdateAuditByScene(tx, lockedVolunteer.ID, userID, model.AuditSceneVolunteerRealNameVerify)
+		if pendingErr != nil {
+			return pendingErr
+		}
+		if hasPending {
+			return errors.New("您有正在审核中的实名认证申请，请耐心等待")
+		}
+
+		oldPayload, newPayload, payloadErr := buildVolunteerRealNameVerifyAuditPayloads(req, lockedVolunteer)
+		if payloadErr != nil {
+			return payloadErr
+		}
+		record, recordErr := buildPendingUpdateAuditRecordByPatch(
+			model.AuditTargetVolunteer,
+			lockedVolunteer.ID,
+			userID,
+			model.AuditSceneVolunteerRealNameVerify,
+			oldPayload,
+			newPayload,
+			time.Now(),
+		)
+		if recordErr != nil {
+			return recordErr
+		}
 		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
 			return createErr
 		}
 		// 实名审核提交后标记为审核中。
-		return s.repo.UpdateVolunteer(tx, volunteer.ID, map[string]any{
+		if updateErr := s.repo.UpdateVolunteer(tx, lockedVolunteer.ID, map[string]any{
 			"audit_status": model.VolunteerAuditStatusPending,
-		})
-	}); err != nil {
-		log.Error("提交实名认证失败: 事务执行异常: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		}); updateErr != nil {
+			return updateErr
+		}
+		resp = &api.VolunteerRealNameSubmitResponse{
+			AuditId: record.ID,
+			Status:  model.AuditStatusPending,
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error("提交实名认证失败: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
 		return nil, err
 	}
-
-	return &api.VolunteerRealNameSubmitResponse{
-		AuditId: record.ID,
-		Status:  model.AuditStatusPending,
-	}, nil
+	return resp, nil
 }
 
-func (s *VolunteerService) hasPendingVolunteerUpdateAuditByScene(volunteerID, creatorID int64, scene string) (bool, error) {
+func (s *VolunteerService) hasPendingVolunteerUpdateAuditByScene(db *gorm.DB, volunteerID, creatorID int64, scene string) (bool, error) {
 	query := map[string]any{
 		"target_type = ?":    model.AuditTargetVolunteer,
 		"target_id = ?":      volunteerID,
@@ -531,7 +642,7 @@ func (s *VolunteerService) hasPendingVolunteerUpdateAuditByScene(volunteerID, cr
 		"status = ?":         model.AuditStatusPending,
 		"creator_id = ?":     creatorID,
 	}
-	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, query, 0, 0)
+	records, _, err := s.repo.GetAuditRecordsList(db, query, 0, 0)
 	if err != nil {
 		return false, err
 	}

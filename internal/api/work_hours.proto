@@ -41,11 +41,11 @@ message WorkHourLogListRequest {
   int32 page = 1;
   // 页大小 可选 @gotags: query:"pageSize"
   int32 pageSize = 2;
-  // 活动ID 可选 @gotags: json:"activityId"
+  // 活动ID 可选 @gotags: query:"activityId"
   int64 activityId = 3;
-  // 报名ID 可选 @gotags: json:"signupId"
+  // 报名ID 可选 @gotags: query:"signupId"
   int64 signupId = 4;
-  // 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
+  // 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: query:"operationType"
   int32 operationType = 5;
 }
 
@@ -92,11 +92,11 @@ message WorkHourLogItem {
 }
 
 message VoidWorkHourRequest {
-  // 报名ID 必填 @gotags: json:"signupId,required"
+  // 报名ID 必填 @gotags: query:"signupId,required"
   int64 signupId = 1;
-  // 作废原因 必填 @gotags: json:"reason,required"
+  // 作废原因 必填 @gotags: query:"reason,required"
   string reason = 2;
-  // 幂等键 必填 @gotags: json:"idempotencyKey,required"
+  // 幂等键 必填 @gotags: query:"idempotencyKey,required"
   string idempotencyKey = 3;
 }
 
@@ -106,13 +106,13 @@ message VoidWorkHourResponse {
 }
 
 message RecalculateWorkHourRequest {
-  // 报名ID 必填 @gotags: json:"signupId,required"
+  // 报名ID 必填 @gotags: query:"signupId,required"
   int64 signupId = 1;
-  // 重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: json:"hours"
+  // 重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: query:"hours"
   double hours = 2;
-  // 重算原因 必填 @gotags: json:"reason,required"
+  // 重算原因 必填 @gotags: query:"reason,required"
   string reason = 3;
-  // 幂等键 必填 @gotags: json:"idempotencyKey,required"
+  // 幂等键 必填 @gotags: query:"idempotencyKey,required"
   string idempotencyKey = 4;
 }
 

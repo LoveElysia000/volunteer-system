@@ -239,10 +239,13 @@ func (x *RoleListResponse) GetList() []*RoleInfo {
 }
 
 type RoleCreateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RoleCode      string                 `protobuf:"bytes,1,opt,name=roleCode,proto3" json:"roleCode"`
-	RoleName      string                 `protobuf:"bytes,2,opt,name=roleName,proto3" json:"roleName"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 角色编码 @gotags: query:"roleCode"
+	RoleCode string `protobuf:"bytes,1,opt,name=roleCode,proto3" json:"roleCode" query:"roleCode"`
+	// 角色名称 @gotags: query:"roleName"
+	RoleName string `protobuf:"bytes,2,opt,name=roleName,proto3" json:"roleName" query:"roleName"`
+	// 描述 @gotags: query:"description"
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description" query:"description"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -345,9 +348,11 @@ func (x *RoleCreateResponse) GetId() int64 {
 type RoleUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 角色ID @gotags: path:"id,required"
-	Id            int64  `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	RoleName      string `protobuf:"bytes,2,opt,name=roleName,proto3" json:"roleName"`
-	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description"`
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 角色名称 @gotags: query:"roleName"
+	RoleName string `protobuf:"bytes,2,opt,name=roleName,proto3" json:"roleName" query:"roleName"`
+	// 描述 @gotags: query:"description"
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description" query:"description"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -450,8 +455,9 @@ func (x *RoleUpdateResponse) GetMessage() string {
 type RoleStatusUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 角色ID @gotags: path:"id,required"
-	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	Status        int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status"`
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 状态 @gotags: query:"status"
+	Status        int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status" query:"status"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -886,8 +892,9 @@ func (x *RolePermissionsResponse) GetPermissions() []*RolePermissionItem {
 type RolePermissionsSetRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 角色ID @gotags: path:"roleId,required"
-	RoleId        int64   `protobuf:"varint,1,opt,name=roleId,proto3" json:"roleId" path:"roleId,required"`
-	PermissionIds []int64 `protobuf:"varint,2,rep,packed,name=permissionIds,proto3" json:"permissionIds"`
+	RoleId int64 `protobuf:"varint,1,opt,name=roleId,proto3" json:"roleId" path:"roleId,required"`
+	// 权限ID列表 @gotags: query:"permissionIds"
+	PermissionIds []int64 `protobuf:"varint,2,rep,packed,name=permissionIds,proto3" json:"permissionIds" query:"permissionIds"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -981,13 +988,19 @@ func (x *RolePermissionsSetResponse) GetMessage() string {
 }
 
 type AccountRoleGrantRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     int64                  `protobuf:"varint,1,opt,name=accountId,proto3" json:"accountId"`
-	RoleId        int64                  `protobuf:"varint,2,opt,name=roleId,proto3" json:"roleId"`
-	ScopeType     string                 `protobuf:"bytes,3,opt,name=scopeType,proto3" json:"scopeType"`
-	ScopeId       int64                  `protobuf:"varint,4,opt,name=scopeId,proto3" json:"scopeId"`
-	ExpiresAt     string                 `protobuf:"bytes,5,opt,name=expiresAt,proto3" json:"expiresAt"`
-	Remark        string                 `protobuf:"bytes,6,opt,name=remark,proto3" json:"remark"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 账号ID @gotags: query:"accountId"
+	AccountId int64 `protobuf:"varint,1,opt,name=accountId,proto3" json:"accountId" query:"accountId"`
+	// 角色ID @gotags: query:"roleId"
+	RoleId int64 `protobuf:"varint,2,opt,name=roleId,proto3" json:"roleId" query:"roleId"`
+	// 作用域类型 @gotags: query:"scopeType"
+	ScopeType string `protobuf:"bytes,3,opt,name=scopeType,proto3" json:"scopeType" query:"scopeType"`
+	// 作用域ID @gotags: query:"scopeId"
+	ScopeId int64 `protobuf:"varint,4,opt,name=scopeId,proto3" json:"scopeId" query:"scopeId"`
+	// 过期时间 @gotags: query:"expiresAt"
+	ExpiresAt string `protobuf:"bytes,5,opt,name=expiresAt,proto3" json:"expiresAt" query:"expiresAt"`
+	// 备注 @gotags: query:"remark"
+	Remark        string `protobuf:"bytes,6,opt,name=remark,proto3" json:"remark" query:"remark"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1111,8 +1124,9 @@ func (x *AccountRoleGrantResponse) GetMessage() string {
 type AccountRoleRevokeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 授权绑定ID @gotags: path:"bindingId,required"
-	BindingId     int64  `protobuf:"varint,1,opt,name=bindingId,proto3" json:"bindingId" path:"bindingId,required"`
-	Remark        string `protobuf:"bytes,2,opt,name=remark,proto3" json:"remark"`
+	BindingId int64 `protobuf:"varint,1,opt,name=bindingId,proto3" json:"bindingId" path:"bindingId,required"`
+	// 备注 @gotags: query:"remark"
+	Remark        string `protobuf:"bytes,2,opt,name=remark,proto3" json:"remark" query:"remark"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

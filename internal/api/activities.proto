@@ -15,6 +15,7 @@ service ActivityService {
   rpc ActivityList(ActivityListRequest) returns (ActivityListResponse) {
     option (google.api.http) = {
       post: "/api/activities"
+      body: "*"
     };
   }
 
@@ -61,6 +62,7 @@ service ActivityService {
   rpc MyActivities(MyActivitiesRequest) returns (MyActivitiesResponse) {
     option (google.api.http) = {
       post: "/api/activities/my"
+      body: "*"
     };
   }
 
@@ -194,7 +196,7 @@ message ActivityItem {
 // ========== 活动报名 ==========
 
 message ActivitySignupRequest {
-  // 活动ID 必填 @gotags: json:"activityId,required"
+  // 活动ID 必填 @gotags: query:"activityId,required"
   int64 activityId = 1;
 }
 
@@ -206,7 +208,7 @@ message ActivitySignupResponse {
 // ========== 取消报名 ==========
 
 message ActivityCancelRequest {
-  // 活动ID 必填 @gotags: json:"activityId,required"
+  // 活动ID 必填 @gotags: query:"activityId,required"
   int64 activityId = 1;
 }
 
@@ -218,9 +220,9 @@ message ActivityCancelResponse {
 // ========== 活动签到签退 ==========
 
 message ActivityCheckInRequest {
-  // 活动ID 必填 @gotags: json:"activityId,required"
+  // 活动ID 必填 @gotags: query:"activityId,required"
   int64 activityId = 1;
-  // 签到码 必填 @gotags: json:"checkInCode,required"
+  // 签到码 必填 @gotags: query:"checkInCode,required"
   string checkInCode = 2;
 }
 
@@ -232,9 +234,9 @@ message ActivityCheckInResponse {
 }
 
 message ActivityCheckOutRequest {
-  // 活动ID 必填 @gotags: json:"activityId,required"
+  // 活动ID 必填 @gotags: query:"activityId,required"
   int64 activityId = 1;
-  // 签退码 必填 @gotags: json:"checkOutCode,required"
+  // 签退码 必填 @gotags: query:"checkOutCode,required"
   string checkOutCode = 2;
 }
 
@@ -248,15 +250,15 @@ message ActivityCheckOutResponse {
 }
 
 message ActivitySupplementAttendanceRequest {
-  // 活动ID 必填 @gotags: json:"activityId,required"
+  // 活动ID 必填 @gotags: query:"activityId,required"
   int64 activityId = 1;
-  // 志愿者ID（volunteers.id）必填 @gotags: json:"volunteerId,required"
+  // 志愿者ID（volunteers.id）必填 @gotags: query:"volunteerId,required"
   int64 volunteerId = 2;
-  // 补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: json:"checkInTime"
+  // 补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: query:"checkInTime"
   string checkInTime = 3;
-  // 补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: json:"checkOutTime,required"
+  // 补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: query:"checkOutTime,required"
   string checkOutTime = 4;
-  // 补录原因 可选 @gotags: json:"reason"
+  // 补录原因 可选 @gotags: query:"reason"
   string reason = 5;
 }
 
@@ -395,25 +397,25 @@ message MyActivityItem {
 
 // CreateActivityRequest 创建活动请求
 message CreateActivityRequest {
-  // 组织ID 必填 @gotags: json:"orgId,required"
+  // 组织ID 必填 @gotags: query:"orgId,required"
   int64 orgId = 1;
-  // 活动标题 必填 @gotags: json:"title,required"
+  // 活动标题 必填 @gotags: query:"title,required"
   string title = 2;
-  // 活动描述 可选 @gotags: json:"description"
+  // 活动描述 可选 @gotags: query:"description"
   string description = 3;
-  // 封面图URL 可选 @gotags: json:"coverUrl"
+  // 封面图URL 可选 @gotags: query:"coverUrl"
   string coverUrl = 4;
-  // 开始时间 必填 @gotags: json:"startTime,required"
+  // 开始时间 必填 @gotags: query:"startTime,required"
   string startTime = 5;
-  // 结束时间 必填 @gotags: json:"endTime,required"
+  // 结束时间 必填 @gotags: query:"endTime,required"
   string endTime = 6;
-  // 地点名称 必填 @gotags: json:"location,required"
+  // 地点名称 必填 @gotags: query:"location,required"
   string location = 7;
-  // 详细地址 可选 @gotags: json:"address"
+  // 详细地址 可选 @gotags: query:"address"
   string address = 8;
-  // 预估工时（小时） 必填 @gotags: json:"duration,required"
+  // 预估工时（小时） 必填 @gotags: query:"duration,required"
   double duration = 9;
-  // 最大招募人数（0表示不限） 必填 @gotags: json:"maxPeople,required"
+  // 最大招募人数（0表示不限） 必填 @gotags: query:"maxPeople,required"
   int32 maxPeople = 10;
 }
 
@@ -429,23 +431,23 @@ message CreateActivityResponse {
 message UpdateActivityRequest {
   // 活动ID 必填 @gotags: path:"id,required"
   int64 id = 1;
-  // 活动标题 可选 @gotags: json:"title"
+  // 活动标题 可选 @gotags: query:"title"
   string title = 2;
-  // 活动描述 可选 @gotags: json:"description"
+  // 活动描述 可选 @gotags: query:"description"
   string description = 3;
-  // 封面图URL 可选 @gotags: json:"coverUrl"
+  // 封面图URL 可选 @gotags: query:"coverUrl"
   string coverUrl = 4;
-  // 开始时间 可选 @gotags: json:"startTime"
+  // 开始时间 可选 @gotags: query:"startTime"
   string startTime = 5;
-  // 结束时间 可选 @gotags: json:"endTime"
+  // 结束时间 可选 @gotags: query:"endTime"
   string endTime = 6;
-  // 地点名称 可选 @gotags: json:"location"
+  // 地点名称 可选 @gotags: query:"location"
   string location = 7;
-  // 详细地址 可选 @gotags: json:"address"
+  // 详细地址 可选 @gotags: query:"address"
   string address = 8;
-  // 预估工时（小时） 可选 @gotags: json:"duration"
+  // 预估工时（小时） 可选 @gotags: query:"duration"
   double duration = 9;
-  // 最大招募人数（0表示不限） 可选 @gotags: json:"maxPeople"
+  // 最大招募人数（0表示不限） 可选 @gotags: query:"maxPeople"
   int32 maxPeople = 10;
 }
 
@@ -471,7 +473,7 @@ message DeleteActivityResponse {
 message CancelActivityRequest {
   // 活动ID 必填 @gotags: path:"id,required"
   int64 id = 1;
-  // 取消原因 可选 @gotags: json:"reason"
+  // 取消原因 可选 @gotags: query:"reason"
   string reason = 2;
 }
 
@@ -497,9 +499,9 @@ message FinishActivityResponse {
 message GenerateAttendanceCodesRequest {
   // 活动ID 必填 @gotags: path:"id,required"
   int64 id = 1;
-  // 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"
+  // 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"checkInValidMinutes"
   int32 checkInValidMinutes = 2;
-  // 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"
+  // 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"checkOutValidMinutes"
   int32 checkOutValidMinutes = 3;
 }
 
@@ -525,9 +527,9 @@ message GenerateAttendanceCodesResponse {
 message ResetAttendanceCodeRequest {
   // 活动ID 必填 @gotags: path:"id,required"
   int64 id = 1;
-  // 重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"
+  // 重置码类型（1-签到码，2-签退码）必填 @gotags: query:"codeType,required"
   int32 codeType = 2;
-  // 码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"
+  // 码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"validMinutes"
   int32 validMinutes = 3;
 }
 

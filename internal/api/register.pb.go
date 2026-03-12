@@ -25,20 +25,20 @@ const (
 // VolunteerRegisterRequest 志愿者注册请求
 type VolunteerRegisterRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 名称 必填 @gotags: json:"name,required"
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,required"`
-	// 手机号 必填 @gotags: json:"phone,required"
-	Phone string `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone,required"`
-	// 邮箱 必填 @gotags: json:"email,required"
-	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,required"`
-	// 密码 必填 @gotags: json:"password,required"
-	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,required"`
-	// 年龄 @gotags: json:"age"
-	Age int32 `protobuf:"varint,5,opt,name=age,proto3" json:"age"`
-	// 性别 @gotags: json:"gender"
-	Gender string `protobuf:"bytes,6,opt,name=gender,proto3" json:"gender"`
-	// 用户名 @gotags: json:"username,required"
-	UserName      string `protobuf:"bytes,7,opt,name=userName,proto3" json:"username,required"`
+	// 名称 必填 @gotags: query:"name,required"
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name" query:"name,required"`
+	// 手机号 必填 @gotags: query:"phone,required"
+	Phone string `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone" query:"phone,required"`
+	// 邮箱 必填 @gotags: query:"email,required"
+	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email" query:"email,required"`
+	// 密码 必填 @gotags: query:"password,required"
+	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password" query:"password,required"`
+	// 年龄 @gotags: query:"age"
+	Age int32 `protobuf:"varint,5,opt,name=age,proto3" json:"age" query:"age"`
+	// 性别 @gotags: query:"gender"
+	Gender string `protobuf:"bytes,6,opt,name=gender,proto3" json:"gender" query:"gender"`
+	// 用户名 @gotags: query:"username,required"
+	UserName      string `protobuf:"bytes,7,opt,name=userName,proto3" json:"userName" query:"username,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,18 +125,18 @@ func (x *VolunteerRegisterRequest) GetUserName() string {
 // 组织管理者注册请求
 type OrganizationRegisterRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 联系人姓名 必填 @gotags: json:"name,required"
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,required"`
-	// 手机号 必填 @gotags: json:"phone,required"
-	Phone string `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone,required"`
-	// 邮箱 必填 @gotags: json:"email,required"
-	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,required"`
-	// 密码 必填 @gotags: json:"password,required"
-	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,required"`
-	// 组织名称 @gotags: json:"organizationName,required"
-	OrganizationName string `protobuf:"bytes,5,opt,name=organizationName,proto3" json:"organizationName,required"`
-	// 统一社会信用代码/组织机构代码 @gotags: json:"code"
-	Code          string `protobuf:"bytes,6,opt,name=code,proto3" json:"code"`
+	// 联系人姓名 必填 @gotags: query:"name,required"
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name" query:"name,required"`
+	// 手机号 必填 @gotags: query:"phone,required"
+	Phone string `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone" query:"phone,required"`
+	// 邮箱 必填 @gotags: query:"email,required"
+	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email" query:"email,required"`
+	// 密码 必填 @gotags: query:"password,required"
+	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password" query:"password,required"`
+	// 组织名称 @gotags: query:"organizationName,required"
+	OrganizationName string `protobuf:"bytes,5,opt,name=organizationName,proto3" json:"organizationName" query:"organizationName,required"`
+	// 统一社会信用代码/组织机构代码 @gotags: query:"code"
+	Code          string `protobuf:"bytes,6,opt,name=code,proto3" json:"code" query:"code"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
