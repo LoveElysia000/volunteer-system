@@ -651,3 +651,79 @@ func TestRecalculateWorkHourRejectsIdempotencyKeyReuseWithDifferentReason(t *tes
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestActivityListRequiresUserContextBeforeKeywordEmptyResult(t *testing.T) {
+	setupServiceTestDB(t, &model.Activity{})
+
+	svc := NewActivityService(context.Background(), &app.RequestContext{})
+	_, err := svc.ActivityList(&api.ActivityListRequest{
+		Keyword: "no-such-activity",
+	})
+	if err == nil {
+		t.Fatalf("expected activity list to require user context even when keyword has no matches")
+	}
+}
+
+func TestActivityListReturnsErrorWhenAccountMissingEvenIfListEmpty(t *testing.T) {
+	setupServiceTestDB(t, &model.Activity{}, &model.SysAccount{})
+
+	c := &app.RequestContext{}
+	c.Set(middleware.UserIDKey, "99999")
+
+	svc := NewActivityService(context.Background(), c)
+	_, err := svc.ActivityList(&api.ActivityListRequest{
+		Page:     1,
+		PageSize: 10,
+	})
+	if err == nil {
+		t.Fatalf("expected error when current account does not exist")
+	}
+	if err.Error() != "账号不存在" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestActivityDetailReturnsAccountMissingBeforeActivityCheck(t *testing.T) {
+	setupServiceTestDB(t, &model.SysAccount{}, &model.Activity{})
+
+	c := &app.RequestContext{}
+	c.Set(middleware.UserIDKey, "99999")
+
+	svc := NewActivityService(context.Background(), c)
+	_, err := svc.ActivityDetail(&api.ActivityDetailRequest{Id: 123456})
+	if err == nil {
+		t.Fatalf("expected error when current account does not exist")
+	}
+	if err.Error() != "账号不存在" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAuditRecordDetailChecksOperatorBeforeRecordLookup(t *testing.T) {
+	setupServiceTestDB(t, &model.AuditRecord{})
+
+	svc := NewAuditService(context.Background(), &app.RequestContext{})
+	_, err := svc.AuditRecordDetail(&api.AuditRecordDetailRequest{Id: 999999})
+	if err == nil {
+		t.Fatalf("expected error when caller identity is missing")
+	}
+	if err.Error() == "审核记录不存在" {
+		t.Fatalf("expected identity error before record-not-found, got: %v", err)
+	}
+}
+
+func TestGetAuditOperatorIDReturnsAccountNotFound(t *testing.T) {
+	setupServiceTestDB(t, &model.SysAccount{})
+
+	c := &app.RequestContext{}
+	c.Set(middleware.UserIDKey, "12345")
+
+	svc := NewAuditService(context.Background(), c)
+	_, err := svc.getAuditOperatorID()
+	if err == nil {
+		t.Fatalf("expected account-not-found error")
+	}
+	if err.Error() != "账号不存在" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

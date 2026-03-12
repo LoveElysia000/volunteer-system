@@ -46,6 +46,10 @@ func NewActivityService(ctx context.Context, c *app.RequestContext) *ActivitySer
 
 // ActivityList 获取活动列表（活动总览）
 func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.ActivityListResponse, error) {
+	if req == nil {
+		req = &api.ActivityListRequest{}
+	}
+
 	// 设置默认分页参数
 	if req.Page <= 0 {
 		req.Page = 1
@@ -53,6 +57,24 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	if req.PageSize <= 0 {
 		req.PageSize = 50
 	}
+
+	// 先校验当前用户上下文与账号存在性，避免被后续“空结果快速返回”分支绕过。
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("活动列表查询失败: 获取当前用户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
+		return nil, err
+	}
+
+	account, findErr := s.repo.FindByID(s.repo.DB, userID)
+	if findErr != nil {
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			log.Warn("活动列表查询失败: 账号不存在, user_id=%d", userID)
+			return nil, errors.New("账号不存在")
+		}
+		log.Error("活动列表查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
+		return nil, findErr
+	}
+
 	// 构建查询map
 	actMap, err := buildActivityListFilterMap(req)
 	if err != nil {
@@ -83,52 +105,33 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 		return nil, err
 	}
 
-	// 获取当前账号身份，用于动态返回 is_registered。
-	userID, err := middleware.GetUserIDInt(s.c)
-	if err != nil {
-		log.Error("活动列表查询失败: 获取当前用户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
-		return nil, err
-	}
-
 	signupMap := make(map[int64]*model.ActivitySignup)
-	if len(activities) > 0 {
-		account, findErr := s.repo.FindByID(s.repo.DB, userID)
-		if findErr != nil {
-			if errors.Is(findErr, gorm.ErrRecordNotFound) {
-				log.Warn("活动列表查询失败: 账号不存在, user_id=%d", userID)
-				return nil, errors.New("账号不存在")
-			}
-			log.Error("活动列表查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
-			return nil, findErr
+	// 仅志愿者账号需要计算报名态；组织账号统一返回 false。
+	if account.IdentityType == model.RegisterTypeVolunteerCode && len(activities) > 0 {
+		volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)
+		if getVolunteerErr != nil {
+			log.Error("活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", getVolunteerErr, userID)
+			return nil, getVolunteerErr
 		}
 
-		// 仅志愿者账号需要计算报名态；组织账号统一返回 false。
-		if account.IdentityType == model.RegisterTypeVolunteerCode {
-			volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)
-			if getVolunteerErr != nil {
-				log.Error("活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", getVolunteerErr, userID)
-				return nil, getVolunteerErr
+		activityIDs := make([]int64, 0, len(activities))
+		for _, act := range activities {
+			if act == nil {
+				continue
 			}
+			activityIDs = append(activityIDs, act.ID)
+		}
 
-			activityIDs := make([]int64, 0, len(activities))
-			for _, act := range activities {
-				if act == nil {
-					continue
-				}
-				activityIDs = append(activityIDs, act.ID)
+		signups, listErr := s.repo.ListUserSignupsByActivityIDs(s.repo.DB, volunteerID, activityIDs)
+		if listErr != nil {
+			log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", listErr, userID, volunteerID)
+			return nil, listErr
+		}
+		for _, signup := range signups {
+			if signup == nil {
+				continue
 			}
-
-			signups, listErr := s.repo.ListUserSignupsByActivityIDs(s.repo.DB, volunteerID, activityIDs)
-			if listErr != nil {
-				log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", listErr, userID, volunteerID)
-				return nil, listErr
-			}
-			for _, signup := range signups {
-				if signup == nil {
-					continue
-				}
-				signupMap[signup.ActivityID] = signup
-			}
+			signupMap[signup.ActivityID] = signup
 		}
 	}
 
@@ -139,6 +142,9 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	}
 
 	for _, act := range activities {
+		if act == nil {
+			continue
+		}
 		item := &api.ActivityItem{
 			Id:            act.ID,
 			Title:         act.Title,
@@ -290,7 +296,15 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 		log.Error("活动详情查询失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
 		return nil, err
 	}
-
+	account, findErr := s.repo.FindByID(s.repo.DB, userID)
+	if findErr != nil {
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			log.Warn("活动详情查询失败: 账号不存在, user_id=%d", userID)
+			return nil, errors.New("账号不存在")
+		}
+		log.Error("活动详情查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
+		return nil, findErr
+	}
 	// 查询活动信息及组织名称
 	activity, orgName, err := s.repo.GetActivityWithOrg(s.repo.DB, req.Id)
 	if err != nil {
@@ -308,16 +322,6 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	checkOutTime := util.FormatDateTimePtr(nil)
 	workHourStatus := model.WorkHourStatusPending
 	grantedHours := float64(0)
-
-	account, findErr := s.repo.FindByID(s.repo.DB, userID)
-	if findErr != nil {
-		if errors.Is(findErr, gorm.ErrRecordNotFound) {
-			log.Warn("活动详情查询失败: 账号不存在, user_id=%d", userID)
-			return nil, errors.New("账号不存在")
-		}
-		log.Error("活动详情查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
-		return nil, findErr
-	}
 
 	if account.IdentityType == model.RegisterTypeVolunteerCode {
 		volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)

@@ -105,21 +105,8 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		queryMap["created_at <= ?"] = to
 	}
 
-	keyword := strings.TrimSpace(req.Keyword)
 	resp := &api.PendingAuditListResponse{
 		List: make([]*api.PendingAuditItem, 0),
-	}
-
-	if keyword != "" {
-		matchedIDs, matchErr := s.searchPendingAuditRecordIDsByKeyword(targetType, statuses, keyword)
-		if matchErr != nil {
-			log.Error("统一待审核列表查询失败: 关键词匹配异常: %v, target_type=%d keyword=%q", matchErr, targetType, keyword)
-			return nil, matchErr
-		}
-		if len(matchedIDs) == 0 {
-			return resp, nil
-		}
-		queryMap["id in (?)"] = matchedIDs
 	}
 
 	records, _, listErr := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
@@ -217,41 +204,6 @@ func (s *AuditService) buildPendingAuditItems(records []*model.AuditRecord, slaH
 		})
 	}
 	return items
-}
-
-// searchPendingAuditRecordIDsByKeyword 通过标题/副标题匹配获取审核记录主键ID集合。
-func (s *AuditService) searchPendingAuditRecordIDsByKeyword(targetType int32, statuses []int32, keyword string) ([]int64, error) {
-	queryMap := map[string]any{
-		"target_type = ?": targetType,
-		"status in (?)":   statuses,
-	}
-	records, _, err := s.repo.GetAuditRecordsList(s.repo.DB, queryMap, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	matchedIDs := make([]int64, 0, len(records))
-	for _, record := range records {
-		if record == nil {
-			continue
-		}
-		title, subTitle := s.resolvePendingAuditTitle(record)
-		if matchAuditKeyword(title, subTitle, keyword) {
-			matchedIDs = append(matchedIDs, record.ID)
-		}
-	}
-	return matchedIDs, nil
-}
-
-// matchAuditKeyword 判断标题与副标题是否命中关键词。
-func matchAuditKeyword(title, subTitle, keyword string) bool {
-	trimmed := strings.TrimSpace(keyword)
-	if trimmed == "" {
-		return true
-	}
-	keywordLower := strings.ToLower(trimmed)
-	return strings.Contains(strings.ToLower(title), keywordLower) ||
-		strings.Contains(strings.ToLower(subTitle), keywordLower)
 }
 
 // resolvePendingAuditTitle 按审核目标类型分发标题解析逻辑。
@@ -1005,15 +957,15 @@ func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*ap
 		return nil, errors.New("审核记录ID不能为空")
 	}
 
+	operatorID, err := s.getAuditOperatorID()
+	if err != nil {
+		return nil, err
+	}
 	record, err := s.repo.GetAuditRecordByID(s.repo.DB, req.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("审核记录不存在")
 		}
-		return nil, err
-	}
-	operatorID, err := s.getAuditOperatorID()
-	if err != nil {
 		return nil, err
 	}
 	if err := s.requireAuditReviewPermission(operatorID, record); err != nil {
@@ -1060,6 +1012,10 @@ func (s *AuditService) getAuditOperatorID() (int64, error) {
 
 	account, err := s.repo.FindByID(s.repo.DB, auditorID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn("获取审核人失败: 账号不存在, user_id=%d", auditorID)
+			return 0, errors.New("账号不存在")
+		}
 		log.Error("获取审核人失败: 查询账号异常, user_id=%d err=%v", auditorID, err)
 		return 0, err
 	}
