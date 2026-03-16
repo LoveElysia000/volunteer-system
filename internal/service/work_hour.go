@@ -57,6 +57,180 @@ func validateWorkHourMutationInput(
 	return reason, idempotencyKey, nil
 }
 
+func resolveRecalculateTargetHours(rawHours float64, signup *model.ActivitySignup, activity *model.Activity) (float64, error) {
+	targetHours := rawHours
+	if targetHours <= 0 {
+		if signup == nil || signup.CheckInTime == nil || signup.CheckOutTime == nil {
+			return 0, errors.New("未完成签到签退，不允许重算工时")
+		}
+		if activity == nil {
+			return 0, errors.New("活动不存在")
+		}
+		targetHours = util.CalcGrantedHours(activity.Duration, *signup.CheckInTime, *signup.CheckOutTime)
+	}
+	targetHours = util.RoundHours(targetHours)
+	if targetHours < 0 {
+		return 0, errors.New("重算工时不能为负数")
+	}
+	return targetHours, nil
+}
+
+func sameTimePtr(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
+}
+
+func attendanceDone(signup *model.ActivitySignup) bool {
+	return signup != nil &&
+		signup.CheckInStatus == model.ActivityCheckInDone &&
+		signup.CheckOutStatus == model.ActivityCheckOutDone &&
+		signup.CheckInTime != nil &&
+		signup.CheckOutTime != nil
+}
+
+func sameWorkHourSnapshot(current, base *model.ActivitySignup, withAttendance bool) bool {
+	if current == nil || base == nil {
+		return false
+	}
+	if current.ActivityID != base.ActivityID ||
+		current.VolunteerID != base.VolunteerID ||
+		current.WorkHourStatus != base.WorkHourStatus ||
+		current.WorkHourVersion != base.WorkHourVersion ||
+		current.LastWorkHourLogID != base.LastWorkHourLogID ||
+		util.RoundHours(current.GrantedHours) != util.RoundHours(base.GrantedHours) {
+		return false
+	}
+	if !withAttendance {
+		return true
+	}
+	return current.CheckInStatus == base.CheckInStatus &&
+		current.CheckOutStatus == base.CheckOutStatus &&
+		sameTimePtr(current.CheckInTime, base.CheckInTime) &&
+		sameTimePtr(current.CheckOutTime, base.CheckOutTime)
+}
+
+func validateVoidEligibility(signup *model.ActivitySignup) error {
+	if signup == nil {
+		return errors.New("报名记录不存在")
+	}
+	if signup.WorkHourStatus != model.WorkHourStatusGranted || signup.LastWorkHourLogID <= 0 {
+		return errors.New("当前工时状态不允许作废")
+	}
+	return nil
+}
+
+func validateRegrantStatus(status int32) error {
+	switch status {
+	case model.WorkHourStatusPending, model.WorkHourStatusGranted, model.WorkHourStatusVoided:
+		return nil
+	default:
+		return errors.New("工时状态无效")
+	}
+}
+
+func validateWorkHourChain(signup *model.ActivitySignup, lastLog *model.WorkHourLog) error {
+	if signup == nil {
+		return errors.New("报名记录不存在")
+	}
+
+	if signup.LastWorkHourLogID <= 0 {
+		if signup.WorkHourStatus == model.WorkHourStatusPending && signup.WorkHourVersion == 0 {
+			return nil
+		}
+		return errors.New("工时流水链路异常")
+	}
+
+	if lastLog == nil {
+		return errors.New("工时流水链路异常")
+	}
+	if lastLog.SignupID != signup.ID ||
+		lastLog.VolunteerID != signup.VolunteerID ||
+		lastLog.ActivityID != signup.ActivityID {
+		return errors.New("工时流水链路异常")
+	}
+	if lastLog.WorkHourVersion != signup.WorkHourVersion {
+		return errors.New("工时流水版本不一致")
+	}
+
+	switch signup.WorkHourStatus {
+	case model.WorkHourStatusGranted:
+		if lastLog.OperationType == model.WorkHourOperationVoid {
+			return errors.New("工时状态与流水不一致")
+		}
+	case model.WorkHourStatusVoided:
+		if lastLog.OperationType != model.WorkHourOperationVoid {
+			return errors.New("工时状态与流水不一致")
+		}
+	case model.WorkHourStatusPending:
+		return errors.New("工时状态与流水不一致")
+	default:
+		return errors.New("工时状态无效")
+	}
+	return nil
+}
+
+func (s *WorkHourService) loadWorkHourMutationBase(
+	tx *gorm.DB,
+	signupID, accountID int64,
+) (*model.ActivitySignup, *model.Activity, *model.WorkHourLog, error) {
+	signup, err := s.repo.GetActivitySignupByID(tx, signupID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, nil, errors.New("报名记录不存在")
+		}
+		return nil, nil, nil, err
+	}
+
+	activity, err := s.ensureActivityOperableByCurrentOrgWithTx(tx, signup.ActivityID, accountID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var lastLog *model.WorkHourLog
+	if signup.LastWorkHourLogID > 0 {
+		lastLog, err = s.repo.GetWorkHourLogByID(tx, signup.LastWorkHourLogID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, nil, nil, errors.New("工时流水链路异常")
+			}
+			return nil, nil, nil, err
+		}
+	}
+
+	if err := validateWorkHourChain(signup, lastLog); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return signup, activity, lastLog, nil
+}
+
+func (s *WorkHourService) insertWorkHourLogIdempotent(
+	tx *gorm.DB,
+	logItem *model.WorkHourLog,
+	isSameRequest func(*model.WorkHourLog) bool,
+) (int64, bool, error) {
+	if err := s.repo.CreateWorkHourLog(tx, logItem); err != nil {
+		if !util.IsDuplicateEntryErr(err) {
+			return 0, false, err
+		}
+
+		exists, queryErr := s.repo.GetWorkHourLogByIdempotencyKey(tx, logItem.IdempotencyKey)
+		if queryErr != nil {
+			return 0, false, queryErr
+		}
+		if exists == nil {
+			return 0, false, err
+		}
+		if !isSameRequest(exists) {
+			return 0, false, errors.New("幂等键已被其他请求占用")
+		}
+		return exists.ID, true, nil
+	}
+	return logItem.ID, false, nil
+}
+
 func NewWorkHourService(ctx context.Context, c *app.RequestContext) *WorkHourService {
 	if ctx == nil {
 		ctx = context.Background()
@@ -72,6 +246,9 @@ func NewWorkHourService(ctx context.Context, c *app.RequestContext) *WorkHourSer
 
 // WorkHourLogList 工时流水查询（志愿者查自己的流水；组织查本组织活动的流水）
 func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api.WorkHourLogListResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	resp := &api.WorkHourLogListResponse{
 		Total: 0,
 		List:  []*api.WorkHourLogItem{},
@@ -226,6 +403,9 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 
 // VoidWorkHour 工时作废
 func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidWorkHourResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	reason, idempotencyKey, err := validateWorkHourMutationInput(
 		req.SignupId,
 		req.Reason,
@@ -264,54 +444,21 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		}, nil
 	}
 
-	// 事务外预检查：用于快速失败，减少事务内无效读。
-	preSignup, err := s.repo.GetActivitySignupByID(s.repo.DB, req.SignupId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("报名记录不存在")
-		}
-		return nil, err
-	}
-	preActivity, err := s.ensureActivityOperableByCurrentOrgWithTx(s.repo.DB, preSignup.ActivityID, userID)
+	preSignup, preActivity, preLastLog, err := s.loadWorkHourMutationBase(s.repo.DB, req.SignupId, userID)
 	if err != nil {
 		return nil, err
 	}
 	if preActivity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许作废工时")
 	}
-	if preSignup.WorkHourStatus != model.WorkHourStatusGranted || preSignup.LastWorkHourLogID <= 0 {
-		return nil, errors.New("当前工时状态不允许作废")
-	}
-
-	preLastLog, err := s.repo.GetWorkHourLogByID(s.repo.DB, preSignup.LastWorkHourLogID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("工时流水链路异常")
-		}
+	if err := validateVoidEligibility(preSignup); err != nil {
 		return nil, err
-	}
-	if preLastLog.SignupID != preSignup.ID || preLastLog.VolunteerID != preSignup.VolunteerID || preLastLog.ActivityID != preSignup.ActivityID {
-		return nil, errors.New("工时流水链路异常")
-	}
-	if preLastLog.WorkHourVersion != preSignup.WorkHourVersion {
-		return nil, errors.New("工时流水版本不一致")
-	}
-	if preLastLog.OperationType == model.WorkHourOperationVoid {
-		return nil, errors.New("工时状态与流水不一致")
 	}
 
 	var workHourLogID int64
 	var idempotentLogID int64
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		signup, err := s.repo.GetActivitySignupByIDForUpdate(tx, req.SignupId)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("报名记录不存在")
-			}
-			return err
-		}
-
-		activity, err := s.repo.GetActivityByID(tx, signup.ActivityID)
+		activity, err := s.repo.GetActivityByIDForUpdate(tx, preSignup.ActivityID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.New("活动不存在")
@@ -321,14 +468,26 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		if activity.Status == model.ActivityStatusCanceled {
 			return errors.New("已取消活动不允许作废工时")
 		}
-		if signup.ActivityID != preSignup.ActivityID ||
-			signup.VolunteerID != preSignup.VolunteerID ||
-			signup.WorkHourStatus != preSignup.WorkHourStatus ||
-			signup.WorkHourVersion != preSignup.WorkHourVersion ||
-			signup.LastWorkHourLogID != preSignup.LastWorkHourLogID ||
-			util.RoundHours(signup.GrantedHours) != util.RoundHours(preSignup.GrantedHours) {
+
+		signup, err := s.repo.GetActivitySignupByIDForUpdate(tx, req.SignupId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("报名记录不存在")
+			}
+			return err
+		}
+		if !sameWorkHourSnapshot(signup, preSignup, false) {
 			return errors.New("报名工时状态已变化，请刷新后重试")
 		}
+		if err := validateVoidEligibility(signup); err != nil {
+			return err
+		}
+		refLogID := int64(0)
+		if preLastLog != nil {
+			refLogID = preLastLog.ID
+		}
+		hoursDelta := -signup.GrantedHours
+		serviceDelta := int64(-1)
 
 		volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, signup.VolunteerID)
 		if err != nil {
@@ -336,9 +495,8 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		}
 		beforeHours := volunteer.TotalHours
 		beforeCount := int64(volunteer.ServiceCount)
-		hoursDelta := -signup.GrantedHours
 		afterHours := util.RoundHours(beforeHours + hoursDelta)
-		afterCount := beforeCount - 1
+		afterCount := beforeCount + serviceDelta
 		if afterHours < 0 || afterCount < 0 {
 			return errors.New("志愿者统计字段异常")
 		}
@@ -350,33 +508,23 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 			SignupID:           signup.ID,
 			OperationType:      model.WorkHourOperationVoid,
 			HoursDelta:         hoursDelta,
-			ServiceCountDelta:  -1,
+			ServiceCountDelta:  serviceDelta,
 			BeforeTotalHours:   beforeHours,
 			AfterTotalHours:    afterHours,
 			BeforeServiceCount: beforeCount,
 			AfterServiceCount:  afterCount,
 			WorkHourVersion:    newVersion,
 			IdempotencyKey:     idempotencyKey,
-			RefLogID:           preLastLog.ID,
+			RefLogID:           refLogID,
 			Reason:             reason,
 			OperatorID:         userID,
 		}
-		if err := s.repo.CreateWorkHourLog(tx, logItem); err != nil {
-			if !util.IsDuplicateEntryErr(err) {
-				return err
-			}
-
-			exists, queryErr := s.repo.GetWorkHourLogByIdempotencyKey(tx, idempotencyKey)
-			if queryErr != nil {
-				return queryErr
-			}
-			if exists == nil {
-				return err
-			}
-			if !isSameIdempotentRequest(exists) {
-				return errors.New("幂等键已被其他请求占用")
-			}
-			idempotentLogID = exists.ID
+		logID, idempotent, err := s.insertWorkHourLogIdempotent(tx, logItem, isSameIdempotentRequest)
+		if err != nil {
+			return err
+		}
+		if idempotent {
+			idempotentLogID = logID
 			return errWorkHourIdempotentHit
 		}
 
@@ -433,6 +581,9 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 
 // RecalculateWorkHour 工时重算
 func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourRequest) (*api.RecalculateWorkHourResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	reason, idempotencyKey, err := validateWorkHourMutationInput(
 		req.SignupId,
 		req.Reason,
@@ -455,12 +606,6 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 			logEntry.OperatorID == userID &&
 			logEntry.Reason == reason
 	}
-	sameTimePtr := func(a, b *time.Time) bool {
-		if a == nil || b == nil {
-			return a == nil && b == nil
-		}
-		return a.Equal(*b)
-	}
 
 	existingLog, err := s.repo.GetWorkHourLogByIdempotencyKey(s.repo.DB, idempotencyKey)
 	if err != nil {
@@ -473,6 +618,20 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		}
 		signup, signupErr := s.repo.GetActivitySignupByID(s.repo.DB, req.SignupId)
 		if signupErr == nil {
+			if signup.LastWorkHourLogID != existingLog.ID {
+				return nil, errors.New("幂等键已被其他请求占用")
+			}
+			var activity *model.Activity
+			if req.Hours <= 0 {
+				activity, err = s.repo.GetActivityByID(s.repo.DB, signup.ActivityID)
+				if err != nil {
+					return nil, errors.New("幂等键已被其他请求占用")
+				}
+			}
+			targetHours, targetErr := resolveRecalculateTargetHours(req.Hours, signup, activity)
+			if targetErr != nil || util.RoundHours(signup.GrantedHours) != targetHours {
+				return nil, errors.New("幂等键已被其他请求占用")
+			}
 			return &api.RecalculateWorkHourResponse{
 				Success:       true,
 				WorkHourLogId: existingLog.ID,
@@ -485,75 +644,22 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		}, nil
 	}
 
-	// 事务外预检查：用于快速失败，减少事务内无效读。
-	preSignup, err := s.repo.GetActivitySignupByID(s.repo.DB, req.SignupId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("报名记录不存在")
-		}
-		return nil, err
-	}
-	preActivity, err := s.ensureActivityOperableByCurrentOrgWithTx(s.repo.DB, preSignup.ActivityID, userID)
+	preSignup, preActivity, preLastLog, err := s.loadWorkHourMutationBase(s.repo.DB, req.SignupId, userID)
 	if err != nil {
 		return nil, err
-	}
-	if preSignup.CheckInStatus != model.ActivityCheckInDone || preSignup.CheckOutStatus != model.ActivityCheckOutDone ||
-		preSignup.CheckInTime == nil || preSignup.CheckOutTime == nil {
-		return nil, errors.New("未完成签到签退，不允许重算工时")
 	}
 	if preActivity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许重算工时")
 	}
-
-	// 校验最后一条生效流水与报名记录一致，避免脏链路继续写入。
-	var preLastLog *model.WorkHourLog
-	if preSignup.LastWorkHourLogID <= 0 {
-		if !(preSignup.WorkHourStatus == model.WorkHourStatusPending && preSignup.WorkHourVersion == 0) {
-			return nil, errors.New("工时流水链路异常")
-		}
-	} else {
-		preLastLog, err = s.repo.GetWorkHourLogByID(s.repo.DB, preSignup.LastWorkHourLogID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, errors.New("工时流水链路异常")
-			}
-			return nil, err
-		}
-		if preLastLog.SignupID != preSignup.ID || preLastLog.VolunteerID != preSignup.VolunteerID || preLastLog.ActivityID != preSignup.ActivityID {
-			return nil, errors.New("工时流水链路异常")
-		}
-		if preLastLog.WorkHourVersion != preSignup.WorkHourVersion {
-			return nil, errors.New("工时流水版本不一致")
-		}
-		switch preSignup.WorkHourStatus {
-		case model.WorkHourStatusGranted:
-			if preLastLog.OperationType == model.WorkHourOperationVoid {
-				return nil, errors.New("工时状态与流水不一致")
-			}
-		case model.WorkHourStatusVoided:
-			if preLastLog.OperationType != model.WorkHourOperationVoid {
-				return nil, errors.New("工时状态与流水不一致")
-			}
-		case model.WorkHourStatusPending:
-			return nil, errors.New("工时状态与流水不一致")
-		default:
-			return nil, errors.New("工时状态无效")
-		}
+	if !attendanceDone(preSignup) {
+		return nil, errors.New("未完成签到签退，不允许重算工时")
 	}
 
 	var workHourLogID int64
 	var grantedHours float64
 	var idempotentLogID int64
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		signup, err := s.repo.GetActivitySignupByIDForUpdate(tx, req.SignupId)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("报名记录不存在")
-			}
-			return err
-		}
-
-		activity, err := s.repo.GetActivityByID(tx, signup.ActivityID)
+		activity, err := s.repo.GetActivityByIDForUpdate(tx, preSignup.ActivityID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.New("活动不存在")
@@ -563,36 +669,30 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		if activity.Status == model.ActivityStatusCanceled {
 			return errors.New("已取消活动不允许重算工时")
 		}
-		if signup.ActivityID != preSignup.ActivityID ||
-			signup.VolunteerID != preSignup.VolunteerID ||
-			signup.WorkHourStatus != preSignup.WorkHourStatus ||
-			signup.WorkHourVersion != preSignup.WorkHourVersion ||
-			signup.LastWorkHourLogID != preSignup.LastWorkHourLogID ||
-			signup.CheckInStatus != preSignup.CheckInStatus ||
-			signup.CheckOutStatus != preSignup.CheckOutStatus ||
-			!sameTimePtr(signup.CheckInTime, preSignup.CheckInTime) ||
-			!sameTimePtr(signup.CheckOutTime, preSignup.CheckOutTime) ||
-			util.RoundHours(signup.GrantedHours) != util.RoundHours(preSignup.GrantedHours) {
+
+		signup, err := s.repo.GetActivitySignupByIDForUpdate(tx, req.SignupId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("报名记录不存在")
+			}
+			return err
+		}
+		if !sameWorkHourSnapshot(signup, preSignup, true) {
 			return errors.New("报名工时状态已变化，请刷新后重试")
 		}
-
-		targetHours := req.Hours
-		if targetHours <= 0 {
-			targetHours = util.CalcGrantedHours(activity.Duration, *signup.CheckInTime, *signup.CheckOutTime)
-		}
-		targetHours = util.RoundHours(targetHours)
-		if targetHours < 0 {
-			return errors.New("重算工时不能为负数")
+		if err := validateRegrantStatus(signup.WorkHourStatus); err != nil {
+			return err
 		}
 
-		currentHours := signup.GrantedHours
-		hoursDelta := util.RoundHours(targetHours - currentHours)
+		targetHours, err := resolveRecalculateTargetHours(req.Hours, signup, activity)
+		if err != nil {
+			return err
+		}
 		serviceDelta := int64(0)
 		if signup.WorkHourStatus != model.WorkHourStatusGranted {
 			serviceDelta = 1
 		}
-
-		// 无变化直接返回，避免无意义地递增版本和写流水。
+		hoursDelta := util.RoundHours(targetHours - signup.GrantedHours)
 		if hoursDelta == 0 && serviceDelta == 0 {
 			workHourLogID = signup.LastWorkHourLogID
 			grantedHours = signup.GrantedHours
@@ -610,6 +710,10 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		if afterHours < 0 || afterCount < 0 {
 			return errors.New("志愿者统计字段异常")
 		}
+		refLogID := int64(0)
+		if preLastLog != nil {
+			refLogID = preLastLog.ID
+		}
 
 		newVersion := signup.WorkHourVersion + 1
 		logItem := &model.WorkHourLog{
@@ -625,29 +729,16 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 			AfterServiceCount:  afterCount,
 			WorkHourVersion:    newVersion,
 			IdempotencyKey:     idempotencyKey,
-			RefLogID:           0,
+			RefLogID:           refLogID,
 			Reason:             reason,
 			OperatorID:         userID,
 		}
-		if preLastLog != nil {
-			logItem.RefLogID = preLastLog.ID
+		logID, idempotent, err := s.insertWorkHourLogIdempotent(tx, logItem, isSameIdempotentRequest)
+		if err != nil {
+			return err
 		}
-		if err := s.repo.CreateWorkHourLog(tx, logItem); err != nil {
-			if !util.IsDuplicateEntryErr(err) {
-				return err
-			}
-
-			exists, queryErr := s.repo.GetWorkHourLogByIdempotencyKey(tx, idempotencyKey)
-			if queryErr != nil {
-				return queryErr
-			}
-			if exists == nil {
-				return err
-			}
-			if !isSameIdempotentRequest(exists) {
-				return errors.New("幂等键已被其他请求占用")
-			}
-			idempotentLogID = exists.ID
+		if idempotent {
+			idempotentLogID = logID
 			return errWorkHourIdempotentHit
 		}
 

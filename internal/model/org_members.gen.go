@@ -19,6 +19,8 @@ type OrgMember struct {
 	Status      int32      `gorm:"column:status;not null;default:1;comment:成员状态: 1-待审核, 2-正式成员, 3-已拒绝, 4-已退出" json:"status"` // 成员状态: 1-待审核, 2-正式成员, 3-已拒绝, 4-已退出
 	AppliedAt   time.Time  `gorm:"column:applied_at;not null;default:CURRENT_TIMESTAMP;comment:申请时间" json:"applied_at"`      // 申请时间
 	JoinedAt    *time.Time `gorm:"column:joined_at;comment:正式加入时间" json:"joined_at"`                                         // 正式加入时间
+	LeftAt      *time.Time `gorm:"column:left_at;comment:退出时间" json:"left_at"`                                               // 退出时间
+	LeaveReason string     `gorm:"column:leave_reason;not null;default:'';comment:退出原因" json:"leave_reason"`                 // 退出原因
 	CreatedAt   time.Time  `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`      // 创建时间
 	UpdatedAt   time.Time  `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`      // 更新时间
 }

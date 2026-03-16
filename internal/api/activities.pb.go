@@ -24,22 +24,22 @@ const (
 
 type ActivityListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 页码 可选 @gotags: query:"page"
-	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page" query:"page"`
-	// 页大小 可选 @gotags: query:"pageSize"
-	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
-	// 状态筛选 可选 @gotags: query:"status"
-	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status" query:"status"`
-	// 关键词（标题/描述/地点） 可选 @gotags: query:"keyword"
-	Keyword string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
-	// 开始时间起始 可选 @gotags: query:"startFrom"
-	StartFrom string `protobuf:"bytes,5,opt,name=startFrom,proto3" json:"startFrom" query:"startFrom"`
-	// 开始时间结束 可选 @gotags: query:"startTo"
-	StartTo string `protobuf:"bytes,6,opt,name=startTo,proto3" json:"startTo" query:"startTo"`
-	// 排序字段：start_time/created_at 可选 @gotags: query:"sortBy"
-	SortBy string `protobuf:"bytes,7,opt,name=sortBy,proto3" json:"sortBy" query:"sortBy"`
-	// 排序方向：asc/desc 可选 @gotags: query:"sortOrder"
-	SortOrder     string `protobuf:"bytes,8,opt,name=sortOrder,proto3" json:"sortOrder" query:"sortOrder"`
+	// 页码 可选 @gotags: json:"page"
+	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page"`
+	// 页大小 可选 @gotags: json:"pageSize"
+	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize"`
+	// 状态筛选 可选 @gotags: json:"status"
+	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status"`
+	// 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
+	Keyword string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword"`
+	// 开始时间起始 可选 @gotags: json:"startFrom"
+	StartFrom string `protobuf:"bytes,5,opt,name=startFrom,proto3" json:"startFrom"`
+	// 开始时间结束 可选 @gotags: json:"startTo"
+	StartTo string `protobuf:"bytes,6,opt,name=startTo,proto3" json:"startTo"`
+	// 排序字段：start_time/created_at 可选 @gotags: json:"sortBy"
+	SortBy string `protobuf:"bytes,7,opt,name=sortBy,proto3" json:"sortBy"`
+	// 排序方向：asc/desc 可选 @gotags: json:"sortOrder"
+	SortOrder     string `protobuf:"bytes,8,opt,name=sortOrder,proto3" json:"sortOrder"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -336,8 +336,8 @@ func (x *ActivityItem) GetIsFull() bool {
 
 type ActivitySignupRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 活动ID 必填 @gotags: query:"activityId,required"
-	ActivityId    int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId" query:"activityId,required"`
+	// 活动ID 必填 @gotags: json:"activityId,required"
+	ActivityId    int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -426,8 +426,8 @@ func (x *ActivitySignupResponse) GetSuccess() bool {
 
 type ActivityCancelRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 活动ID 必填 @gotags: query:"activityId,required"
-	ActivityId    int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId" query:"activityId,required"`
+	// 活动ID 必填 @gotags: json:"activityId,required"
+	ActivityId    int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -516,10 +516,10 @@ func (x *ActivityCancelResponse) GetSuccess() bool {
 
 type ActivityCheckInRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 活动ID 必填 @gotags: query:"activityId,required"
-	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId" query:"activityId,required"`
-	// 签到码 必填 @gotags: query:"checkInCode,required"
-	CheckInCode   string `protobuf:"bytes,2,opt,name=checkInCode,proto3" json:"checkInCode" query:"checkInCode,required"`
+	// 活动ID 必填 @gotags: json:"activityId,required"
+	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	// 签到码 必填 @gotags: json:"checkInCode,required"
+	CheckInCode   string `protobuf:"bytes,2,opt,name=checkInCode,proto3" json:"checkInCode,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -624,10 +624,10 @@ func (x *ActivityCheckInResponse) GetCheckInTime() string {
 
 type ActivityCheckOutRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 活动ID 必填 @gotags: query:"activityId,required"
-	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId" query:"activityId,required"`
-	// 签退码 必填 @gotags: query:"checkOutCode,required"
-	CheckOutCode  string `protobuf:"bytes,2,opt,name=checkOutCode,proto3" json:"checkOutCode" query:"checkOutCode,required"`
+	// 活动ID 必填 @gotags: json:"activityId,required"
+	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	// 签退码 必填 @gotags: json:"checkOutCode,required"
+	CheckOutCode  string `protobuf:"bytes,2,opt,name=checkOutCode,proto3" json:"checkOutCode,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -741,16 +741,16 @@ func (x *ActivityCheckOutResponse) GetGrantedHours() float64 {
 
 type ActivitySupplementAttendanceRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 活动ID 必填 @gotags: query:"activityId,required"
-	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId" query:"activityId,required"`
-	// 志愿者ID（volunteers.id）必填 @gotags: query:"volunteerId,required"
-	VolunteerId int64 `protobuf:"varint,2,opt,name=volunteerId,proto3" json:"volunteerId" query:"volunteerId,required"`
-	// 补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: query:"checkInTime"
-	CheckInTime string `protobuf:"bytes,3,opt,name=checkInTime,proto3" json:"checkInTime" query:"checkInTime"`
-	// 补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: query:"checkOutTime,required"
-	CheckOutTime string `protobuf:"bytes,4,opt,name=checkOutTime,proto3" json:"checkOutTime" query:"checkOutTime,required"`
-	// 补录原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 活动ID 必填 @gotags: json:"activityId,required"
+	ActivityId int64 `protobuf:"varint,1,opt,name=activityId,proto3" json:"activityId,required"`
+	// 志愿者ID（volunteers.id）必填 @gotags: json:"volunteerId,required"
+	VolunteerId int64 `protobuf:"varint,2,opt,name=volunteerId,proto3" json:"volunteerId,required"`
+	// 补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: json:"checkInTime"
+	CheckInTime string `protobuf:"bytes,3,opt,name=checkInTime,proto3" json:"checkInTime"`
+	// 补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: json:"checkOutTime,required"
+	CheckOutTime string `protobuf:"bytes,4,opt,name=checkOutTime,proto3" json:"checkOutTime,required"`
+	// 补录原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1216,13 +1216,13 @@ func (x *ActivityInfo) GetGrantedHours() float64 {
 
 type MyActivitiesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 页码 可选 @gotags: query:"page"
-	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page" query:"page"`
-	// 页大小 可选 @gotags: query:"pageSize"
-	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
-	// 状态筛选 可选 @gotags: query:"status"
+	// 页码 可选 @gotags: json:"page"
+	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page"`
+	// 页大小 可选 @gotags: json:"pageSize"
+	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize"`
+	// 状态筛选 可选 @gotags: json:"status"
 	// 1-报名中, 2-已结束, 3-已取消
-	Status        int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status" query:"status"`
+	Status        int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1566,26 +1566,26 @@ func (x *MyActivityItem) GetAuditReason() string {
 // CreateActivityRequest 创建活动请求
 type CreateActivityRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID 必填 @gotags: query:"orgId,required"
-	OrgId int64 `protobuf:"varint,1,opt,name=orgId,proto3" json:"orgId" query:"orgId,required"`
-	// 活动标题 必填 @gotags: query:"title,required"
-	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title" query:"title,required"`
-	// 活动描述 可选 @gotags: query:"description"
-	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description" query:"description"`
-	// 封面图URL 可选 @gotags: query:"coverUrl"
-	CoverUrl string `protobuf:"bytes,4,opt,name=coverUrl,proto3" json:"coverUrl" query:"coverUrl"`
-	// 开始时间 必填 @gotags: query:"startTime,required"
-	StartTime string `protobuf:"bytes,5,opt,name=startTime,proto3" json:"startTime" query:"startTime,required"`
-	// 结束时间 必填 @gotags: query:"endTime,required"
-	EndTime string `protobuf:"bytes,6,opt,name=endTime,proto3" json:"endTime" query:"endTime,required"`
-	// 地点名称 必填 @gotags: query:"location,required"
-	Location string `protobuf:"bytes,7,opt,name=location,proto3" json:"location" query:"location,required"`
-	// 详细地址 可选 @gotags: query:"address"
-	Address string `protobuf:"bytes,8,opt,name=address,proto3" json:"address" query:"address"`
-	// 预估工时（小时） 必填 @gotags: query:"duration,required"
-	Duration float64 `protobuf:"fixed64,9,opt,name=duration,proto3" json:"duration" query:"duration,required"`
-	// 最大招募人数（0表示不限） 必填 @gotags: query:"maxPeople,required"
-	MaxPeople     int32 `protobuf:"varint,10,opt,name=maxPeople,proto3" json:"maxPeople" query:"maxPeople,required"`
+	// 组织ID 必填 @gotags: json:"orgId,required"
+	OrgId int64 `protobuf:"varint,1,opt,name=orgId,proto3" json:"orgId,required"`
+	// 活动标题 必填 @gotags: json:"title,required"
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,required"`
+	// 活动描述 可选 @gotags: json:"description"
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description"`
+	// 封面图URL 可选 @gotags: json:"coverUrl"
+	CoverUrl string `protobuf:"bytes,4,opt,name=coverUrl,proto3" json:"coverUrl"`
+	// 开始时间 必填 @gotags: json:"startTime,required"
+	StartTime string `protobuf:"bytes,5,opt,name=startTime,proto3" json:"startTime,required"`
+	// 结束时间 必填 @gotags: json:"endTime,required"
+	EndTime string `protobuf:"bytes,6,opt,name=endTime,proto3" json:"endTime,required"`
+	// 地点名称 必填 @gotags: json:"location,required"
+	Location string `protobuf:"bytes,7,opt,name=location,proto3" json:"location,required"`
+	// 详细地址 可选 @gotags: json:"address"
+	Address string `protobuf:"bytes,8,opt,name=address,proto3" json:"address"`
+	// 预估工时（小时） 必填 @gotags: json:"duration,required"
+	Duration float64 `protobuf:"fixed64,9,opt,name=duration,proto3" json:"duration,required"`
+	// 最大招募人数（0表示不限） 必填 @gotags: json:"maxPeople,required"
+	MaxPeople     int32 `protobuf:"varint,10,opt,name=maxPeople,proto3" json:"maxPeople,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1750,24 +1750,24 @@ type UpdateActivityRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 活动ID 必填 @gotags: path:"id,required"
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	// 活动标题 可选 @gotags: query:"title"
-	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title" query:"title"`
-	// 活动描述 可选 @gotags: query:"description"
-	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description" query:"description"`
-	// 封面图URL 可选 @gotags: query:"coverUrl"
-	CoverUrl string `protobuf:"bytes,4,opt,name=coverUrl,proto3" json:"coverUrl" query:"coverUrl"`
-	// 开始时间 可选 @gotags: query:"startTime"
-	StartTime string `protobuf:"bytes,5,opt,name=startTime,proto3" json:"startTime" query:"startTime"`
-	// 结束时间 可选 @gotags: query:"endTime"
-	EndTime string `protobuf:"bytes,6,opt,name=endTime,proto3" json:"endTime" query:"endTime"`
-	// 地点名称 可选 @gotags: query:"location"
-	Location string `protobuf:"bytes,7,opt,name=location,proto3" json:"location" query:"location"`
-	// 详细地址 可选 @gotags: query:"address"
-	Address string `protobuf:"bytes,8,opt,name=address,proto3" json:"address" query:"address"`
-	// 预估工时（小时） 可选 @gotags: query:"duration"
-	Duration float64 `protobuf:"fixed64,9,opt,name=duration,proto3" json:"duration" query:"duration"`
-	// 最大招募人数（0表示不限） 可选 @gotags: query:"maxPeople"
-	MaxPeople     int32 `protobuf:"varint,10,opt,name=maxPeople,proto3" json:"maxPeople" query:"maxPeople"`
+	// 活动标题 可选 @gotags: json:"title"
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title"`
+	// 活动描述 可选 @gotags: json:"description"
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description"`
+	// 封面图URL 可选 @gotags: json:"coverUrl"
+	CoverUrl string `protobuf:"bytes,4,opt,name=coverUrl,proto3" json:"coverUrl"`
+	// 开始时间 可选 @gotags: json:"startTime"
+	StartTime string `protobuf:"bytes,5,opt,name=startTime,proto3" json:"startTime"`
+	// 结束时间 可选 @gotags: json:"endTime"
+	EndTime string `protobuf:"bytes,6,opt,name=endTime,proto3" json:"endTime"`
+	// 地点名称 可选 @gotags: json:"location"
+	Location string `protobuf:"bytes,7,opt,name=location,proto3" json:"location"`
+	// 详细地址 可选 @gotags: json:"address"
+	Address string `protobuf:"bytes,8,opt,name=address,proto3" json:"address"`
+	// 预估工时（小时） 可选 @gotags: json:"duration"
+	Duration float64 `protobuf:"fixed64,9,opt,name=duration,proto3" json:"duration"`
+	// 最大招募人数（0表示不限） 可选 @gotags: json:"maxPeople"
+	MaxPeople     int32 `protobuf:"varint,10,opt,name=maxPeople,proto3" json:"maxPeople"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2015,8 +2015,8 @@ type CancelActivityRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 活动ID 必填 @gotags: path:"id,required"
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	// 取消原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 取消原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2208,10 +2208,10 @@ type GenerateAttendanceCodesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 活动ID 必填 @gotags: path:"id,required"
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	// 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"checkInValidMinutes"
-	CheckInValidMinutes int32 `protobuf:"varint,2,opt,name=checkInValidMinutes,proto3" json:"checkInValidMinutes" query:"checkInValidMinutes"`
-	// 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"checkOutValidMinutes"
-	CheckOutValidMinutes int32 `protobuf:"varint,3,opt,name=checkOutValidMinutes,proto3" json:"checkOutValidMinutes" query:"checkOutValidMinutes"`
+	// 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"
+	CheckInValidMinutes int32 `protobuf:"varint,2,opt,name=checkInValidMinutes,proto3" json:"checkInValidMinutes"`
+	// 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"
+	CheckOutValidMinutes int32 `protobuf:"varint,3,opt,name=checkOutValidMinutes,proto3" json:"checkOutValidMinutes"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -2372,10 +2372,10 @@ type ResetAttendanceCodeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 活动ID 必填 @gotags: path:"id,required"
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	// 重置码类型（1-签到码，2-签退码）必填 @gotags: query:"codeType,required"
-	CodeType int32 `protobuf:"varint,2,opt,name=codeType,proto3" json:"codeType" query:"codeType,required"`
-	// 码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"validMinutes"
-	ValidMinutes  int32 `protobuf:"varint,3,opt,name=validMinutes,proto3" json:"validMinutes" query:"validMinutes"`
+	// 重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"
+	CodeType int32 `protobuf:"varint,2,opt,name=codeType,proto3" json:"codeType,required"`
+	// 码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"
+	ValidMinutes  int32 `protobuf:"varint,3,opt,name=validMinutes,proto3" json:"validMinutes"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

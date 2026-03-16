@@ -1,0 +1,63 @@
+services:
+  app:
+    image: ${APP_IMAGE}:${IMAGE_TAG:-latest}
+    container_name: volunteer-system-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      MYSQL_USER: ${MYSQL_USER:-volunteer}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-volunteer_system}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      AI_API_KEY: ${AI_API_KEY:-}
+    ports:
+      - "${APP_PORT:-1109}:1109"
+    volumes:
+      - ./config/config.prod.yaml:/app/config/config.prod.yaml:ro
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+
+  mysql:
+    image: mysql:8.0
+    container_name: volunteer-system-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-volunteer_system}
+      MYSQL_USER: ${MYSQL_USER:-volunteer}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./deploy/ddl.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: volunteer-system-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mysql_data:
+  redis_data:

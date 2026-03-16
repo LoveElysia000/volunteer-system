@@ -27,17 +27,6 @@ func canSignupActivity(activity *model.Activity, existingSignup *model.ActivityS
 	return nil
 }
 
-// canCancelSignup validates whether current signup can be canceled.
-func canCancelSignup(signup *model.ActivitySignup) error {
-	if signup == nil {
-		return errors.New("报名记录不存在")
-	}
-	if signup.Status != model.ActivitySignupStatusPending && signup.Status != model.ActivitySignupStatusSuccess {
-		return errors.New("当前状态不允许取消")
-	}
-	return nil
-}
-
 // canUpdateActivity validates whether activity fields can still be edited.
 func canUpdateActivity(activity *model.Activity) error {
 	if activity == nil {

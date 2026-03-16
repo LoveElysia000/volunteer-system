@@ -81,7 +81,6 @@ func (r *Repository) GetOrganizationMembers(db *gorm.DB, orgID int64, status, ro
 
 	base := db.WithContext(r.ctx).
 		Table("org_members as m").
-		Joins("LEFT JOIN volunteers v ON m.volunteer_id = v.id").
 		Where("m.org_id = ?", orgID)
 
 	if status > 0 {
@@ -92,7 +91,17 @@ func (r *Repository) GetOrganizationMembers(db *gorm.DB, orgID int64, status, ro
 	}
 	if keyword != "" {
 		like := "%" + keyword + "%"
-		base = base.Where("v.real_name LIKE ? OR v.id_card LIKE ?", like, like)
+		volunteerIDs := make([]int64, 0)
+		if err := db.WithContext(r.ctx).
+			Model(&model.Volunteer{}).
+			Where("real_name LIKE ? OR id_card LIKE ?", like, like).
+			Pluck("id", &volunteerIDs).Error; err != nil {
+			return nil, 0, err
+		}
+		if len(volunteerIDs) == 0 {
+			return members, 0, nil
+		}
+		base = base.Where("m.volunteer_id IN ?", volunteerIDs)
 	}
 
 	if err := base.Count(&total).Error; err != nil {

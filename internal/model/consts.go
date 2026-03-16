@@ -28,7 +28,6 @@ const (
 	AuditTypeVolunteerJoinOrganization int32 = AuditTargetMember // 志愿者加入组织
 
 	// 审核场景（用于 target_type 相同时进一步区分业务语义）
-	AuditSceneVolunteerProfileUpdate  = "volunteer_profile_update"   // 志愿者资料更新
 	AuditSceneVolunteerRealNameVerify = "volunteer_real_name_verify" // 志愿者实名认证
 
 	// 成员状态
@@ -127,7 +126,6 @@ const (
 	// RBAC 角色编码
 	RBACRoleSuperAdmin = "super_admin"
 	RBACRoleOrgOwner   = "org_owner"
-	RBACRoleOrgManager = "org_manager"
 	RBACRoleVolunteer  = "volunteer"
 
 	// RBAC 权限资源

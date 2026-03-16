@@ -250,8 +250,7 @@ func (r *Repository) SearchAssistantActivities(db *gorm.DB, ctx context.Context,
 
 	query := db.WithContext(ctx).
 		Table("activities as a").
-		Select("a.id, a.org_id, o.org_name, a.title, a.description, a.start_time, a.end_time, a.location, a.max_people, a.current_people, a.status").
-		Joins("LEFT JOIN organizations o ON o.id = a.org_id")
+		Select("a.id, a.org_id, a.title, a.description, a.start_time, a.end_time, a.location, a.max_people, a.current_people, a.status")
 
 	if keyword != "" {
 		like := "%" + keyword + "%"
@@ -270,6 +269,33 @@ func (r *Repository) SearchAssistantActivities(db *gorm.DB, ctx context.Context,
 
 	if err := query.Order("a.start_time DESC").Limit(limit).Scan(&rows).Error; err != nil {
 		return nil, err
+	}
+	if len(rows) == 0 {
+		return rows, nil
+	}
+
+	orgIDs := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		orgIDs = append(orgIDs, row.OrgID)
+	}
+	orgIDs = util.UniquePositiveInt64(orgIDs)
+
+	orgNameMap := make(map[int64]string, len(orgIDs))
+	if len(orgIDs) > 0 {
+		organizations, err := r.ListOrganizationsByIDs(db, orgIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, org := range organizations {
+			if org == nil {
+				continue
+			}
+			orgNameMap[org.ID] = org.OrgName
+		}
+	}
+
+	for _, row := range rows {
+		row.OrgName = orgNameMap[row.OrgID]
 	}
 	return rows, nil
 }
@@ -337,11 +363,21 @@ func (r *Repository) GetAssistantActivityStatusCountsByOrg(db *gorm.DB, ctx cont
 
 // CountAssistantSignupsByOrg 统计组织活动报名总数
 func (r *Repository) CountAssistantSignupsByOrg(db *gorm.DB, ctx context.Context, orgID int64) (int64, error) {
+	activityIDs := make([]int64, 0)
+	if err := db.WithContext(ctx).
+		Model(&model.Activity{}).
+		Where("org_id = ?", orgID).
+		Pluck("id", &activityIDs).Error; err != nil {
+		return 0, err
+	}
+	if len(activityIDs) == 0 {
+		return 0, nil
+	}
+
 	var total int64
 	err := db.WithContext(ctx).
-		Table("activity_signups as s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
 		Count(&total).Error
 	if err != nil {
 		return 0, err

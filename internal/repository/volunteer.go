@@ -78,14 +78,22 @@ func (r *Repository) GetVolunteerList(db *gorm.DB, orgIDs []int64, queryMap map[
 	var volunteers []*model.Volunteer
 	var total int64
 
-	// 创建 base session，通过组织成员关系限制组织范围
+	memberQuery := db.WithContext(r.ctx).
+		Model(&model.OrgMember{}).
+		Where("status = ?", model.MemberStatusActive)
+	if len(orgIDs) > 0 {
+		memberQuery = memberQuery.Where("org_id IN ?", orgIDs)
+	}
+	volunteerIDs := make([]int64, 0)
+	if err := memberQuery.Distinct("volunteer_id").Pluck("volunteer_id", &volunteerIDs).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(volunteerIDs) == 0 {
+		return volunteers, 0, nil
+	}
 	baseSession := db.WithContext(r.ctx).
 		Table("volunteers as v").
-		Joins("INNER JOIN org_members as m ON m.volunteer_id = v.id").
-		Where("m.status = ?", model.MemberStatusActive)
-	if len(orgIDs) > 0 {
-		baseSession = baseSession.Where("m.org_id IN ?", orgIDs)
-	}
+		Where("v.id IN ?", volunteerIDs)
 
 	// 循环处理所有查询条件
 	for key, value := range queryMap {
@@ -93,8 +101,7 @@ func (r *Repository) GetVolunteerList(db *gorm.DB, orgIDs []int64, queryMap map[
 		baseSession = baseSession.Where(key, value)
 	}
 
-	// 使用去重后的志愿者ID获取总数，避免同一志愿者在多个组织时重复计数
-	err := baseSession.Distinct("v.id").Count(&total).Error
+	err := baseSession.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -103,8 +110,7 @@ func (r *Repository) GetVolunteerList(db *gorm.DB, orgIDs []int64, queryMap map[
 		// 如果没有数据，直接返回空结果
 		return volunteers, 0, nil
 	}
-	// 使用去重后的志愿者数据分页查询，避免同一志愿者重复出现
-	querySession := baseSession.Distinct().Select("v.*")
+	querySession := baseSession.Select("v.*")
 	err = querySession.Offset(offset).Limit(limit).
 		Order("v.created_at DESC").
 		Find(&volunteers).Error

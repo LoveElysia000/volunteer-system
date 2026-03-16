@@ -254,22 +254,21 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 		if getErr != nil {
 			return getErr
 		}
-		if canErr := canCancelSignup(signup); canErr != nil {
-			return canErr
+		decision, transitionErr := resolveSignupTransition(signupTransitionCancel, signup)
+		if transitionErr != nil {
+			return transitionErr
 		}
-
-		originalStatus := signup.Status
 		signupID = signup.ID
 
-		// 更新报名状态为已取消
-		signup.Status = model.ActivitySignupStatusCanceled
-		if err := s.repo.UpdateSignupStatus(tx, signup); err != nil {
+		if !decision.apply {
+			return nil
+		}
+		if err := s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, decision.toStatus); err != nil {
 			log.Error("取消报名失败: 更新报名状态异常: %v, activity_id=%d user_id=%d volunteer_id=%d signup_id=%d", err, req.ActivityId, userID, volunteerID, signup.ID)
 			return err
 		}
 
-		// 仅“报名成功”记录占用名额，取消时才扣减人数。
-		if originalStatus == model.ActivitySignupStatusSuccess {
+		if decision.peopleDelta < 0 {
 			if err := s.repo.DecrementActivityPeople(tx, req.ActivityId); err != nil {
 				log.Error("取消报名失败: 减少活动人数异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
 				return err

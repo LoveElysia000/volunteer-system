@@ -53,21 +53,21 @@ service AuditService {
 
 // 统一待审核列表查询参数
 message PendingAuditListRequest {
-  // 审核目标类型（单值） @gotags: query:"targetType"
+  // 审核目标类型（单值） @gotags: json:"targetType"
   int32 targetType = 1;
-  // 审核状态集合 @gotags: query:"status"
+  // 审核状态集合 @gotags: json:"status"
   repeated int32 status = 2;
-  // 标题/副标题关键词 @gotags: query:"keyword"
+  // 标题/副标题关键词 @gotags: json:"keyword"
   string keyword = 3;
-  // 页码（从1开始） @gotags: query:"page"
+  // 页码（从1开始） @gotags: json:"page"
   int32 page = 4;
-  // 每页条数 @gotags: query:"pageSize"
+  // 每页条数 @gotags: json:"pageSize"
   int32 pageSize = 5;
-  // 创建时间起始（可选） @gotags: query:"createdFrom"
+  // 创建时间起始（可选） @gotags: json:"createdFrom"
   string createdFrom = 6;
-  // 创建时间结束（可选） @gotags: query:"createdTo"
+  // 创建时间结束（可选） @gotags: json:"createdTo"
   string createdTo = 7;
-  // 超时阈值小时（可选，默认24） @gotags: query:"slaHours"
+  // 超时阈值小时（可选，默认24） @gotags: json:"slaHours"
   int32 slaHours = 8;
 }
 
@@ -101,9 +101,9 @@ message PendingAuditItem {
 
 // 执行审核请求参数
 message AuditApprovalRequest {
-  // 审核记录id @gotags: query:"id,required"
+  // 审核记录id @gotags: json:"id,required"
   int64 id = 1;
-  // 原因 @gotags: query:"reason"
+  // 原因 @gotags: json:"reason"
   string reason = 2;
 }
 
@@ -113,9 +113,9 @@ message AuditApprovalResponse {
 
 // 执行审核驳回请求参数
 message AuditRejectionRequest {
-  // 审核记录id @gotags: query:"id,required"
+  // 审核记录id @gotags: json:"id,required"
   int64 id = 1;
-  // 原因 @gotags: query:"reason"
+  // 原因 @gotags: json:"reason"
   string reason = 2;
 }
 
@@ -124,11 +124,11 @@ message AuditRejectionResponse {
 }
 
 message AuditBatchDecisionRequest {
-  // 审核记录ID列表 @gotags: query:"ids,required"
+  // 审核记录ID列表 @gotags: json:"ids,required"
   repeated int64 ids = 1;
-  // 动作: 1-通过 2-驳回 @gotags: query:"action,required"
+  // 动作: 1-通过 2-驳回 @gotags: json:"action,required"
   int32 action = 2;
-  // 备注/原因 @gotags: query:"reason"
+  // 备注/原因 @gotags: json:"reason"
   string reason = 3;
 }
 

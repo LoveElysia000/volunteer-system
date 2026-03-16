@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
@@ -11,6 +13,7 @@ import (
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"gorm.io/gorm"
 )
 
 type OrganizationService struct {
@@ -33,6 +36,8 @@ func NewOrganizationService(ctx context.Context, c *app.RequestContext) *Organiz
 	}
 }
 
+// ----- 组织端私有能力：鉴权与基础工具 -----
+
 func (s *OrganizationService) requireOrganizationManagePermission(orgID int64) (int64, error) {
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
@@ -49,8 +54,107 @@ func (s *OrganizationService) requireOrganizationManagePermission(orgID int64) (
 	return userID, nil
 }
 
+func (s *OrganizationService) resolveManageableOrganizationScope() (bool, []int64, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil || userID <= 0 {
+		return false, nil, errUnauthorized("未登录或认证无效")
+	}
+
+	hasGlobalManage, err := s.repo.HasPermissionByScope(
+		s.repo.DB,
+		userID,
+		model.RBACScopeGlobal,
+		0,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+	)
+	if err != nil {
+		return false, nil, err
+	}
+	if hasGlobalManage {
+		return true, nil, nil
+	}
+
+	scopedOrgIDs, err := s.repo.ListOrgScopeIDsByPermission(
+		s.repo.DB,
+		userID,
+		model.PermissionResourceOrganization,
+		model.PermissionActionManage,
+		0,
+	)
+	if err != nil {
+		return false, nil, err
+	}
+	return false, scopedOrgIDs, nil
+}
+
+func buildManageableOrgFilter(hasGlobalManage bool, scopedOrgIDs []int64) (map[string]any, error) {
+	filter := make(map[string]any)
+	if hasGlobalManage {
+		return filter, nil
+	}
+
+	ids := util.UniquePositiveInt64(scopedOrgIDs)
+	if len(ids) == 0 {
+		return nil, errForbidden("无权访问组织")
+	}
+	filter["org.id IN ?"] = ids
+	return filter, nil
+}
+
+func parseOrganizationSearchDate(dateStr, fieldName string, endOfDay bool) (*time.Time, error) {
+	trimmed := strings.TrimSpace(dateStr)
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	if t, err := util.ParseDateTime(trimmed); err == nil {
+		return &t, nil
+	}
+
+	d, err := util.ParseDate(trimmed)
+	if err != nil {
+		return nil, fmt.Errorf("%s 时间格式错误", fieldName)
+	}
+	if endOfDay {
+		d = d.Add(24*time.Hour - time.Second)
+	}
+	return &d, nil
+}
+
+func (s *OrganizationService) getOrganizationByID(orgID int64) (*model.Organization, error) {
+	organization, err := s.repo.GetOrganizationByID(s.repo.DB, orgID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("组织不存在")
+		}
+		log.Error("查询组织信息失败: %v, ID=%d", err, orgID)
+		return nil, errors.New("查询组织信息失败")
+	}
+	return organization, nil
+}
+
+func (s *OrganizationService) getManageableOrganization(orgID int64) (*model.Organization, int64, error) {
+	if orgID <= 0 {
+		return nil, 0, errors.New("组织ID无效")
+	}
+	organization, err := s.getOrganizationByID(orgID)
+	if err != nil {
+		return nil, 0, err
+	}
+	operatorID, err := s.requireOrganizationManagePermission(organization.ID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return organization, operatorID, nil
+}
+
+// ===== 组织端：查询能力 =====
+
 func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest) (*api.OrganizationListResponse, error) {
-	// 参数校验
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -58,32 +162,34 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 		req.PageSize = 20
 	}
 
-	// 构建查询参数map
-	queryMap := make(map[string]any)
+	hasGlobalManage, scopedOrgIDs, err := s.resolveManageableOrganizationScope()
+	if err != nil {
+		return nil, err
+	}
+	queryMap, err := buildManageableOrgFilter(hasGlobalManage, scopedOrgIDs)
+	if err != nil {
+		return nil, err
+	}
 
-	// 如果有关键字，先通过模糊查询获取组织ID列表
-	if req.Keyword != "" {
-		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, req.Keyword)
+	trimmedKeyword := strings.TrimSpace(req.Keyword)
+	if trimmedKeyword != "" {
+		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, trimmedKeyword)
 		if err != nil {
-			log.Error("关键字查询组织ID失败: %v", err)
+			log.Error("构建组织查询条件失败: %v", err)
 			return nil, err
 		}
 		if len(ids) == 0 {
-			// 没有匹配的组织
 			return &api.OrganizationListResponse{
 				Total: 0,
 				List:  []*api.OrganizationListItem{},
 			}, nil
 		}
-		queryMap["org.id IN (?)"] = ids
+		queryMap["org.id IN ?"] = ids
 	}
-
-	// 状态支持多选筛选（0-停用，1-正常）
 	if len(req.Status) > 0 {
-		queryMap["org.status IN (?)"] = req.Status
+		queryMap["org.status IN ?"] = req.Status
 	}
 
-	// 根据查询参数查询组织列表
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
 	organizations, total, err := s.repo.GetOrganizationList(s.repo.DB, queryMap, pageSize, offset)
@@ -92,14 +198,12 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 		return nil, err
 	}
 
-	// 组装返回数据
-	resp := &api.OrganizationListResponse{
-		Total: int32(total),
-		List:  make([]*api.OrganizationListItem, 0, len(organizations)),
-	}
-
+	list := make([]*api.OrganizationListItem, 0, len(organizations))
 	for _, org := range organizations {
-		item := &api.OrganizationListItem{
+		if org == nil {
+			continue
+		}
+		list = append(list, &api.OrganizationListItem{
 			Id:               org.ID,
 			Name:             org.OrgName,
 			OrganizationCode: org.LicenseCode,
@@ -109,25 +213,26 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 			Status:           org.Status,
 			OrganizationType: "",
 			Region:           "",
-			CreatedAt:        org.CreatedAt.Format("2006-01-02 15:04:05"),
-		}
-		resp.List = append(resp.List, item)
+			CreatedAt:        org.CreatedAt.Format(util.DateTimeLayout),
+		})
 	}
 
-	return resp, nil
+	return &api.OrganizationListResponse{
+		Total: int32(total),
+		List:  list,
+	}, nil
 }
 
 func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequest) (*api.OrganizationDetailResponse, error) {
-	// 查询组织信息
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, req.Id)
-	if err != nil {
-		log.Error("查询组织信息失败: %v, ID=%d", err, req.Id)
-		return nil, err
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
-
-	if organization == nil {
-		log.Warn("组织不存在: ID=%d", req.Id)
-		return nil, errors.New("组织不存在")
+	if req.Id <= 0 {
+		return nil, errors.New("组织ID无效")
+	}
+	organization, _, err := s.getManageableOrganization(req.Id)
+	if err != nil {
+		return nil, err
 	}
 
 	// 组装返回数据
@@ -155,7 +260,12 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 	return resp, nil
 }
 
+// ===== 组织端：单组织变更能力 =====
+
 func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequest) (*api.OrganizationCreateResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	// 获取当前登录用户ID
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
@@ -173,51 +283,75 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 	if req.ContactPhone == "" {
 		return nil, errors.New("联系电话不能为空")
 	}
-
-	// 创建组织
-	org := &model.Organization{
-		AccountID:     userID,
-		OrgName:       req.Name,
-		LicenseCode:   req.OrganizationCode,
-		ContactPerson: req.ContactPerson,
-		ContactPhone:  req.ContactPhone,
-		Address:       req.Address,
-		LogoURL:       req.LogoUrl,
-		Introduction:  req.Description,
-		Status:        model.OrganizationNormal, // 默认启用
+	if userID <= 0 {
+		return nil, errors.New("用户ID无效")
 	}
 
-	err = s.repo.CreateOrganization(s.repo.DB, org)
+	var createdOrgID int64
+	err = s.withTransaction(func(tx *gorm.DB) error {
+		org := &model.Organization{
+			AccountID:     userID,
+			OrgName:       req.Name,
+			LicenseCode:   req.OrganizationCode,
+			ContactPerson: req.ContactPerson,
+			ContactPhone:  req.ContactPhone,
+			Address:       req.Address,
+			LogoURL:       req.LogoUrl,
+			Introduction:  req.Description,
+			Status:        model.OrganizationNormal, // 默认启用
+		}
+
+		if err := s.repo.CreateOrganization(tx, org); err != nil {
+			return err
+		}
+		if err := s.bindOrganizationOwnerRole(tx, userID, org.ID); err != nil {
+			return err
+		}
+		createdOrgID = org.ID
+		return nil
+	})
 	if err != nil {
-		log.Error("创建组织失败: %v", err)
+		log.Error("创建组织失败: %v, user_id=%d", err, userID)
 		return nil, errors.New("创建组织失败")
 	}
 
-	log.Info("组织创建成功: ID=%d, 名称=%s", org.ID, req.Name)
+	log.Info("组织创建成功: ID=%d, 名称=%s", createdOrgID, req.Name)
 
 	return &api.OrganizationCreateResponse{
-		Id:      org.ID,
+		Id:      createdOrgID,
 		Message: "创建成功",
 	}, nil
 }
 
-func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequest) (*api.OrganizationUpdateResponse, error) {
-	// 参数校验
-	if req.Id <= 0 {
-		return nil, errors.New("组织ID无效")
-	}
-
-	// 检查组织是否存在
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, req.Id)
+func (s *OrganizationService) bindOrganizationOwnerRole(tx *gorm.DB, accountID, orgID int64) error {
+	role, err := s.repo.GetRBACRoleByCode(tx, model.RBACRoleOrgOwner)
 	if err != nil {
-		log.Error("查询组织信息失败: %v, ID=%d", err, req.Id)
-		return nil, errors.New("查询组织信息失败")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("组织管理员角色未初始化")
+		}
+		return err
 	}
+	if role == nil || role.Status != 1 {
+		return errors.New("组织管理员角色不可用")
+	}
+	return s.repo.UpsertRBACAccountRoleBinding(
+		tx,
+		accountID,
+		role.ID,
+		model.RBACScopeOrg,
+		orgID,
+		1,
+		accountID,
+		nil,
+	)
+}
 
-	if organization == nil {
-		return nil, errors.New("组织不存在")
+func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequest) (*api.OrganizationUpdateResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
-	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
+	_, _, err := s.getManageableOrganization(req.Id)
+	if err != nil {
 		return nil, err
 	}
 
@@ -264,22 +398,11 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 }
 
 func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequest) (*api.DeleteOrganizationResponse, error) {
-	// 参数校验
-	if req.Id <= 0 {
-		return nil, errors.New("组织ID无效")
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
-
-	// 检查组织是否存在
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, req.Id)
+	_, _, err := s.getManageableOrganization(req.Id)
 	if err != nil {
-		log.Error("查询组织信息失败: %v, ID=%d", err, req.Id)
-		return nil, errors.New("查询组织信息失败")
-	}
-
-	if organization == nil {
-		return nil, errors.New("组织不存在")
-	}
-	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
 		return nil, err
 	}
 
@@ -298,26 +421,15 @@ func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequ
 }
 
 func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRequest) (*api.DisableOrganizationResponse, error) {
-	// 参数校验
-	if req.Id <= 0 {
-		return nil, errors.New("组织ID无效")
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
-
-	// 检查组织是否存在
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, req.Id)
+	organization, _, err := s.getManageableOrganization(req.Id)
 	if err != nil {
-		log.Error("查询组织信息失败: %v, ID=%d", err, req.Id)
-		return nil, errors.New("查询组织信息失败")
-	}
-
-	if organization == nil {
-		return nil, errors.New("组织不存在")
+		return nil, err
 	}
 	if organization.AccountID <= 0 {
 		return nil, errors.New("组织账号信息异常")
-	}
-	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
-		return nil, err
 	}
 
 	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationDisabled})
@@ -334,26 +446,15 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 }
 
 func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequest) (*api.EnableOrganizationResponse, error) {
-	// 参数校验
-	if req.Id <= 0 {
-		return nil, errors.New("组织ID无效")
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
-
-	// 检查组织是否存在
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, req.Id)
+	organization, _, err := s.getManageableOrganization(req.Id)
 	if err != nil {
-		log.Error("查询组织信息失败: %v, ID=%d", err, req.Id)
-		return nil, errors.New("查询组织信息失败")
-	}
-
-	if organization == nil {
-		return nil, errors.New("组织不存在")
+		return nil, err
 	}
 	if organization.AccountID <= 0 {
 		return nil, errors.New("组织账号信息异常")
-	}
-	if _, err := s.requireOrganizationManagePermission(organization.ID); err != nil {
-		return nil, err
 	}
 
 	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationNormal})
@@ -369,8 +470,12 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 	}, nil
 }
 
+// ===== 组织端：搜索与批量操作 =====
+
 func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchRequest) (*api.OrganizationSearchResponse, error) {
-	// 参数校验
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -378,18 +483,23 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 		req.PageSize = 20
 	}
 
-	// 构建查询参数map
-	queryMap := make(map[string]any)
+	hasGlobalManage, scopedOrgIDs, err := s.resolveManageableOrganizationScope()
+	if err != nil {
+		return nil, err
+	}
+	queryMap, err := buildManageableOrgFilter(hasGlobalManage, scopedOrgIDs)
+	if err != nil {
+		return nil, err
+	}
 
-	// 如果有关键字，先通过模糊查询获取组织ID列表
-	if req.Keyword != "" {
-		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, req.Keyword)
+	trimmedKeyword := strings.TrimSpace(req.Keyword)
+	if trimmedKeyword != "" {
+		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, trimmedKeyword)
 		if err != nil {
-			log.Error("关键字查询组织ID失败: %v", err)
+			log.Error("构建组织搜索条件失败: %v", err)
 			return nil, err
 		}
 		if len(ids) == 0 {
-			// 没有匹配的组织
 			return &api.OrganizationSearchResponse{
 				Total: 0,
 				List:  []*api.OrganizationListItem{},
@@ -397,20 +507,28 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 		}
 		queryMap["org.id IN ?"] = ids
 	}
-
-	// 状态支持多选筛选（0-停用，1-正常）
 	if len(req.Status) > 0 {
-		queryMap["org.status in (?)"] = req.Status
+		queryMap["org.status IN ?"] = req.Status
 	}
 
-	if req.StartDate != "" {
-		queryMap["org.created_at >= ?"] = req.StartDate
+	startAt, err := parseOrganizationSearchDate(req.StartDate, "startDate", false)
+	if err != nil {
+		return nil, err
 	}
-	if req.EndDate != "" {
-		queryMap["org.created_at <= ?"] = req.EndDate
+	endAt, err := parseOrganizationSearchDate(req.EndDate, "endDate", true)
+	if err != nil {
+		return nil, err
+	}
+	if startAt != nil && endAt != nil && startAt.After(*endAt) {
+		return nil, errors.New("startDate 不能晚于 endDate")
+	}
+	if startAt != nil {
+		queryMap["org.created_at >= ?"] = *startAt
+	}
+	if endAt != nil {
+		queryMap["org.created_at <= ?"] = *endAt
 	}
 
-	// 根据查询参数查询组织列表
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
 	organizations, total, err := s.repo.GetOrganizationList(s.repo.DB, queryMap, pageSize, offset)
@@ -419,14 +537,12 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 		return nil, err
 	}
 
-	// 组装返回数据
-	resp := &api.OrganizationSearchResponse{
-		Total: int32(total),
-		List:  make([]*api.OrganizationListItem, 0, len(organizations)),
-	}
-
+	list := make([]*api.OrganizationListItem, 0, len(organizations))
 	for _, org := range organizations {
-		item := &api.OrganizationListItem{
+		if org == nil {
+			continue
+		}
+		list = append(list, &api.OrganizationListItem{
 			Id:               org.ID,
 			Name:             org.OrgName,
 			OrganizationCode: org.LicenseCode,
@@ -436,15 +552,20 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 			Status:           org.Status,
 			OrganizationType: "",
 			Region:           "",
-			CreatedAt:        org.CreatedAt.Format("2006-01-02 15:04:05"),
-		}
-		resp.List = append(resp.List, item)
+			CreatedAt:        org.CreatedAt.Format(util.DateTimeLayout),
+		})
 	}
 
-	return resp, nil
+	return &api.OrganizationSearchResponse{
+		Total: int32(total),
+		List:  list,
+	}, nil
 }
 
 func (s *OrganizationService) BulkDeleteOrganizations(req *api.BulkDeleteOrganizationRequest) (*api.BulkDeleteOrganizationResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	// 参数校验
 	if len(req.Ids) == 0 {
 		return nil, errors.New("组织ID列表不能为空")
@@ -479,6 +600,9 @@ func (s *OrganizationService) BulkDeleteOrganizations(req *api.BulkDeleteOrganiz
 }
 
 func (s *OrganizationService) BatchDisableOrganizations(req *api.BatchDisableOrganizationRequest) (*api.BatchDisableOrganizationResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	successCount, failedIDs, err := s.batchChangeOrganizationStatus(req.Ids, req.Reason, model.OrganizationDisabled, "停用")
 	if err != nil {
 		return nil, err
@@ -492,6 +616,9 @@ func (s *OrganizationService) BatchDisableOrganizations(req *api.BatchDisableOrg
 }
 
 func (s *OrganizationService) BatchEnableOrganizations(req *api.BatchEnableOrganizationRequest) (*api.BatchEnableOrganizationResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	successCount, failedIDs, err := s.batchChangeOrganizationStatus(req.Ids, req.Reason, model.OrganizationNormal, "启用")
 	if err != nil {
 		return nil, err
@@ -503,6 +630,8 @@ func (s *OrganizationService) BatchEnableOrganizations(req *api.BatchEnableOrgan
 		Message:      "批量启用完成",
 	}, nil
 }
+
+// ----- 组织端私有能力：批量流程 -----
 
 func (s *OrganizationService) resolveOrgBatchOperatorID() (int64, error) {
 	userID, err := middleware.GetUserIDInt(s.c)

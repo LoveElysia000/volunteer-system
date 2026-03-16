@@ -15,6 +15,7 @@ coverage.out
 
 # Logs
 logs/
+uploads/
 *.log
 
 # IDE/editor settings

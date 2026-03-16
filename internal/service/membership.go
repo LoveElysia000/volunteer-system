@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"volunteer-system/internal/api"
 	"volunteer-system/internal/middleware"
@@ -21,6 +21,8 @@ type MembershipService struct {
 	Service
 }
 
+const membershipApplicationSubmittedMessage = "application submitted"
+
 // NewMembershipService 创建成员关系服务实例，并注入请求上下文与仓储依赖。
 func NewMembershipService(ctx context.Context, c *app.RequestContext) *MembershipService {
 	if ctx == nil {
@@ -35,14 +37,129 @@ func NewMembershipService(ctx context.Context, c *app.RequestContext) *Membershi
 	}
 }
 
-// hasOrganizationPermission 校验当前组织列表中是否包含目标组织。
-func hasOrganizationPermission(organizations []*model.Organization, organizationID int64) bool {
-	for _, org := range organizations {
-		if org != nil && org.ID == organizationID {
-			return true
-		}
+// ===== 志愿者端：申请加入/退出组织 =====
+
+func buildPendingJoinResponse() *api.VolunteerJoinResponse {
+	return &api.VolunteerJoinResponse{
+		Status:  model.MemberStatusPending,
+		Message: membershipApplicationSubmittedMessage,
 	}
-	return false
+}
+
+func (s *MembershipService) ensureJoinTargets(tx *gorm.DB, orgID, volunteerID int64) error {
+	if err := s.ensureJoinOrganizationExists(tx, orgID); err != nil {
+		return err
+	}
+	return s.ensureJoinVolunteerExists(tx, volunteerID)
+}
+
+func (s *MembershipService) ensureJoinOrganizationExists(tx *gorm.DB, orgID int64) error {
+	organization, err := s.repo.GetOrganizationByID(tx, orgID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("组织不存在")
+		}
+		return err
+	}
+	if organization == nil {
+		return errors.New("组织不存在")
+	}
+	return nil
+}
+
+func (s *MembershipService) ensureJoinVolunteerExists(tx *gorm.DB, volunteerID int64) error {
+	// 锁定志愿者，串行化同一志愿者的加入申请，防止并发重复提交。
+	volunteer, err := s.repo.FindVolunteerByIDForUpdate(tx, volunteerID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("志愿者不存在")
+		}
+		return err
+	}
+	if volunteer == nil {
+		return errors.New("志愿者不存在")
+	}
+	return nil
+}
+
+func (s *MembershipService) handleExistingJoinMembership(tx *gorm.DB, existing *model.OrgMember, userID int64) (*api.VolunteerJoinResponse, error) {
+	if existing == nil {
+		return nil, nil
+	}
+
+	if err := validateMemberTransition(flowJoinReapply, existing.Status, model.MemberStatusActive); err != nil {
+		return nil, err
+	}
+	return s.submitReapplyMembershipAudit(tx, existing, userID)
+}
+
+func (s *MembershipService) submitReapplyMembershipAudit(tx *gorm.DB, existing *model.OrgMember, userID int64) (*api.VolunteerJoinResponse, error) {
+	hasPendingMemberAudit, err := s.hasPendingMemberAuditByTargetID(tx, existing.ID)
+	if err != nil {
+		return nil, err
+	}
+	if hasPendingMemberAudit {
+		return nil, errors.New("成员关系已存在或正在审核中")
+	}
+
+	now := time.Now()
+	oldMember := *existing
+	newMember := oldMember
+	newMember.Status = model.MemberStatusActive
+	newMember.AppliedAt = now
+	newMember.JoinedAt = nil
+	newMember.LeftAt = nil
+	newMember.LeaveReason = ""
+
+	record, err := buildPendingAuditRecord(
+		model.AuditTargetMember,
+		model.OperationTypeUpdate,
+		existing.ID,
+		userID,
+		&oldMember,
+		&newMember,
+		now,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.CreateAuditRecord(tx, record); err != nil {
+		return nil, err
+	}
+
+	return buildPendingJoinResponse(), nil
+}
+
+func (s *MembershipService) submitCreateMembershipAudit(tx *gorm.DB, orgID, volunteerID, userID int64) (*api.VolunteerJoinResponse, error) {
+	hasPendingCreateAudit, err := s.hasPendingMemberCreateAudit(tx, orgID, volunteerID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if hasPendingCreateAudit {
+		return nil, errors.New("成员关系已存在或正在审核中")
+	}
+
+	now := time.Now()
+	newMember := &model.OrgMember{
+		OrgID:       orgID,
+		VolunteerID: volunteerID,
+		Role:        model.MemberRoleMember,
+		Status:      model.MemberStatusActive,
+		AppliedAt:   now,
+	}
+	record, err := buildPendingCreateAuditRecordByModel(
+		model.AuditTargetMember,
+		userID,
+		newMember,
+		now,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.CreateAuditRecord(tx, record); err != nil {
+		return nil, err
+	}
+	return buildPendingJoinResponse(), nil
 }
 
 // VolunteerJoinOrganization submits a join request for an organization.
@@ -75,119 +192,33 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 	}
 	req.VolunteerId = currentVolunteer.ID
 
-	if req.VolunteerId <= 0 {
-		return nil, errors.New("志愿者ID不能为空")
-	}
-
 	orgID := req.OrganizationId
 	volunteerID := req.VolunteerId
 	var resp *api.VolunteerJoinResponse
 
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		organization, orgErr := s.repo.GetOrganizationByID(tx, orgID)
-		if orgErr != nil {
-			if errors.Is(orgErr, gorm.ErrRecordNotFound) {
-				return errors.New("组织不存在")
-			}
-			return orgErr
-		}
-		if organization == nil {
-			return errors.New("组织不存在")
-		}
-
-		// 锁定志愿者，串行化同一志愿者的加入申请，防止并发重复提交。
-		volunteer, volunteerErr := s.repo.FindVolunteerByIDForUpdate(tx, volunteerID)
-		if volunteerErr != nil {
-			if errors.Is(volunteerErr, gorm.ErrRecordNotFound) {
-				return errors.New("志愿者不存在")
-			}
-			return volunteerErr
-		}
-		if volunteer == nil {
-			return errors.New("志愿者不存在")
+		if err := s.ensureJoinTargets(tx, orgID, volunteerID); err != nil {
+			return err
 		}
 
 		existing, existingErr := s.repo.FindMembershipByOrgAndVolunteer(tx, orgID, volunteerID)
 		if existingErr != nil {
 			return existingErr
 		}
-		if existing != nil {
-			switch existing.Status {
-			case model.MemberStatusActive, model.MemberStatusPending:
-				return errors.New("成员关系已存在或正在审核中")
-			case model.MemberStatusRejected, model.MemberStatusLeft:
-				hasPendingMemberAudit, pendingErr := s.hasPendingMemberAuditByTargetID(tx, existing.ID)
-				if pendingErr != nil {
-					return pendingErr
-				}
-				if hasPendingMemberAudit {
-					return errors.New("成员关系已存在或正在审核中")
-				}
-
-				now := time.Now()
-				oldMember := *existing
-				newMember := oldMember
-				newMember.Status = model.MemberStatusActive
-				newMember.AppliedAt = now
-				newMember.JoinedAt = nil
-
-				record, recordErr := buildPendingAuditRecord(
-					model.AuditTargetMember,
-					model.OperationTypeUpdate,
-					existing.ID,
-					userID,
-					&oldMember,
-					&newMember,
-					now,
-				)
-				if recordErr != nil {
-					return recordErr
-				}
-				if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
-					return createErr
-				}
-				resp = &api.VolunteerJoinResponse{
-					Status:  model.MemberStatusPending,
-					Message: "application submitted",
-				}
-				return nil
-			default:
-				return errors.New("成员关系状态异常")
-			}
+		existingResp, err := s.handleExistingJoinMembership(tx, existing, userID)
+		if err != nil {
+			return err
+		}
+		if existingResp != nil {
+			resp = existingResp
+			return nil
 		}
 
-		hasPendingCreateAudit, pendingErr := s.hasPendingMemberCreateAudit(tx, orgID, volunteerID, userID)
-		if pendingErr != nil {
-			return pendingErr
+		createResp, err := s.submitCreateMembershipAudit(tx, orgID, volunteerID, userID)
+		if err != nil {
+			return err
 		}
-		if hasPendingCreateAudit {
-			return errors.New("成员关系已存在或正在审核中")
-		}
-
-		now := time.Now()
-		newMember := &model.OrgMember{
-			OrgID:       orgID,
-			VolunteerID: volunteerID,
-			Role:        model.MemberRoleMember,
-			Status:      model.MemberStatusActive,
-			AppliedAt:   now,
-		}
-		record, recordErr := buildPendingCreateAuditRecordByModel(
-			model.AuditTargetMember,
-			userID,
-			newMember,
-			now,
-		)
-		if recordErr != nil {
-			return recordErr
-		}
-		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
-			return createErr
-		}
-		resp = &api.VolunteerJoinResponse{
-			Status:  model.MemberStatusPending,
-			Message: "application submitted",
-		}
+		resp = createResp
 		return nil
 	})
 	if err != nil {
@@ -199,52 +230,69 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 
 // hasPendingMemberCreateAudit 检查是否存在相同组织与志愿者的待审核新增成员申请。
 func (s *MembershipService) hasPendingMemberCreateAudit(db *gorm.DB, orgID, volunteerID, creatorID int64) (bool, error) {
-	queryMap := map[string]any{
-		"target_type = ?":    model.AuditTargetMember,
-		"operation_type = ?": model.OperationTypeCreate,
-		"status = ?":         model.AuditStatusPending,
-		"creator_id = ?":     creatorID,
-	}
-	records, _, err := s.repo.GetAuditRecordsList(db, queryMap, 0, 0)
+	exists, err := s.repo.ExistsPendingMemberCreateAuditBySnapshot(db, orgID, volunteerID, creatorID)
 	if err != nil {
 		log.Error("查询待审核创建成员记录失败: %v, organization_id=%d volunteer_id=%d", err, orgID, volunteerID)
 		return false, err
 	}
-
-	for _, record := range records {
-		if record == nil {
-			continue
-		}
-
-		var member model.OrgMember
-		if err := json.Unmarshal([]byte(record.NewContent), &member); err != nil {
-			log.Error("解析待审核成员记录快照失败: record_id=%d err=%v", record.ID, err)
-			continue
-		}
-
-		if member.OrgID == orgID && member.VolunteerID == volunteerID {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return exists, nil
 }
 
 func (s *MembershipService) hasPendingMemberAuditByTargetID(db *gorm.DB, targetID int64) (bool, error) {
-	if targetID <= 0 {
-		return false, nil
+	return s.repo.ExistsPendingMemberAuditByTargetID(db, targetID)
+}
+
+func (s *MembershipService) submitLeaveMembershipAudit(
+	tx *gorm.DB,
+	membershipID, currentVolunteerID, userID int64,
+	leaveReason string,
+) (*api.VolunteerLeaveResponse, error) {
+	member, err := s.repo.GetMembershipByIDForUpdate(tx, membershipID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("成员关系不存在")
+		}
+		return nil, err
+	}
+	if member.VolunteerID != currentVolunteerID {
+		return nil, errors.New("无权操作该成员关系")
+	}
+	if err := validateMemberTransition(flowLeaveApply, member.Status, model.MemberStatusLeft); err != nil {
+		return nil, err
 	}
 
-	queryMap := map[string]any{
-		"target_type = ?": model.AuditTargetMember,
-		"target_id = ?":   targetID,
-		"status = ?":      model.AuditStatusPending,
-	}
-	records, _, err := s.repo.GetAuditRecordsList(db, queryMap, 1, 0)
+	hasPending, err := s.hasPendingMemberAuditByTargetID(tx, member.ID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return len(records) > 0, nil
+	if hasPending {
+		return nil, errors.New("该成员关系已有待审核申请")
+	}
+
+	newMember := *member
+	newMember.Status = model.MemberStatusLeft
+	now := time.Now()
+	newMember.LeftAt = &now
+	newMember.LeaveReason = leaveReason
+
+	record, err := buildPendingDeleteAuditRecordByModel(
+		model.AuditTargetMember,
+		member.ID,
+		userID,
+		member,
+		&newMember,
+		now,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.CreateAuditRecord(tx, record); err != nil {
+		return nil, err
+	}
+
+	return &api.VolunteerLeaveResponse{
+		Message: membershipApplicationSubmittedMessage,
+	}, nil
 }
 
 // VolunteerLeaveOrganization submits a leave request for an organization.
@@ -256,6 +304,7 @@ func (s *MembershipService) VolunteerLeaveOrganization(req *api.VolunteerLeaveRe
 	if req.MembershipId <= 0 {
 		return nil, errors.New("成员关系ID不能为空")
 	}
+	leaveReason := strings.TrimSpace(req.Reason)
 
 	// 仅允许志愿者本人发起退出组织申请。
 	userID, err := middleware.GetUserIDInt(s.c)
@@ -274,47 +323,11 @@ func (s *MembershipService) VolunteerLeaveOrganization(req *api.VolunteerLeaveRe
 
 	var resp *api.VolunteerLeaveResponse
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		member, memberErr := s.repo.GetMembershipByIDForUpdate(tx, req.MembershipId)
-		if memberErr != nil {
-			if errors.Is(memberErr, gorm.ErrRecordNotFound) {
-				return errors.New("成员关系不存在")
-			}
-			return memberErr
+		txResp, txErr := s.submitLeaveMembershipAudit(tx, req.MembershipId, currentVolunteer.ID, userID, leaveReason)
+		if txErr != nil {
+			return txErr
 		}
-		if member.VolunteerID != currentVolunteer.ID {
-			return errors.New("无权操作该成员关系")
-		}
-		if member.Status == model.MemberStatusLeft {
-			return errors.New("该成员已退出组织")
-		}
-
-		hasPending, pendingErr := s.hasPendingMemberAuditByTargetID(tx, member.ID)
-		if pendingErr != nil {
-			return pendingErr
-		}
-		if hasPending {
-			return errors.New("该成员关系已有待审核申请")
-		}
-
-		newMember := *member
-		newMember.Status = model.MemberStatusLeft
-		record, recordErr := buildPendingDeleteAuditRecordByModel(
-			model.AuditTargetMember,
-			member.ID,
-			userID,
-			member,
-			&newMember,
-			time.Now(),
-		)
-		if recordErr != nil {
-			return recordErr
-		}
-		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
-			return createErr
-		}
-		resp = &api.VolunteerLeaveResponse{
-			Message: "application submitted",
-		}
+		resp = txResp
 		return nil
 	})
 	if err != nil {
@@ -324,8 +337,108 @@ func (s *MembershipService) VolunteerLeaveOrganization(req *api.VolunteerLeaveRe
 	return resp, nil
 }
 
+// GetVolunteerOrganizations returns organizations joined by a volunteer.
+func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganizationsRequest) (*api.VolunteerOrganizationsResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+	if req.VolunteerId <= 0 {
+		return nil, errors.New("志愿者ID不能为空")
+	}
+
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+
+	// Permission: volunteer can only access own memberships.
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		log.Error("查询志愿者组织列表失败: 获取当前用户失败: %v, volunteer_id=%d", err, req.VolunteerId)
+		return nil, err
+	}
+	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
+	if err != nil || volunteer == nil || volunteer.ID != req.VolunteerId {
+		if err != nil {
+			log.Error("查询志愿者组织列表失败: 查询志愿者异常: %v, volunteer_id=%d user_id=%d", err, req.VolunteerId, userID)
+		}
+		return nil, errors.New("无权操作该志愿者")
+	}
+
+	pageSize := int(req.PageSize)
+	offset := (int(req.Page) - 1) * pageSize
+	list, total, err := s.repo.GetVolunteerOrganizations(s.repo.DB, req.VolunteerId, req.Status, pageSize, offset)
+	if err != nil {
+		log.Error("查询志愿者组织列表失败: 查询成员关系异常: %v, volunteer_id=%d page=%d page_size=%d", err, req.VolunteerId, req.Page, req.PageSize)
+		return nil, err
+	}
+
+	orgInfoMap := make(map[int64]*model.Organization)
+	if len(list) > 0 {
+		orgIDs := make([]int64, 0, len(list))
+		for _, member := range list {
+			if member == nil {
+				continue
+			}
+			orgIDs = append(orgIDs, member.OrgID)
+		}
+		orgIDs = util.UniquePositiveInt64(orgIDs)
+
+		organizations, err := s.repo.GetOrganizationsByIDs(s.repo.DB, orgIDs)
+		if err != nil {
+			log.Error("查询志愿者组织列表失败: 批量查询组织异常: %v, volunteer_id=%d org_count=%d", err, req.VolunteerId, len(orgIDs))
+			return nil, err
+		}
+		for _, org := range organizations {
+			orgInfoMap[org.ID] = org
+		}
+	}
+
+	resp := &api.VolunteerOrganizationsResponse{
+		Total: int32(total),
+		List:  make([]*api.OrganizationMemberInfo, 0, len(list)),
+	}
+
+	for _, m := range list {
+		if m == nil {
+			continue
+		}
+		organizationName := ""
+		organizationCode := ""
+		if org, ok := orgInfoMap[m.OrgID]; ok && org != nil {
+			organizationName = org.OrgName
+			organizationCode = org.LicenseCode
+		}
+
+		item := &api.OrganizationMemberInfo{
+			MembershipId:     m.ID,
+			OrganizationId:   m.OrgID,
+			OrganizationName: organizationName,
+			OrganizationCode: organizationCode,
+			Status:           m.Status,
+			Role:             m.Role,
+			Position:         "",
+			JoinDate:         util.FormatJoinDate(m.JoinedAt, m.AppliedAt),
+			ReviewDate:       "",
+			ReviewComment:    "",
+			CreatedAt:        m.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt:        m.UpdatedAt.Format("2006-01-02 15:04:05"),
+		}
+		resp.List = append(resp.List, item)
+	}
+
+	return resp, nil
+}
+
+// ===== 组织端：成员管理 =====
+
 // GetOrganizationMembers returns members for an organization.
 func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersRequest) (*api.OrganizationMembersResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	if req.OrganizationId <= 0 {
 		return nil, errors.New("组织ID不能为空")
 	}
@@ -418,6 +531,10 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 		if m == nil {
 			continue
 		}
+		leaveDate := ""
+		if m.LeftAt != nil {
+			leaveDate = m.LeftAt.Format("2006-01-02 15:04:05")
+		}
 		item := &api.MemberInfo{
 			MembershipId:     m.ID,
 			VolunteerId:      m.VolunteerID,
@@ -433,8 +550,8 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 			JoinDate:         util.FormatJoinDate(m.JoinedAt, m.AppliedAt),
 			ReviewDate:       "",
 			ReviewComment:    "",
-			LeaveDate:        "",
-			LeaveReason:      "",
+			LeaveDate:        leaveDate,
+			LeaveReason:      m.LeaveReason,
 			CreatedAt:        m.CreatedAt.Format("2006-01-02 15:04:05"),
 			UpdatedAt:        m.UpdatedAt.Format("2006-01-02 15:04:05"),
 		}
@@ -444,97 +561,87 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 	return resp, nil
 }
 
-// GetVolunteerOrganizations returns organizations joined by a volunteer.
-func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganizationsRequest) (*api.VolunteerOrganizationsResponse, error) {
-	if req.VolunteerId <= 0 {
-		return nil, errors.New("志愿者ID不能为空")
-	}
-
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 || req.PageSize > 100 {
-		req.PageSize = 20
-	}
-
-	// Permission: volunteer can only access own memberships.
-	userID, err := middleware.GetUserIDInt(s.c)
+// ----- 组织端私有能力 -----
+func (s *MembershipService) ensureMembershipManagePermission(operatorID, orgID int64) error {
+	organization, err := s.repo.GetOrganizationByID(s.repo.DB, orgID)
 	if err != nil {
-		log.Error("查询志愿者组织列表失败: 获取当前用户失败: %v, volunteer_id=%d", err, req.VolunteerId)
-		return nil, err
-	}
-	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
-	if err != nil || volunteer == nil || volunteer.ID != req.VolunteerId {
-		if err != nil {
-			log.Error("查询志愿者组织列表失败: 查询志愿者异常: %v, volunteer_id=%d user_id=%d", err, req.VolunteerId, userID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("更新成员状态失败: 组织不存在, org_id=%d", orgID)
+			return errors.New("组织不存在")
 		}
-		return nil, errors.New("无权操作该志愿者")
+		log.Error("更新成员状态失败: 查询组织异常: %v, org_id=%d operator_id=%d", err, orgID, operatorID)
+		return err
 	}
+	return s.requireOrgPermission(
+		operatorID,
+		organization.ID,
+		model.PermissionResourceMembership,
+		model.PermissionActionManage,
+	)
+}
 
-	pageSize := int(req.PageSize)
-	offset := (int(req.Page) - 1) * pageSize
-	list, total, err := s.repo.GetVolunteerOrganizations(s.repo.DB, req.VolunteerId, req.Status, pageSize, offset)
+func buildMemberStatusUpdates(newStatus int32, reviewComment string, now time.Time) map[string]any {
+	updates := map[string]any{
+		"status": newStatus,
+	}
+	switch newStatus {
+	case model.MemberStatusActive:
+		updates["joined_at"] = &now
+		updates["left_at"] = nil
+		updates["leave_reason"] = ""
+	case model.MemberStatusLeft:
+		updates["left_at"] = &now
+		updates["leave_reason"] = strings.TrimSpace(reviewComment)
+	}
+	return updates
+}
+
+func (s *MembershipService) updateMemberStatusInTx(
+	tx *gorm.DB,
+	membershipID int64,
+	newStatus int32,
+	reviewComment string,
+	expectedOrgID int64,
+) (*model.OrgMember, bool, error) {
+	member, err := s.repo.GetMembershipByIDForUpdate(tx, membershipID)
 	if err != nil {
-		log.Error("查询志愿者组织列表失败: 查询成员关系异常: %v, volunteer_id=%d page=%d page_size=%d", err, req.VolunteerId, req.Page, req.PageSize)
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, errors.New("成员关系不存在")
+		}
+		return nil, false, err
+	}
+	if member.OrgID != expectedOrgID {
+		return nil, false, errors.New("成员关系组织已变更，请刷新后重试")
+	}
+	if member.Status == newStatus {
+		return nil, false, nil
+	}
+	if err := validateMemberTransition(flowAdminUpdate, member.Status, newStatus); err != nil {
+		return nil, false, err
 	}
 
-	orgInfoMap := make(map[int64]*model.Organization)
-	if len(list) > 0 {
-		orgIDs := make([]int64, 0, len(list))
-		for _, member := range list {
-			if member == nil {
-				continue
-			}
-			orgIDs = append(orgIDs, member.OrgID)
-		}
-		orgIDs = util.UniquePositiveInt64(orgIDs)
-
-		organizations, err := s.repo.GetOrganizationsByIDs(s.repo.DB, orgIDs)
-		if err != nil {
-			log.Error("查询志愿者组织列表失败: 批量查询组织异常: %v, volunteer_id=%d org_count=%d", err, req.VolunteerId, len(orgIDs))
-			return nil, err
-		}
-		for _, org := range organizations {
-			orgInfoMap[org.ID] = org
-		}
+	hasPending, err := s.hasPendingMemberAuditByTargetID(tx, member.ID)
+	if err != nil {
+		return nil, false, err
+	}
+	if hasPending {
+		return nil, false, errors.New("该成员关系已有待审核申请")
 	}
 
-	resp := &api.VolunteerOrganizationsResponse{
-		Total: int32(total),
-		List:  make([]*api.OrganizationMemberInfo, 0, len(list)),
+	previous := *member
+	now := time.Now()
+	updates := buildMemberStatusUpdates(newStatus, reviewComment, now)
+	if err := s.repo.UpdateMembershipFields(tx, member.ID, updates); err != nil {
+		return nil, false, err
 	}
-
-	for _, m := range list {
-		organizationName := ""
-		organizationCode := ""
-		if org, ok := orgInfoMap[m.OrgID]; ok && org != nil {
-			organizationName = org.OrgName
-			organizationCode = org.LicenseCode
-		}
-
-		item := &api.OrganizationMemberInfo{
-			MembershipId:     m.ID,
-			OrganizationId:   m.OrgID,
-			OrganizationName: organizationName,
-			OrganizationCode: organizationCode,
-			Status:           m.Status,
-			Role:             m.Role,
-			Position:         "",
-			JoinDate:         util.FormatJoinDate(m.JoinedAt, m.AppliedAt),
-			ReviewDate:       "",
-			ReviewComment:    "",
-			CreatedAt:        m.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:        m.UpdatedAt.Format("2006-01-02 15:04:05"),
-		}
-		resp.List = append(resp.List, item)
-	}
-
-	return resp, nil
+	return &previous, true, nil
 }
 
 // UpdateMemberStatus updates membership status by authorized operator.
 func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateRequest) (*api.MemberStatusUpdateResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	operatorID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
 		log.Error("更新成员状态失败: 获取当前用户失败: %v", err)
@@ -562,38 +669,35 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 		log.Error("更新成员状态失败: 查询成员关系异常: %v, membership_id=%d", err, req.MembershipId)
 		return nil, err
 	}
+	if err := s.ensureMembershipManagePermission(operatorID, member.OrgID); err != nil {
+		return nil, err
+	}
 
-	organization, err := s.repo.GetOrganizationByID(s.repo.DB, member.OrgID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error("更新成员状态失败: 组织不存在, membership_id=%d org_id=%d", req.MembershipId, member.OrgID)
-			return nil, errors.New("组织不存在")
+	var sideEffectMember *model.OrgMember
+	err = s.withTransaction(func(tx *gorm.DB) error {
+		previous, changed, txErr := s.updateMemberStatusInTx(
+			tx,
+			req.MembershipId,
+			req.Status,
+			req.ReviewComment,
+			member.OrgID,
+		)
+		if txErr != nil {
+			return txErr
 		}
-		log.Error("更新成员状态失败: 查询组织异常: %v, membership_id=%d org_id=%d operator_id=%d", err, req.MembershipId, member.OrgID, operatorID)
+		if changed {
+			sideEffectMember = previous
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error("更新成员状态失败: %v, membership_id=%d operator_id=%d target_status=%d",
+			err, req.MembershipId, operatorID, req.Status)
 		return nil, err
 	}
-	if err := s.requireOrgPermission(
-		operatorID,
-		organization.ID,
-		model.PermissionResourceMembership,
-		model.PermissionActionManage,
-	); err != nil {
-		return nil, err
+	if sideEffectMember != nil {
+		s.handleMemberStatusSideEffects(sideEffectMember, req.Status, operatorID)
 	}
-
-	updates := map[string]any{
-		"status": req.Status,
-	}
-	if req.Status == model.MemberStatusActive && member.Status != model.MemberStatusActive {
-		now := time.Now()
-		updates["joined_at"] = &now
-	}
-
-	if err := s.repo.UpdateMembershipFields(s.repo.DB, member.ID, updates); err != nil {
-		log.Error("更新成员状态失败: 更新成员关系异常: %v, membership_id=%d status=%d", err, member.ID, req.Status)
-		return nil, err
-	}
-	s.handleMemberStatusSideEffects(member, req.Status, operatorID)
 
 	return &api.MemberStatusUpdateResponse{
 		Message: "status updated",
@@ -660,6 +764,9 @@ func (s *MembershipService) handleMemberStatusSideEffects(member *model.OrgMembe
 
 // MembershipStats returns summary counts.
 func (s *MembershipService) MembershipStats(req *api.MembershipStatsRequest) (*api.MembershipStatsResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
 	userID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
 		log.Error("查询成员统计失败: 获取当前用户失败: %v", err)

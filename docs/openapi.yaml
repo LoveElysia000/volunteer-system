@@ -1419,25 +1419,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/volunteer.MyProfileResponse'
-    /api/volunteers/profile-change/submit:
-        post:
-            tags:
-                - VolunteerService
-            description: 提交志愿者资料变更申请（走审核流）
-            operationId: VolunteerService_VolunteerProfileChangeSubmit
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/volunteer.VolunteerProfileChangeSubmitRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerProfileChangeSubmitResponse'
     /api/volunteers/real-name/submit:
         post:
             tags:
@@ -3826,14 +3807,14 @@ components:
             properties:
                 keyword:
                     type: string
-                    description: '搜索关键字 可选 @gotags: query:"keyword"'
+                    description: '搜索关键字 可选 @gotags: json:"keyword"'
                 page:
                     type: integer
-                    description: '页码 必填 @gotags: query:"page,required"'
+                    description: '页码 必填 @gotags: json:"page"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '页大小 必填 @gotags: query:"pageSize,required"'
+                    description: '页大小 必填 @gotags: json:"pageSize"'
                     format: int32
             description: VolunteerListRequest 志愿者列表请求（管理员端）
         volunteer.VolunteerListResponse:
@@ -3847,46 +3828,15 @@ components:
                     items:
                         $ref: '#/components/schemas/volunteer.VolunteerListItem'
             description: VolunteerListResponse 志愿者列表响应
-        volunteer.VolunteerProfileChangeSubmitRequest:
-            type: object
-            properties:
-                realName:
-                    type: string
-                    description: '真实姓名 可选 @gotags: query:"realName"'
-                gender:
-                    type: integer
-                    description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: query:"gender"'
-                    format: int32
-                birthday:
-                    type: string
-                    description: '出生日期 可选 @gotags: query:"birthday"'
-                avatarUrl:
-                    type: string
-                    description: '头像URL 可选 @gotags: query:"avatarUrl"'
-                introduction:
-                    type: string
-                    description: '个人简介 可选 @gotags: query:"introduction"'
-            description: VolunteerProfileChangeSubmitRequest 志愿者资料变更提审请求
-        volunteer.VolunteerProfileChangeSubmitResponse:
-            type: object
-            properties:
-                auditId:
-                    type: string
-                    description: 审核记录ID
-                status:
-                    type: integer
-                    description: '审核状态: 1-待审核'
-                    format: int32
-            description: VolunteerProfileChangeSubmitResponse 志愿者资料变更提审响应
         volunteer.VolunteerRealNameSubmitRequest:
             type: object
             properties:
                 realName:
                     type: string
-                    description: '真实姓名 @gotags: query:"realName"'
+                    description: '真实姓名 @gotags: json:"realName"'
                 idCard:
                     type: string
-                    description: '身份证号 @gotags: query:"idCard"'
+                    description: '身份证号 @gotags: json:"idCard"'
             description: VolunteerRealNameSubmitRequest 志愿者实名认证提审请求
         volunteer.VolunteerRealNameSubmitResponse:
             type: object

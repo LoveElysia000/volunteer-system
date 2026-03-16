@@ -20,10 +20,10 @@ func (s *Service) hasPermissionByScope(accountID int64, scopeType string, scopeI
 
 func (s *Service) requireOrgPermission(accountID, orgID int64, resource, action string) error {
 	if accountID <= 0 {
-		return errors.New("用户ID不能为空")
+		return errUnauthorized("未登录或认证无效")
 	}
 	if orgID <= 0 {
-		return errors.New("组织ID不能为空")
+		return errBadRequest("组织ID不能为空")
 	}
 
 	allowed, err := s.hasPermissionByScope(accountID, model.RBACScopeGlobal, 0, resource, action)
@@ -42,12 +42,12 @@ func (s *Service) requireOrgPermission(accountID, orgID int64, resource, action 
 		return nil
 	}
 
-	return errors.New("无权操作该组织")
+	return errForbidden("无权操作该组织")
 }
 
 func (s *Service) requireGlobalPermission(accountID int64, resource, action string) error {
 	if accountID <= 0 {
-		return errors.New("用户ID不能为空")
+		return errUnauthorized("未登录或认证无效")
 	}
 
 	allowed, err := s.hasPermissionByScope(accountID, model.RBACScopeGlobal, 0, resource, action)
@@ -58,7 +58,7 @@ func (s *Service) requireGlobalPermission(accountID int64, resource, action stri
 		return nil
 	}
 
-	return errors.New("无权执行该操作")
+	return errForbidden("无权执行该操作")
 }
 
 func (s *Service) ensureDefaultRBACBinding(db *gorm.DB, account *model.SysAccount) error {

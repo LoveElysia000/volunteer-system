@@ -53,9 +53,9 @@ service AssistantService {
 
 // 创建会话请求
 message AssistantCreateSessionRequest {
-  // 场景：general/activity_draft/ops_advisor 必填 @gotags: query:"scene,required"
+  // 场景：general/activity_draft/ops_advisor 必填 @gotags: json:"scene,required"
   string scene = 1;
-  // 会话标题 可选 @gotags: query:"title"
+  // 会话标题 可选 @gotags: json:"title"
   string title = 2;
 }
 
@@ -67,11 +67,11 @@ message AssistantCreateSessionResponse {
 
 // 对话请求
 message AssistantChatRequest {
-  // 会话ID 必填 @gotags: query:"session_id,required"
+  // 会话ID 必填 @gotags: json:"session_id,required"
   int64 session_id = 1;
-  // 用户消息 必填 @gotags: query:"message,required"
+  // 用户消息 必填 @gotags: json:"message,required"
   string message = 2;
-  // 是否流式（当前仅占位） @gotags: query:"stream"
+  // 是否流式（当前仅占位） @gotags: json:"stream"
   bool stream = 3;
 }
 
@@ -157,13 +157,13 @@ message AssistantSessionMessagesResponse {
 
 // 活动草案快捷入口请求
 message AssistantActivityDraftActionRequest {
-  // 可选会话ID @gotags: query:"session_id"
+  // 可选会话ID @gotags: json:"session_id"
   int64 session_id = 1;
-  // 活动主题 必填 @gotags: query:"topic,required"
+  // 活动主题 必填 @gotags: json:"topic,required"
   string topic = 2;
-  // 目标人群 @gotags: query:"target_people"
+  // 目标人群 @gotags: json:"target_people"
   string target_people = 3;
-  // 地点 @gotags: query:"location"
+  // 地点 @gotags: json:"location"
   string location = 4;
 }
 

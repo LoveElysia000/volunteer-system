@@ -55,10 +55,23 @@ func normalizeRBACPage(page, pageSize int32) (int, int) {
 	return int(page), int(pageSize)
 }
 
+func validateSuperAdminGrantConstraints(roleCode, scopeType string, scopeID int64, expiresAt *time.Time) error {
+	if roleCode != model.RBACRoleSuperAdmin {
+		return nil
+	}
+	if scopeType != model.RBACScopeGlobal || scopeID != 0 {
+		return errBadRequest("super_admin 仅允许 global 作用域")
+	}
+	if expiresAt != nil {
+		return errBadRequest("super_admin 授权不支持过期时间")
+	}
+	return nil
+}
+
 func (s *AuthzService) requireRBACManageOperator() (int64, error) {
 	operatorID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		return 0, err
+		return 0, errUnauthorized("未登录或认证无效")
 	}
 	if err := s.requireGlobalPermission(
 		operatorID,
@@ -72,7 +85,7 @@ func (s *AuthzService) requireRBACManageOperator() (int64, error) {
 
 func (s *AuthzService) ListRoles(req *api.RoleListRequest) (*api.RoleListResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	if _, err := s.requireRBACManageOperator(); err != nil {
 		return nil, err
@@ -112,7 +125,7 @@ func (s *AuthzService) ListRoles(req *api.RoleListRequest) (*api.RoleListRespons
 
 func (s *AuthzService) CreateRole(req *api.RoleCreateRequest) (*api.RoleCreateResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	operatorID, err := s.requireRBACManageOperator()
 	if err != nil {
@@ -122,15 +135,15 @@ func (s *AuthzService) CreateRole(req *api.RoleCreateRequest) (*api.RoleCreateRe
 	roleCode := strings.TrimSpace(strings.ToLower(req.RoleCode))
 	roleName := strings.TrimSpace(req.RoleName)
 	if !roleCodePattern.MatchString(roleCode) {
-		return nil, errors.New("角色编码格式不合法")
+		return nil, errBadRequest("角色编码格式不合法")
 	}
 	if roleName == "" {
-		return nil, errors.New("角色名称不能为空")
+		return nil, errBadRequest("角色名称不能为空")
 	}
 
 	existed, err := s.repo.GetRBACRoleByCode(s.repo.DB, roleCode)
 	if err == nil && existed != nil {
-		return nil, errors.New("角色编码已存在")
+		return nil, errBadRequest("角色编码已存在")
 	}
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -171,14 +184,14 @@ func (s *AuthzService) CreateRole(req *api.RoleCreateRequest) (*api.RoleCreateRe
 
 func (s *AuthzService) UpdateRole(req *api.RoleUpdateRequest) (*api.RoleUpdateResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	operatorID, err := s.requireRBACManageOperator()
 	if err != nil {
 		return nil, err
 	}
 	if req.Id <= 0 {
-		return nil, errors.New("角色ID不能为空")
+		return nil, errBadRequest("角色ID不能为空")
 	}
 
 	updates := map[string]any{}
@@ -189,7 +202,7 @@ func (s *AuthzService) UpdateRole(req *api.RoleUpdateRequest) (*api.RoleUpdateRe
 		updates["description"] = strings.TrimSpace(req.Description)
 	}
 	if len(updates) == 0 {
-		return nil, errors.New("没有可更新字段")
+		return nil, errBadRequest("没有可更新字段")
 	}
 	updates["updated_at"] = time.Now()
 
@@ -220,7 +233,7 @@ func (s *AuthzService) UpdateRole(req *api.RoleUpdateRequest) (*api.RoleUpdateRe
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("角色不存在")
+			return nil, errNotFound("角色不存在")
 		}
 		return nil, err
 	}
@@ -229,17 +242,17 @@ func (s *AuthzService) UpdateRole(req *api.RoleUpdateRequest) (*api.RoleUpdateRe
 
 func (s *AuthzService) UpdateRoleStatus(req *api.RoleStatusUpdateRequest) (*api.RoleStatusUpdateResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	operatorID, err := s.requireRBACManageOperator()
 	if err != nil {
 		return nil, err
 	}
 	if req.Id <= 0 {
-		return nil, errors.New("角色ID不能为空")
+		return nil, errBadRequest("角色ID不能为空")
 	}
 	if req.Status != 0 && req.Status != 1 {
-		return nil, errors.New("状态值不合法")
+		return nil, errBadRequest("状态值不合法")
 	}
 
 	err = s.withTransaction(func(tx *gorm.DB) error {
@@ -248,7 +261,7 @@ func (s *AuthzService) UpdateRoleStatus(req *api.RoleStatusUpdateRequest) (*api.
 			return roleErr
 		}
 		if role.RoleCode == model.RBACRoleSuperAdmin && req.Status != 1 {
-			return errors.New("super_admin 角色不可禁用")
+			return errBadRequest("super_admin 角色不可禁用")
 		}
 
 		before := *role
@@ -276,7 +289,7 @@ func (s *AuthzService) UpdateRoleStatus(req *api.RoleStatusUpdateRequest) (*api.
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("角色不存在")
+			return nil, errNotFound("角色不存在")
 		}
 		return nil, err
 	}
@@ -285,7 +298,7 @@ func (s *AuthzService) UpdateRoleStatus(req *api.RoleStatusUpdateRequest) (*api.
 
 func (s *AuthzService) ListPermissions(req *api.PermissionListRequest) (*api.PermissionListResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	if _, err := s.requireRBACManageOperator(); err != nil {
 		return nil, err
@@ -319,17 +332,17 @@ func (s *AuthzService) ListPermissions(req *api.PermissionListRequest) (*api.Per
 
 func (s *AuthzService) GetRolePermissions(req *api.RolePermissionsRequest) (*api.RolePermissionsResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	if _, err := s.requireRBACManageOperator(); err != nil {
 		return nil, err
 	}
 	if req.RoleId <= 0 {
-		return nil, errors.New("角色ID不能为空")
+		return nil, errBadRequest("角色ID不能为空")
 	}
 	if _, err := s.repo.GetRBACRoleByID(s.repo.DB, req.RoleId); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("角色不存在")
+			return nil, errNotFound("角色不存在")
 		}
 		return nil, err
 	}
@@ -358,14 +371,14 @@ func (s *AuthzService) GetRolePermissions(req *api.RolePermissionsRequest) (*api
 
 func (s *AuthzService) SetRolePermissions(req *api.RolePermissionsSetRequest) (*api.RolePermissionsSetResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	operatorID, err := s.requireRBACManageOperator()
 	if err != nil {
 		return nil, err
 	}
 	if req.RoleId <= 0 {
-		return nil, errors.New("角色ID不能为空")
+		return nil, errBadRequest("角色ID不能为空")
 	}
 
 	permissionIDs := util.UniquePositiveInt64(req.PermissionIds)
@@ -374,7 +387,7 @@ func (s *AuthzService) SetRolePermissions(req *api.RolePermissionsSetRequest) (*
 		return nil, err
 	}
 	if len(permissionIDs) != len(permissions) {
-		return nil, errors.New("存在无效权限ID")
+		return nil, errBadRequest("存在无效权限ID")
 	}
 
 	containsRBACManage := false
@@ -393,14 +406,14 @@ func (s *AuthzService) SetRolePermissions(req *api.RolePermissionsSetRequest) (*
 			return roleErr
 		}
 		if containsRBACManage && role.RoleCode != model.RBACRoleSuperAdmin {
-			return errors.New("仅 super_admin 角色可拥有 rbac.manage")
+			return errBadRequest("仅 super_admin 角色可拥有 rbac.manage")
 		}
 		if role.RoleCode == model.RBACRoleSuperAdmin {
 			if !containsRBACManage {
-				return errors.New("super_admin 角色必须保留 rbac.manage")
+				return errBadRequest("super_admin 角色必须保留 rbac.manage")
 			}
 			if len(permissionIDs) != 1 {
-				return errors.New("super_admin 角色仅允许保留 rbac.manage")
+				return errBadRequest("super_admin 角色仅允许保留 rbac.manage")
 			}
 		}
 
@@ -429,7 +442,7 @@ func (s *AuthzService) SetRolePermissions(req *api.RolePermissionsSetRequest) (*
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("角色不存在")
+			return nil, errNotFound("角色不存在")
 		}
 		return nil, err
 	}
@@ -438,35 +451,35 @@ func (s *AuthzService) SetRolePermissions(req *api.RolePermissionsSetRequest) (*
 
 func (s *AuthzService) GrantRole(req *api.AccountRoleGrantRequest) (*api.AccountRoleGrantResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	operatorID, err := s.requireRBACManageOperator()
 	if err != nil {
 		return nil, err
 	}
 	if req.AccountId <= 0 {
-		return nil, errors.New("目标账号ID不能为空")
+		return nil, errBadRequest("目标账号ID不能为空")
 	}
 	if req.RoleId <= 0 {
-		return nil, errors.New("角色ID不能为空")
+		return nil, errBadRequest("角色ID不能为空")
 	}
 	scopeType := strings.ToLower(strings.TrimSpace(req.ScopeType))
 	if scopeType != model.RBACScopeGlobal && scopeType != model.RBACScopeOrg {
-		return nil, errors.New("scopeType 仅支持 global/org")
+		return nil, errBadRequest("scopeType 仅支持 global/org")
 	}
 
 	scopeID := req.ScopeId
 	if scopeType == model.RBACScopeGlobal {
 		scopeID = 0
 	} else if scopeID <= 0 {
-		return nil, errors.New("组织作用域必须提供 scopeId")
+		return nil, errBadRequest("组织作用域必须提供 scopeId")
 	}
 
 	var expiresAtPtr *time.Time
 	if strings.TrimSpace(req.ExpiresAt) != "" {
 		expiresAt, err := util.ParseDateTime(strings.TrimSpace(req.ExpiresAt))
 		if err != nil {
-			return nil, errors.New("expiresAt 格式错误")
+			return nil, errBadRequest("expiresAt 格式错误")
 		}
 		expiresAtPtr = &expiresAt
 	}
@@ -475,28 +488,26 @@ func (s *AuthzService) GrantRole(req *api.AccountRoleGrantRequest) (*api.Account
 		role, roleErr := s.repo.GetRBACRoleByIDForUpdate(tx, req.RoleId)
 		if roleErr != nil {
 			if errors.Is(roleErr, gorm.ErrRecordNotFound) {
-				return errors.New("角色不存在")
+				return errNotFound("角色不存在")
 			}
 			return roleErr
 		}
 		if role.Status != 1 {
-			return errors.New("角色已禁用")
+			return errBadRequest("角色已禁用")
 		}
-		if role.RoleCode == model.RBACRoleSuperAdmin {
-			if scopeType != model.RBACScopeGlobal || scopeID != 0 {
-				return errors.New("super_admin 仅允许 global 作用域")
-			}
+		if err := validateSuperAdminGrantConstraints(role.RoleCode, scopeType, scopeID, expiresAtPtr); err != nil {
+			return err
 		}
 		if _, findErr := s.repo.FindByID(tx, req.AccountId); findErr != nil {
 			if errors.Is(findErr, gorm.ErrRecordNotFound) {
-				return errors.New("目标账号不存在")
+				return errNotFound("目标账号不存在")
 			}
 			return findErr
 		}
 		if scopeType == model.RBACScopeOrg {
 			if _, orgErr := s.repo.GetOrganizationByID(tx, scopeID); orgErr != nil {
 				if errors.Is(orgErr, gorm.ErrRecordNotFound) {
-					return errors.New("组织不存在")
+					return errNotFound("组织不存在")
 				}
 				return orgErr
 			}
@@ -542,21 +553,21 @@ func (s *AuthzService) GrantRole(req *api.AccountRoleGrantRequest) (*api.Account
 
 func (s *AuthzService) RevokeRole(req *api.AccountRoleRevokeRequest) (*api.AccountRoleRevokeResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	operatorID, err := s.requireRBACManageOperator()
 	if err != nil {
 		return nil, err
 	}
 	if req.BindingId <= 0 {
-		return nil, errors.New("授权绑定ID不能为空")
+		return nil, errBadRequest("授权绑定ID不能为空")
 	}
 
 	err = s.withTransaction(func(tx *gorm.DB) error {
 		binding, err := s.repo.GetRBACAccountRoleBindingByID(tx, req.BindingId)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("授权绑定不存在")
+				return errNotFound("授权绑定不存在")
 			}
 			return err
 		}
@@ -571,10 +582,10 @@ func (s *AuthzService) RevokeRole(req *api.AccountRoleRevokeRequest) (*api.Accou
 			if err != nil {
 				return err
 			}
-			if activeSuperCount <= 1 {
-				return errors.New("不能撤销最后一个 super_admin")
+				if activeSuperCount <= 1 {
+					return errBadRequest("不能撤销最后一个 super_admin")
+				}
 			}
-		}
 
 		before := *binding
 		if binding.Status == 1 {
@@ -609,7 +620,7 @@ func (s *AuthzService) RevokeRole(req *api.AccountRoleRevokeRequest) (*api.Accou
 
 func (s *AuthzService) ListAccountRoleBindings(req *api.AccountRoleBindingListRequest) (*api.AccountRoleBindingListResponse, error) {
 	if req == nil {
-		return nil, errors.New("请求不能为空")
+		return nil, errBadRequest("请求不能为空")
 	}
 	if _, err := s.requireRBACManageOperator(); err != nil {
 		return nil, err
@@ -618,7 +629,7 @@ func (s *AuthzService) ListAccountRoleBindings(req *api.AccountRoleBindingListRe
 	page, pageSize := normalizeRBACPage(req.Page, req.PageSize)
 	scopeType := strings.ToLower(strings.TrimSpace(req.ScopeType))
 	if scopeType != "" && scopeType != model.RBACScopeGlobal && scopeType != model.RBACScopeOrg {
-		return nil, errors.New("scopeType 仅支持 global/org")
+		return nil, errBadRequest("scopeType 仅支持 global/org")
 	}
 
 	rows, total, err := s.repo.ListRBACAccountRoleBindings(
@@ -650,7 +661,7 @@ func (s *AuthzService) MyAuthorization(req *api.MyAuthorizationRequest) (*api.My
 	_ = req
 	accountID, err := middleware.GetUserIDInt(s.c)
 	if err != nil {
-		return nil, err
+		return nil, errUnauthorized("未登录或认证无效")
 	}
 
 	roles, _, err := s.repo.ListRBACAccountRoleBindings(
