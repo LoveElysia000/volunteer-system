@@ -7,12 +7,21 @@ import "google/api/client.proto";
 
 option go_package = "volunteer-system/internal/api;api";
 
+// 看板相关
 service AnalyticsService {
   option (google.api.default_host) = "0.0.0.0:8080";
 
+  // 组织漏斗分析
   rpc OrgFunnelSummary(OrgFunnelSummaryRequest) returns (OrgFunnelSummaryResponse) {
     option (google.api.http) = {
       get: "/api/analytics/org/funnel"
+    };
+  }
+
+  // 运营看板汇总
+  rpc OpsDashboardSummary(OpsDashboardSummaryRequest) returns (OpsDashboardSummaryResponse) {
+    option (google.api.http) = {
+      get: "/api/analytics/org/dashboard"
     };
   }
 }
@@ -40,4 +49,23 @@ message OrgFunnelSummaryResponse {
 
   string start = 10;
   string end = 11;
+}
+
+message OpsDashboardSummaryRequest {
+  // 组织ID 必填 @gotags: query:"orgId,required"
+  int64 orgId = 1;
+  // 起始时间 可选 @gotags: query:"start"
+  string start = 2;
+  // 结束时间 可选 @gotags: query:"end"
+  string end = 3;
+}
+
+message OpsDashboardSummaryResponse {
+  int64 signupCount = 1;
+  int64 approvedSignupCount = 2;
+  int64 attendanceCount = 3;
+  double attendanceRate = 4;
+  double grantedWorkHours = 5;
+  string start = 6;
+  string end = 7;
 }

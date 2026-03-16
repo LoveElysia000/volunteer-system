@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package importapi;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+
+option go_package = "volunteer-system/internal/api;api";
+
+service ImportService {
+  option (google.api.default_host) = "0.0.0.0:8080";
+
+  rpc ImportVolunteers(ImportVolunteersRequest) returns (ImportResultResponse) {
+    option (google.api.http) = {
+      post: "/api/admin/import/volunteers"
+      body: "*"
+    };
+  }
+
+  rpc ImportActivities(ImportActivitiesRequest) returns (ImportResultResponse) {
+    option (google.api.http) = {
+      post: "/api/admin/import/activities"
+      body: "*"
+    };
+  }
+}
+
+message ImportVolunteersRequest {
+}
+
+message ImportActivitiesRequest {
+}
+
+message ImportFailureItem {
+  int32 rowNumber = 1;
+  string reason = 2;
+  string raw = 3;
+}
+
+message ImportResultResponse {
+  int32 totalCount = 1;
+  int32 successCount = 2;
+  int32 failedCount = 3;
+  string errorFileName = 4;
+  string errorFileContentType = 5;
+  bytes errorFileContent = 6;
+  repeated ImportFailureItem failures = 7;
+}

@@ -66,9 +66,9 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		pageSize = 100
 	}
 
-	targetType, err := normalizeAuditTargetType(req.TargetType)
+	targetTypes, err := normalizeAuditTargetTypes(req)
 	if err != nil {
-		log.Warn("统一待审核列表查询失败: target_type参数无效: %v", err)
+		log.Warn("统一待审核列表查询失败: target_types参数无效: %v", err)
 		return nil, err
 	}
 	statuses, err := normalizeAuditStatuses(req.Status)
@@ -82,8 +82,8 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 	}
 
 	queryMap := map[string]any{
-		"target_type = ?": targetType,
-		"status in (?)":   statuses,
+		"target_type IN ?": targetTypes,
+		"status in (?)":    statuses,
 	}
 	if strings.TrimSpace(req.CreatedFrom) != "" {
 		from, parseErr := util.ParseDateTime(strings.TrimSpace(req.CreatedFrom))
@@ -128,28 +128,56 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		return resp, nil
 	}
 
-	resp.Total = int32(len(authorizedRecords))
+	filteredItems := filterPendingAuditItemsByKeyword(
+		s.buildPendingAuditItems(authorizedRecords, slaHours),
+		req.Keyword,
+	)
+	resp.Total = int32(len(filteredItems))
 	start := int((page - 1) * pageSize)
-	if start >= len(authorizedRecords) {
+	if start >= len(filteredItems) {
 		resp.List = []*api.PendingAuditItem{}
 		return resp, nil
 	}
 	end := start + int(pageSize)
-	if end > len(authorizedRecords) {
-		end = len(authorizedRecords)
+	if end > len(filteredItems) {
+		end = len(filteredItems)
 	}
-	resp.List = s.buildPendingAuditItems(authorizedRecords[start:end], slaHours)
+	resp.List = filteredItems[start:end]
 	return resp, nil
 }
 
 // ----- 审核端私有能力：列表参数与展示组装 -----
 
-// normalizeAuditTargetType 校验并返回审核目标类型。
-func normalizeAuditTargetType(input int32) (int32, error) {
-	if !model.IsValidAuditTargetType(input) {
-		return 0, errors.New("审核目标类型不合法")
+// normalizeAuditTargetTypes 校验并返回审核目标类型集合。
+func normalizeAuditTargetTypes(req *api.PendingAuditListRequest) ([]int32, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
-	return input, nil
+
+	inputs := make([]int32, 0, len(req.TargetTypes))
+	inputs = append(inputs, req.TargetTypes...)
+	if len(inputs) == 0 {
+		return []int32{
+			model.AuditTargetMember,
+			model.AuditTargetSignup,
+			model.AuditTargetVolunteer,
+			model.AuditTargetOrg,
+		}, nil
+	}
+
+	result := make([]int32, 0, len(inputs))
+	seen := make(map[int32]struct{}, len(inputs))
+	for _, input := range inputs {
+		if !model.IsValidAuditTargetType(input) {
+			return nil, errors.New("审核目标类型不合法")
+		}
+		if _, ok := seen[input]; ok {
+			continue
+		}
+		seen[input] = struct{}{}
+		result = append(result, input)
+	}
+	return result, nil
 }
 
 // normalizeAuditStatuses 归一化审核状态筛选条件（空值默认待审核）。
@@ -173,6 +201,24 @@ func normalizeAuditStatuses(input []int32) ([]int32, error) {
 		result = append(result, status)
 	}
 	return result, nil
+}
+
+func filterPendingAuditItemsByKeyword(items []*api.PendingAuditItem, keyword string) []*api.PendingAuditItem {
+	trimmedKeyword := strings.TrimSpace(keyword)
+	if trimmedKeyword == "" {
+		return items
+	}
+
+	filtered := make([]*api.PendingAuditItem, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		if strings.Contains(item.Title, trimmedKeyword) || strings.Contains(item.SubTitle, trimmedKeyword) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
 }
 
 // buildPendingAuditItems 将审核记录列表转换为统一待审核返回项。

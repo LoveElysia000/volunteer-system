@@ -93,10 +93,71 @@ func (s *AnalyticsService) OrgFunnelSummary(req *api.OrgFunnelSummaryRequest) (*
 	}, nil
 }
 
+func (s *AnalyticsService) OpsDashboardSummary(req *api.OpsDashboardSummaryRequest) (*api.OpsDashboardSummaryResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+	if req.OrgId <= 0 {
+		return nil, errors.New("组织ID不能为空")
+	}
+
+	var startTime *time.Time
+	if strings.TrimSpace(req.Start) != "" {
+		value, err := util.ParseDateTime(strings.TrimSpace(req.Start))
+		if err != nil {
+			return nil, errors.New("开始时间格式错误")
+		}
+		startTime = &value
+	}
+	var endTime *time.Time
+	if strings.TrimSpace(req.End) != "" {
+		value, err := util.ParseDateTime(strings.TrimSpace(req.End))
+		if err != nil {
+			return nil, errors.New("结束时间格式错误")
+		}
+		endTime = &value
+	}
+	if startTime != nil && endTime != nil && endTime.Before(*startTime) {
+		return nil, errors.New("结束时间不能早于开始时间")
+	}
+
+	operatorID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireOrgPermission(
+		operatorID,
+		req.OrgId,
+		model.PermissionResourceAnalytics,
+		model.PermissionActionOrgRead,
+	); err != nil {
+		return nil, err
+	}
+
+	metrics, err := s.repo.GetOpsDashboardMetrics(s.repo.DB, req.OrgId, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.OpsDashboardSummaryResponse{
+		SignupCount:         metrics.SignupCount,
+		ApprovedSignupCount: metrics.ApprovedSignupCount,
+		AttendanceCount:     metrics.AttendanceCount,
+		AttendanceRate:      computeRate(metrics.AttendanceCount, metrics.ApprovedSignupCount),
+		GrantedWorkHours:    roundMetric(metrics.GrantedWorkHours),
+		Start:               strings.TrimSpace(req.Start),
+		End:                 strings.TrimSpace(req.End),
+	}, nil
+}
+
 func computeRate(numerator, denominator int64) float64 {
 	if denominator <= 0 {
 		return 0
 	}
 	rate := float64(numerator) * 100 / float64(denominator)
-	return math.Round(rate*100) / 100
+	return roundMetric(rate)
+}
+
+func roundMetric(value float64) float64 {
+	return math.Round(value*100) / 100
 }
