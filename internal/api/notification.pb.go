@@ -271,8 +271,8 @@ func (x *NotificationItem) GetCreatedAt() string {
 // NotificationReadRequest 批量已读请求
 type NotificationReadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 收件箱ID列表 @gotags: query:"ids,required"
-	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids" query:"ids,required"`
+	// 收件箱ID列表 @gotags: json:"ids,required"
+	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

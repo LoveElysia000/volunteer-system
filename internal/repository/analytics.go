@@ -42,46 +42,54 @@ func (r *Repository) GetOrgFunnelMetrics(db *gorm.DB, orgID int64, start, end *t
 		return nil, err
 	}
 
+	activityIDs := make([]int64, 0)
+	if err := db.WithContext(r.ctx).
+		Model(&model.Activity{}).
+		Where("org_id = ?", orgID).
+		Pluck("id", &activityIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(activityIDs) == 0 {
+		return metrics, nil
+	}
+
 	signupQuery := db.WithContext(r.ctx).
-		Table("activity_signups AS s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
-		Where("s.status <> ?", model.ActivitySignupStatusCanceled)
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
+		Where("status <> ?", model.ActivitySignupStatusCanceled)
 	if start != nil {
-		signupQuery = signupQuery.Where("s.signup_time >= ?", *start)
+		signupQuery = signupQuery.Where("signup_time >= ?", *start)
 	}
 	if end != nil {
-		signupQuery = signupQuery.Where("s.signup_time <= ?", *end)
+		signupQuery = signupQuery.Where("signup_time <= ?", *end)
 	}
 	if err := signupQuery.Count(&metrics.SignupCount).Error; err != nil {
 		return nil, err
 	}
 
 	attendanceQuery := db.WithContext(r.ctx).
-		Table("activity_signups AS s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
-		Where("s.check_in_status = ?", model.ActivityCheckInDone)
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
+		Where("check_in_status = ?", model.ActivityCheckInDone)
 	if start != nil {
-		attendanceQuery = attendanceQuery.Where("s.signup_time >= ?", *start)
+		attendanceQuery = attendanceQuery.Where("signup_time >= ?", *start)
 	}
 	if end != nil {
-		attendanceQuery = attendanceQuery.Where("s.signup_time <= ?", *end)
+		attendanceQuery = attendanceQuery.Where("signup_time <= ?", *end)
 	}
 	if err := attendanceQuery.Count(&metrics.AttendanceCount).Error; err != nil {
 		return nil, err
 	}
 
 	workhourQuery := db.WithContext(r.ctx).
-		Table("activity_signups AS s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
-		Where("s.work_hour_status = ?", model.WorkHourStatusGranted)
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
+		Where("work_hour_status = ?", model.WorkHourStatusGranted)
 	if start != nil {
-		workhourQuery = workhourQuery.Where("s.signup_time >= ?", *start)
+		workhourQuery = workhourQuery.Where("signup_time >= ?", *start)
 	}
 	if end != nil {
-		workhourQuery = workhourQuery.Where("s.signup_time <= ?", *end)
+		workhourQuery = workhourQuery.Where("signup_time <= ?", *end)
 	}
 	if err := workhourQuery.Count(&metrics.WorkhourCount).Error; err != nil {
 		return nil, err

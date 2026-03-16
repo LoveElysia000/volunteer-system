@@ -48,6 +48,58 @@ type OpsReportMetrics struct {
 	WorkhoursCount  int64
 }
 
+func (r *Repository) getOrganizationNameForExport(db *gorm.DB, orgID int64) (string, error) {
+	if orgID <= 0 {
+		return "", nil
+	}
+
+	names := make([]string, 0, 1)
+	if err := db.WithContext(r.ctx).
+		Model(&model.Organization{}).
+		Where("id = ?", orgID).
+		Limit(1).
+		Pluck("org_name", &names).Error; err != nil {
+		return "", err
+	}
+	if len(names) == 0 {
+		return "", nil
+	}
+	return names[0], nil
+}
+
+func (r *Repository) getActiveVolunteerIDsByOrgForExport(db *gorm.DB, orgID int64) ([]int64, error) {
+	volunteerIDs := make([]int64, 0)
+	if orgID <= 0 {
+		return volunteerIDs, nil
+	}
+
+	err := db.WithContext(r.ctx).
+		Model(&model.OrgMember{}).
+		Where("org_id = ? AND status = ?", orgID, model.MemberStatusActive).
+		Distinct("volunteer_id").
+		Pluck("volunteer_id", &volunteerIDs).Error
+	if err != nil {
+		return nil, err
+	}
+	return volunteerIDs, nil
+}
+
+func (r *Repository) getActivityIDsByOrgForExport(db *gorm.DB, orgID int64) ([]int64, error) {
+	activityIDs := make([]int64, 0)
+	if orgID <= 0 {
+		return activityIDs, nil
+	}
+
+	err := db.WithContext(r.ctx).
+		Model(&model.Activity{}).
+		Where("org_id = ?", orgID).
+		Pluck("id", &activityIDs).Error
+	if err != nil {
+		return nil, err
+	}
+	return activityIDs, nil
+}
+
 // ListVolunteerExportRecords queries volunteer rows under current organization scope.
 func (r *Repository) ListVolunteerExportRecords(
 	db *gorm.DB,
@@ -62,6 +114,17 @@ func (r *Repository) ListVolunteerExportRecords(
 	if offset < 0 {
 		offset = 0
 	}
+	orgName, err := r.getOrganizationNameForExport(db, orgID)
+	if err != nil {
+		return nil, err
+	}
+	volunteerIDs, err := r.getActiveVolunteerIDsByOrgForExport(db, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if len(volunteerIDs) == 0 {
+		return rows, nil
+	}
 
 	query := db.WithContext(r.ctx).
 		Table("volunteers AS v").
@@ -71,7 +134,6 @@ func (r *Repository) ListVolunteerExportRecords(
 			v.gender,
 			sa.mobile,
 			sa.email,
-			org.org_name AS org_name,
 			v.total_hours,
 			v.service_count,
 			v.status,
@@ -79,9 +141,7 @@ func (r *Repository) ListVolunteerExportRecords(
 			v.created_at
 		`).
 		Joins("INNER JOIN sys_accounts AS sa ON sa.id = v.account_id AND sa.deleted_at IS NULL").
-		Joins("INNER JOIN org_members AS m ON m.volunteer_id = v.id AND m.status = ?", model.MemberStatusActive).
-		Joins("INNER JOIN organizations AS org ON org.id = m.org_id").
-		Where("m.org_id = ?", orgID)
+		Where("v.id IN ?", volunteerIDs)
 
 	if req != nil {
 		if len(req.IdList) > 0 {
@@ -99,13 +159,16 @@ func (r *Repository) ListVolunteerExportRecords(
 		}
 	}
 
-	err := query.
+	err = query.
 		Order("v.created_at DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
+	}
+	for _, row := range rows {
+		row.OrgName = orgName
 	}
 	return rows, nil
 }
@@ -125,6 +188,10 @@ func (r *Repository) ListActivityExportRecords(
 	if offset < 0 {
 		offset = 0
 	}
+	orgName, err := r.getOrganizationNameForExport(db, orgID)
+	if err != nil {
+		return nil, err
+	}
 
 	query := db.WithContext(r.ctx).
 		Table("activities AS a").
@@ -140,10 +207,8 @@ func (r *Repository) ListActivityExportRecords(
 			a.max_people,
 			a.current_people,
 			a.status,
-			org.org_name AS org_name,
 			a.created_at
 		`).
-		Joins("INNER JOIN organizations AS org ON org.id = a.org_id").
 		Where("a.org_id = ?", orgID)
 
 	if req != nil {
@@ -167,13 +232,16 @@ func (r *Repository) ListActivityExportRecords(
 		query = query.Where("a.start_time <= ?", *startTo)
 	}
 
-	err := query.
+	err = query.
 		Order("a.created_at DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
+	}
+	for _, row := range rows {
+		row.OrgName = orgName
 	}
 	return rows, nil
 }
@@ -193,31 +261,36 @@ func (r *Repository) GetOpsReportMetrics(
 		return nil, err
 	}
 
+	activityIDs, err := r.getActivityIDsByOrgForExport(db, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if len(activityIDs) == 0 {
+		return metrics, nil
+	}
+
 	signupQuery := db.WithContext(r.ctx).
-		Table("activity_signups AS s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
-		Where("s.signup_time >= ? AND s.signup_time <= ?", start, end)
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
+		Where("signup_time >= ? AND signup_time <= ?", start, end)
 	if err := signupQuery.Count(&metrics.SignupsCount).Error; err != nil {
 		return nil, err
 	}
 
 	attendanceQuery := db.WithContext(r.ctx).
-		Table("activity_signups AS s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
-		Where("s.check_in_status = ?", model.ActivityCheckInDone).
-		Where("s.signup_time >= ? AND s.signup_time <= ?", start, end)
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
+		Where("check_in_status = ?", model.ActivityCheckInDone).
+		Where("signup_time >= ? AND signup_time <= ?", start, end)
 	if err := attendanceQuery.Count(&metrics.AttendanceCount).Error; err != nil {
 		return nil, err
 	}
 
 	workhourQuery := db.WithContext(r.ctx).
-		Table("activity_signups AS s").
-		Joins("INNER JOIN activities a ON a.id = s.activity_id").
-		Where("a.org_id = ?", orgID).
-		Where("s.work_hour_status = ?", model.WorkHourStatusGranted).
-		Where("s.signup_time >= ? AND s.signup_time <= ?", start, end)
+		Model(&model.ActivitySignup{}).
+		Where("activity_id IN ?", activityIDs).
+		Where("work_hour_status = ?", model.WorkHourStatusGranted).
+		Where("signup_time >= ? AND signup_time <= ?", start, end)
 	if err := workhourQuery.Count(&metrics.WorkhoursCount).Error; err != nil {
 		return nil, err
 	}

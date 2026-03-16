@@ -12,6 +12,5 @@ func RegisterVolunteerRouter(r *route.RouterGroup) {
 	r.GET("/volunteers/my/profile/:id", handler.MyProfile)
 	r.GET("/volunteers/home/summary", handler.VolunteerHomeSummary)
 	r.PUT("/volunteers/:id", handler.VolunteerUpdate)
-	r.POST("/volunteers/profile-change/submit", handler.VolunteerProfileChangeSubmit)
 	r.POST("/volunteers/real-name/submit", handler.VolunteerRealNameSubmit)
 }

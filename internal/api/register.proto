@@ -30,35 +30,35 @@ service RegisterService {
 
 // VolunteerRegisterRequest 志愿者注册请求
 message VolunteerRegisterRequest {
-  // 名称 必填 @gotags: query:"name,required"
+  // 名称 必填 @gotags: json:"name,required"
   string name = 1;
-  // 手机号 必填 @gotags: query:"phone,required"
+  // 手机号 必填 @gotags: json:"phone,required"
   string phone = 2;
-  // 邮箱 必填 @gotags: query:"email,required"
+  // 邮箱 必填 @gotags: json:"email,required"
   string email = 3;
-  // 密码 必填 @gotags: query:"password,required"
+  // 密码 必填 @gotags: json:"password,required"
   string password = 4;
-  // 年龄 @gotags: query:"age"
+  // 年龄 @gotags: json:"age"
   int32 age = 5;
-  // 性别 @gotags: query:"gender"
+  // 性别 @gotags: json:"gender"
   string gender = 6;
-  // 用户名 @gotags: query:"username,required"
+  // 用户名 @gotags: json:"username,required"
   string userName = 7;
 }
 
 // 组织管理者注册请求
 message OrganizationRegisterRequest {
-  // 联系人姓名 必填 @gotags: query:"name,required"
+  // 联系人姓名 必填 @gotags: json:"name,required"
   string name = 1;
-  // 手机号 必填 @gotags: query:"phone,required"
+  // 手机号 必填 @gotags: json:"phone,required"
   string phone = 2;
-  // 邮箱 必填 @gotags: query:"email,required"
+  // 邮箱 必填 @gotags: json:"email,required"
   string email = 3;
-  // 密码 必填 @gotags: query:"password,required"
+  // 密码 必填 @gotags: json:"password,required"
   string password = 4;
-  // 组织名称 @gotags: query:"organizationName,required"
+  // 组织名称 @gotags: json:"organizationName,required"
   string organizationName = 5;
-  // 统一社会信用代码/组织机构代码 @gotags: query:"code"
+  // 统一社会信用代码/组织机构代码 @gotags: json:"code"
   string code = 6;
 }
 

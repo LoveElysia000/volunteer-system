@@ -25,10 +25,10 @@ const (
 // VolunteerJoinRequest 志愿者加入组织请求
 type VolunteerJoinRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 志愿者ID 必填 @gotags: query:"volunteerId,required"
-	VolunteerId int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId" query:"volunteerId,required"`
-	// 组织ID 必填 @gotags: query:"organizationId,required"
-	OrganizationId int64 `protobuf:"varint,2,opt,name=organizationId,proto3" json:"organizationId" query:"organizationId,required"`
+	// 志愿者ID 必填 @gotags: json:"volunteerId,required"
+	VolunteerId int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId,required"`
+	// 组织ID 必填 @gotags: json:"organizationId,required"
+	OrganizationId int64 `protobuf:"varint,2,opt,name=organizationId,proto3" json:"organizationId,required"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -144,10 +144,10 @@ func (x *VolunteerJoinResponse) GetMessage() string {
 // VolunteerLeaveRequest 志愿者退出组织请求
 type VolunteerLeaveRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 成员关系ID 必填 @gotags: query:"membershipId,required"
-	MembershipId int64 `protobuf:"varint,1,opt,name=membershipId,proto3" json:"membershipId" query:"membershipId,required"`
-	// 退出原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 成员关系ID 必填 @gotags: json:"membershipId,required"
+	MembershipId int64 `protobuf:"varint,1,opt,name=membershipId,proto3" json:"membershipId,required"`
+	// 退出原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -515,12 +515,12 @@ func (x *VolunteerOrganizationsResponse) GetList() []*OrganizationMemberInfo {
 // MemberStatusUpdateRequest 更新成员状态请求
 type MemberStatusUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 成员关系ID 必填 @gotags: query:"membershipId,required"
-	MembershipId int64 `protobuf:"varint,1,opt,name=membershipId,proto3" json:"membershipId" query:"membershipId,required"`
-	// 成员状态 必填 @gotags: query:"status,required"
-	Status int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status" query:"status,required"`
-	// 审核意见 可选 @gotags: query:"reviewComment"
-	ReviewComment string `protobuf:"bytes,3,opt,name=reviewComment,proto3" json:"reviewComment" query:"reviewComment"`
+	// 成员关系ID 必填 @gotags: json:"membershipId,required"
+	MembershipId int64 `protobuf:"varint,1,opt,name=membershipId,proto3" json:"membershipId,required"`
+	// 成员状态 必填 @gotags: json:"status,required"
+	Status int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status,required"`
+	// 审核意见 可选 @gotags: json:"reviewComment"
+	ReviewComment string `protobuf:"bytes,3,opt,name=reviewComment,proto3" json:"reviewComment"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

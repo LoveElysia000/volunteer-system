@@ -311,7 +311,17 @@ func (r *Repository) GetMyActivities(db *gorm.DB, volunteerID int64, status int3
 
 	// 状态筛选（通过关联的活动状态）
 	if status > 0 {
-		query = query.Where("activity_id IN (SELECT id FROM activities WHERE status = ?)", status)
+		activityIDs := make([]int64, 0)
+		if err := db.WithContext(r.ctx).
+			Model(&model.Activity{}).
+			Where("status = ?", status).
+			Pluck("id", &activityIDs).Error; err != nil {
+			return nil, 0, err
+		}
+		if len(activityIDs) == 0 {
+			return signups, 0, nil
+		}
+		query = query.Where("activity_id IN ?", activityIDs)
 	}
 
 	// 查询总数
@@ -409,10 +419,9 @@ func (r *Repository) GetOrganizationActivities(db *gorm.DB, orgID int64, limit, 
 	var activities []*model.Activity
 	var total int64
 
-	// 创建 base session，关联 organizations 表获取组织信息
+	// 创建 base session
 	baseSession := db.WithContext(r.ctx).
 		Table("activities as act").
-		Joins("LEFT JOIN organizations as org ON act.org_id = org.id").
 		Where("act.org_id = ?", orgID)
 
 	// 使用 base session 获取总数

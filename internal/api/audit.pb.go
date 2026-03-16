@@ -25,22 +25,22 @@ const (
 // 统一待审核列表查询参数
 type PendingAuditListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核目标类型（单值） @gotags: query:"targetType"
-	TargetType int32 `protobuf:"varint,1,opt,name=targetType,proto3" json:"targetType" query:"targetType"`
-	// 审核状态集合 @gotags: query:"status"
-	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status" query:"status"`
-	// 标题/副标题关键词 @gotags: query:"keyword"
-	Keyword string `protobuf:"bytes,3,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
-	// 页码（从1开始） @gotags: query:"page"
-	Page int32 `protobuf:"varint,4,opt,name=page,proto3" json:"page" query:"page"`
-	// 每页条数 @gotags: query:"pageSize"
-	PageSize int32 `protobuf:"varint,5,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
-	// 创建时间起始（可选） @gotags: query:"createdFrom"
-	CreatedFrom string `protobuf:"bytes,6,opt,name=createdFrom,proto3" json:"createdFrom" query:"createdFrom"`
-	// 创建时间结束（可选） @gotags: query:"createdTo"
-	CreatedTo string `protobuf:"bytes,7,opt,name=createdTo,proto3" json:"createdTo" query:"createdTo"`
-	// 超时阈值小时（可选，默认24） @gotags: query:"slaHours"
-	SlaHours      int32 `protobuf:"varint,8,opt,name=slaHours,proto3" json:"slaHours" query:"slaHours"`
+	// 审核目标类型（单值） @gotags: json:"targetType"
+	TargetType int32 `protobuf:"varint,1,opt,name=targetType,proto3" json:"targetType"`
+	// 审核状态集合 @gotags: json:"status"
+	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status"`
+	// 标题/副标题关键词 @gotags: json:"keyword"
+	Keyword string `protobuf:"bytes,3,opt,name=keyword,proto3" json:"keyword"`
+	// 页码（从1开始） @gotags: json:"page"
+	Page int32 `protobuf:"varint,4,opt,name=page,proto3" json:"page"`
+	// 每页条数 @gotags: json:"pageSize"
+	PageSize int32 `protobuf:"varint,5,opt,name=pageSize,proto3" json:"pageSize"`
+	// 创建时间起始（可选） @gotags: json:"createdFrom"
+	CreatedFrom string `protobuf:"bytes,6,opt,name=createdFrom,proto3" json:"createdFrom"`
+	// 创建时间结束（可选） @gotags: json:"createdTo"
+	CreatedTo string `protobuf:"bytes,7,opt,name=createdTo,proto3" json:"createdTo"`
+	// 超时阈值小时（可选，默认24） @gotags: json:"slaHours"
+	SlaHours      int32 `protobuf:"varint,8,opt,name=slaHours,proto3" json:"slaHours"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,10 +298,10 @@ func (x *PendingAuditItem) GetIsOverdue() bool {
 // 执行审核请求参数
 type AuditApprovalRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核记录id @gotags: query:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" query:"id,required"`
-	// 原因 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 审核记录id @gotags: json:"id,required"
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,required"`
+	// 原因 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -390,10 +390,10 @@ func (*AuditApprovalResponse) Descriptor() ([]byte, []int) {
 // 执行审核驳回请求参数
 type AuditRejectionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核记录id @gotags: query:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" query:"id,required"`
-	// 原因 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 审核记录id @gotags: json:"id,required"
+	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,required"`
+	// 原因 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -481,12 +481,12 @@ func (*AuditRejectionResponse) Descriptor() ([]byte, []int) {
 
 type AuditBatchDecisionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 审核记录ID列表 @gotags: query:"ids,required"
-	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids" query:"ids,required"`
-	// 动作: 1-通过 2-驳回 @gotags: query:"action,required"
-	Action int32 `protobuf:"varint,2,opt,name=action,proto3" json:"action" query:"action,required"`
-	// 备注/原因 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 审核记录ID列表 @gotags: json:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	// 动作: 1-通过 2-驳回 @gotags: json:"action,required"
+	Action int32 `protobuf:"varint,2,opt,name=action,proto3" json:"action,required"`
+	// 备注/原因 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

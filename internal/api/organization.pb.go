@@ -25,18 +25,18 @@ const (
 // OrganizationListRequest 组织列表请求
 type OrganizationListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 搜索关键字 可选 @gotags: query:"keyword"
-	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
-	// 状态筛选 可选 @gotags: query:"status"
-	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status" query:"status"`
-	// 组织类型筛选 可选 @gotags: query:"organizationType"
-	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType" query:"organizationType"`
-	// 地区筛选 可选 @gotags: query:"region"
-	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region" query:"region"`
-	// 页码 必填 @gotags: query:"page,required"
-	Page int32 `protobuf:"varint,5,opt,name=page,proto3" json:"page" query:"page,required"`
-	// 页大小 必填 @gotags: query:"pageSize,required"
-	PageSize      int32 `protobuf:"varint,6,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize,required"`
+	// 搜索关键字 可选 @gotags: json:"keyword"
+	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword"`
+	// 状态筛选 可选 @gotags: json:"status"
+	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status"`
+	// 组织类型筛选 可选 @gotags: json:"organizationType"
+	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType"`
+	// 地区筛选 可选 @gotags: json:"region"
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region"`
+	// 页码 必填 @gotags: json:"page,required"
+	Page int32 `protobuf:"varint,5,opt,name=page,proto3" json:"page,required"`
+	// 页大小 必填 @gotags: json:"pageSize,required"
+	PageSize      int32 `protobuf:"varint,6,opt,name=pageSize,proto3" json:"pageSize,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -576,28 +576,28 @@ func (x *OrganizationInfo) GetUpdatedAt() string {
 // OrganizationCreateRequest 创建组织请求
 type OrganizationCreateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织名称 必填 @gotags: query:"name,required"
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name" query:"name,required"`
-	// 组织代码 可选 @gotags: query:"organizationCode"
-	OrganizationCode string `protobuf:"bytes,2,opt,name=organizationCode,proto3" json:"organizationCode" query:"organizationCode"`
-	// 联系人 必填 @gotags: query:"contactPerson,required"
-	ContactPerson string `protobuf:"bytes,3,opt,name=contactPerson,proto3" json:"contactPerson" query:"contactPerson,required"`
-	// 联系电话 必填 @gotags: query:"contactPhone,required"
-	ContactPhone string `protobuf:"bytes,4,opt,name=contactPhone,proto3" json:"contactPhone" query:"contactPhone,required"`
-	// 邮箱 可选 @gotags: query:"email"
-	Email string `protobuf:"bytes,5,opt,name=email,proto3" json:"email" query:"email"`
-	// 地址 可选 @gotags: query:"address"
-	Address string `protobuf:"bytes,6,opt,name=address,proto3" json:"address" query:"address"`
-	// 组织类型 可选 @gotags: query:"organizationType"
-	OrganizationType string `protobuf:"bytes,7,opt,name=organizationType,proto3" json:"organizationType" query:"organizationType"`
-	// 地区 可选 @gotags: query:"region"
-	Region string `protobuf:"bytes,8,opt,name=region,proto3" json:"region" query:"region"`
-	// 描述 可选 @gotags: query:"description"
-	Description string `protobuf:"bytes,9,opt,name=description,proto3" json:"description" query:"description"`
-	// 网站地址 可选 @gotags: query:"websiteUrl"
-	WebsiteUrl string `protobuf:"bytes,10,opt,name=websiteUrl,proto3" json:"websiteUrl" query:"websiteUrl"`
-	// Logo地址 可选 @gotags: query:"logoUrl"
-	LogoUrl       string `protobuf:"bytes,11,opt,name=logoUrl,proto3" json:"logoUrl" query:"logoUrl"`
+	// 组织名称 必填 @gotags: json:"name,required"
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,required"`
+	// 组织代码 可选 @gotags: json:"organizationCode"
+	OrganizationCode string `protobuf:"bytes,2,opt,name=organizationCode,proto3" json:"organizationCode"`
+	// 联系人 必填 @gotags: json:"contactPerson,required"
+	ContactPerson string `protobuf:"bytes,3,opt,name=contactPerson,proto3" json:"contactPerson,required"`
+	// 联系电话 必填 @gotags: json:"contactPhone,required"
+	ContactPhone string `protobuf:"bytes,4,opt,name=contactPhone,proto3" json:"contactPhone,required"`
+	// 邮箱 可选 @gotags: json:"email"
+	Email string `protobuf:"bytes,5,opt,name=email,proto3" json:"email"`
+	// 地址 可选 @gotags: json:"address"
+	Address string `protobuf:"bytes,6,opt,name=address,proto3" json:"address"`
+	// 组织类型 可选 @gotags: json:"organizationType"
+	OrganizationType string `protobuf:"bytes,7,opt,name=organizationType,proto3" json:"organizationType"`
+	// 地区 可选 @gotags: json:"region"
+	Region string `protobuf:"bytes,8,opt,name=region,proto3" json:"region"`
+	// 描述 可选 @gotags: json:"description"
+	Description string `protobuf:"bytes,9,opt,name=description,proto3" json:"description"`
+	// 网站地址 可选 @gotags: json:"websiteUrl"
+	WebsiteUrl string `protobuf:"bytes,10,opt,name=websiteUrl,proto3" json:"websiteUrl"`
+	// Logo地址 可选 @gotags: json:"logoUrl"
+	LogoUrl       string `protobuf:"bytes,11,opt,name=logoUrl,proto3" json:"logoUrl"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1050,22 +1050,22 @@ func (x *DeleteOrganizationResponse) GetMessage() string {
 // OrganizationSearchRequest 搜索组织请求
 type OrganizationSearchRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 搜索关键字 可选 @gotags: query:"keyword"
-	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
-	// 状态筛选 可选 @gotags: query:"status"
-	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status" query:"status"`
-	// 组织类型筛选 可选 @gotags: query:"organizationType"
-	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType" query:"organizationType"`
-	// 地区筛选 可选 @gotags: query:"region"
-	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region" query:"region"`
-	// 创建时间范围筛选 开始时间 可选 @gotags: query:"startDate"
-	StartDate string `protobuf:"bytes,6,opt,name=startDate,proto3" json:"startDate" query:"startDate"`
-	// 创建时间范围筛选 结束时间 可选 @gotags: query:"endDate"
-	EndDate string `protobuf:"bytes,7,opt,name=endDate,proto3" json:"endDate" query:"endDate"`
-	// 页码 必填 @gotags: query:"page,required"
-	Page int32 `protobuf:"varint,8,opt,name=page,proto3" json:"page" query:"page,required"`
-	// 页大小 必填 @gotags: query:"pageSize,required"
-	PageSize      int32 `protobuf:"varint,9,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize,required"`
+	// 搜索关键字 可选 @gotags: json:"keyword"
+	Keyword string `protobuf:"bytes,1,opt,name=keyword,proto3" json:"keyword"`
+	// 状态筛选 可选 @gotags: json:"status"
+	Status []int32 `protobuf:"varint,2,rep,packed,name=status,proto3" json:"status"`
+	// 组织类型筛选 可选 @gotags: json:"organizationType"
+	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType"`
+	// 地区筛选 可选 @gotags: json:"region"
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region"`
+	// 创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"
+	StartDate string `protobuf:"bytes,6,opt,name=startDate,proto3" json:"startDate"`
+	// 创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"
+	EndDate string `protobuf:"bytes,7,opt,name=endDate,proto3" json:"endDate"`
+	// 页码 必填 @gotags: json:"page,required"
+	Page int32 `protobuf:"varint,8,opt,name=page,proto3" json:"page,required"`
+	// 页大小 必填 @gotags: json:"pageSize,required"
+	PageSize      int32 `protobuf:"varint,9,opt,name=pageSize,proto3" json:"pageSize,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1212,8 +1212,8 @@ func (x *OrganizationSearchResponse) GetList() []*OrganizationListItem {
 // BulkDeleteOrganizationRequest 批量删除组织请求
 type BulkDeleteOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID列表 必填 @gotags: query:"ids,required"
-	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids" query:"ids,required"`
+	// 组织ID列表 必填 @gotags: json:"ids,required"
+	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1322,10 +1322,10 @@ func (x *BulkDeleteOrganizationResponse) GetMessage() string {
 // BatchDisableOrganizationRequest 批量停用组织请求
 type BatchDisableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID列表 必填 @gotags: query:"ids,required"
-	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids" query:"ids,required"`
-	// 停用原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 组织ID列表 必填 @gotags: json:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	// 停用原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1441,10 +1441,10 @@ func (x *BatchDisableOrganizationResponse) GetMessage() string {
 // BatchEnableOrganizationRequest 批量启用组织请求
 type BatchEnableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID列表 必填 @gotags: query:"ids,required"
-	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids" query:"ids,required"`
-	// 启用原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 组织ID列表 必填 @gotags: json:"ids,required"
+	Ids []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	// 启用原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1562,8 +1562,8 @@ type DisableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 组织ID 必填 @gotags: path:"id,required"
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	// 停用原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 停用原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1663,8 +1663,8 @@ type EnableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 组织ID 必填 @gotags: path:"id,required"
 	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	// 启用原因 可选 @gotags: query:"reason"
-	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason" query:"reason"`
+	// 启用原因 可选 @gotags: json:"reason"
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -1,7 +1,12 @@
 -- ============================================
--- 唯一索引修复脚本
--- 确保手机号和邮箱唯一索引存在
+-- DML Version: v1.0.0
+-- Description: unique index fix and duplicate data check
+-- Scope: sys_accounts
 -- ============================================
+-- Behavior:
+--   - Index add statements are one-time operations.
+--   - If index already exists, database may return duplicate-key-name error; can be ignored.
+--   - SELECT statements are verification queries and do not modify data.
 
 -- 检查并添加手机号哈希唯一索引
 ALTER TABLE `sys_accounts` ADD UNIQUE KEY `uk_mobile_hash` (`mobile_hash`) COMMENT '手机号哈希去重索引';

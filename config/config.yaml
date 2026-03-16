@@ -7,7 +7,7 @@ app:
   host: "0.0.0.0"
   port: 1109
   timezone: "Asia/Shanghai"
-  secret_key: "change-me"
+  secret_key: "linlinlinyx"
 
 # MySQL configuration
 mysql:

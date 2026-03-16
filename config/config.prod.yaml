@@ -1,0 +1,94 @@
+app:
+  name: "Volunteer System"
+  env: "production"
+  host: "0.0.0.0"
+  port: 1109
+  timezone: "Asia/Shanghai"
+  secret_key: "${APP_SECRET_KEY}"
+
+mysql:
+  host: "mysql"
+  port: 3306
+  user: "${MYSQL_USER}"
+  password: "${MYSQL_PASSWORD}"
+  database: "${MYSQL_DATABASE}"
+  charset: "utf8mb4"
+  timezone: "+08:00"
+  pool:
+    min: 2
+    max: 20
+    acquire_ms: 30000
+    idle_ms: 10000
+
+redis:
+  host: "redis"
+  port: 6379
+  password: ""
+  db: 0
+  key_prefix: "volunteer:"
+  connect_timeout_ms: 10000
+  cache_ttl_seconds: 3600
+
+email:
+  enabled: false
+  smtp:
+    host: ""
+    port: 587
+    secure: false
+    user: ""
+    pass: ""
+  from:
+    name: "Volunteer System"
+    address: ""
+
+upload:
+  dir: "./uploads"
+  max_file_size_mb: 10
+  allowed_extensions:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".gif"
+    - ".pdf"
+    - ".doc"
+    - ".docx"
+
+logging:
+  level: "info"
+  console: true
+  file: "./logs/app.log"
+  rotation:
+    enabled: true
+    max_size_mb: 20
+    max_files: 10
+
+auth:
+  jwt:
+    secret: "${JWT_SECRET}"
+    access_expiry_minutes: 30
+    refresh_expiry_days: 7
+    issuer: "volunteer-system"
+    max_concurrent_tokens: 5
+    token_rotation_enabled: true
+    anomaly_detection:
+      enabled: true
+      suspicious_login_threshold: 3
+      refresh_rate_limit: 5
+      refresh_window_minutes: 5
+
+ai:
+  enabled: false
+  provider: "deepseek"
+  api_key: "${AI_API_KEY}"
+  base_url: "https://api.deepseek.com/v1"
+  chat_model: "deepseek-chat"
+  request_timeout_ms: 15000
+  max_retries: 2
+  max_context_messages: 20
+  daily_user_quota: 200
+
+  eino:
+    max_steps: 4
+    tool_timeout_ms: 3000
+    enable_stream: false
+    checkpoint_ttl_seconds: 1800

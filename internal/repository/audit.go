@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"volunteer-system/internal/model"
 
 	"gorm.io/gorm"
@@ -39,6 +40,59 @@ func (r *Repository) GetAuditRecordsList(db *gorm.DB, queryMap map[string]any, l
 		return nil, 0, err
 	}
 	return list, total, nil
+}
+
+// ExistsPendingMemberAuditByTargetID checks if a pending member audit exists for target id.
+func (r *Repository) ExistsPendingMemberAuditByTargetID(db *gorm.DB, targetID int64) (bool, error) {
+	if targetID <= 0 {
+		return false, nil
+	}
+
+	var id int64
+	err := db.WithContext(r.ctx).
+		Model(&model.AuditRecord{}).
+		Select("id").
+		Where("target_type = ? AND target_id = ? AND status = ?",
+			model.AuditTargetMember, targetID, model.AuditStatusPending).
+		Limit(1).
+		Take(&id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// ExistsPendingMemberCreateAuditBySnapshot checks pending member-create audit via snapshot keys.
+func (r *Repository) ExistsPendingMemberCreateAuditBySnapshot(
+	db *gorm.DB,
+	orgID, volunteerID, creatorID int64,
+) (bool, error) {
+	if orgID <= 0 || volunteerID <= 0 || creatorID <= 0 {
+		return false, nil
+	}
+
+	var id int64
+	err := db.WithContext(r.ctx).
+		Model(&model.AuditRecord{}).
+		Select("id").
+		Where("target_type = ? AND operation_type = ? AND status = ? AND creator_id = ? AND target_id = ?",
+			model.AuditTargetMember, model.OperationTypeCreate, model.AuditStatusPending, creatorID, 0).
+		Where(
+			"COALESCE(JSON_EXTRACT(new_content, '$.org_id'), 0) = ? AND COALESCE(JSON_EXTRACT(new_content, '$.volunteer_id'), 0) = ?",
+			orgID, volunteerID,
+		).
+		Limit(1).
+		Take(&id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // GetAuditRecordByID finds one audit record by id.
