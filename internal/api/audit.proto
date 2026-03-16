@@ -53,8 +53,8 @@ service AuditService {
 
 // 统一待审核列表查询参数
 message PendingAuditListRequest {
-  // 审核目标类型（单值） @gotags: json:"targetType"
-  int32 targetType = 1;
+  // 审核目标类型集合 @gotags: json:"targetTypes"
+  repeated int32 targetTypes = 1;
   // 审核状态集合 @gotags: json:"status"
   repeated int32 status = 2;
   // 标题/副标题关键词 @gotags: json:"keyword"

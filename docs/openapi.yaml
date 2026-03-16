@@ -365,10 +365,76 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/exportapi.ExportVolunteersResponse'
+    /api/admin/import/activities:
+        post:
+            tags:
+                - ImportService
+            operationId: ImportService_ImportActivities
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/importapi.ImportActivitiesRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/importapi.ImportResultResponse'
+    /api/admin/import/volunteers:
+        post:
+            tags:
+                - ImportService
+            operationId: ImportService_ImportVolunteers
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/importapi.ImportVolunteersRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/importapi.ImportResultResponse'
+    /api/analytics/org/dashboard:
+        get:
+            tags:
+                - AnalyticsService
+            description: 运营看板汇总
+            operationId: AnalyticsService_OpsDashboardSummary
+            parameters:
+                - name: orgId
+                  in: query
+                  description: '组织ID 必填 @gotags: query:"orgId,required"'
+                  schema:
+                    type: string
+                - name: start
+                  in: query
+                  description: '起始时间 可选 @gotags: query:"start"'
+                  schema:
+                    type: string
+                - name: end
+                  in: query
+                  description: '结束时间 可选 @gotags: query:"end"'
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/analytics.OpsDashboardSummaryResponse'
     /api/analytics/org/funnel:
         get:
             tags:
                 - AnalyticsService
+            description: 组织漏斗分析
             operationId: AnalyticsService_OrgFunnelSummary
             parameters:
                 - name: orgId
@@ -1540,7 +1606,7 @@ components:
             properties:
                 activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: query:"activityId,required"'
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
         activity.ActivityCancelResponse:
             type: object
             properties:
@@ -1552,10 +1618,10 @@ components:
             properties:
                 activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: query:"activityId,required"'
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
                 checkInCode:
                     type: string
-                    description: '签到码 必填 @gotags: query:"checkInCode,required"'
+                    description: '签到码 必填 @gotags: json:"checkInCode,required"'
         activity.ActivityCheckInResponse:
             type: object
             properties:
@@ -1570,10 +1636,10 @@ components:
             properties:
                 activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: query:"activityId,required"'
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
                 checkOutCode:
                     type: string
-                    description: '签退码 必填 @gotags: query:"checkOutCode,required"'
+                    description: '签退码 必填 @gotags: json:"checkOutCode,required"'
         activity.ActivityCheckOutResponse:
             type: object
             properties:
@@ -1718,31 +1784,31 @@ components:
             properties:
                 page:
                     type: integer
-                    description: '页码 可选 @gotags: query:"page"'
+                    description: '页码 可选 @gotags: json:"page"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '页大小 可选 @gotags: query:"pageSize"'
+                    description: '页大小 可选 @gotags: json:"pageSize"'
                     format: int32
                 status:
                     type: integer
-                    description: '状态筛选 可选 @gotags: query:"status"'
+                    description: '状态筛选 可选 @gotags: json:"status"'
                     format: int32
                 keyword:
                     type: string
-                    description: '关键词（标题/描述/地点） 可选 @gotags: query:"keyword"'
+                    description: '关键词（标题/描述/地点） 可选 @gotags: json:"keyword"'
                 startFrom:
                     type: string
-                    description: '开始时间起始 可选 @gotags: query:"startFrom"'
+                    description: '开始时间起始 可选 @gotags: json:"startFrom"'
                 startTo:
                     type: string
-                    description: '开始时间结束 可选 @gotags: query:"startTo"'
+                    description: '开始时间结束 可选 @gotags: json:"startTo"'
                 sortBy:
                     type: string
-                    description: '排序字段：start_time/created_at 可选 @gotags: query:"sortBy"'
+                    description: '排序字段：start_time/created_at 可选 @gotags: json:"sortBy"'
                 sortOrder:
                     type: string
-                    description: '排序方向：asc/desc 可选 @gotags: query:"sortOrder"'
+                    description: '排序方向：asc/desc 可选 @gotags: json:"sortOrder"'
         activity.ActivityListResponse:
             type: object
             properties:
@@ -1758,7 +1824,7 @@ components:
             properties:
                 activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: query:"activityId,required"'
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
         activity.ActivitySignupResponse:
             type: object
             properties:
@@ -1770,19 +1836,19 @@ components:
             properties:
                 activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: query:"activityId,required"'
+                    description: '活动ID 必填 @gotags: json:"activityId,required"'
                 volunteerId:
                     type: string
-                    description: '志愿者ID（volunteers.id）必填 @gotags: query:"volunteerId,required"'
+                    description: '志愿者ID（volunteers.id）必填 @gotags: json:"volunteerId,required"'
                 checkInTime:
                     type: string
-                    description: '补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: query:"checkInTime"'
+                    description: '补录签到时间（当原记录未签到时必填）格式: 2006-01-02 15:04:05 @gotags: json:"checkInTime"'
                 checkOutTime:
                     type: string
-                    description: '补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: query:"checkOutTime,required"'
+                    description: '补录签退时间 必填 格式: 2006-01-02 15:04:05 @gotags: json:"checkOutTime,required"'
                 reason:
                     type: string
-                    description: '补录原因 可选 @gotags: query:"reason"'
+                    description: '补录原因 可选 @gotags: json:"reason"'
         activity.ActivitySupplementAttendanceResponse:
             type: object
             properties:
@@ -1807,7 +1873,7 @@ components:
                     description: '活动ID 必填 @gotags: path:"id,required"'
                 reason:
                     type: string
-                    description: '取消原因 可选 @gotags: query:"reason"'
+                    description: '取消原因 可选 @gotags: json:"reason"'
             description: CancelActivityRequest 取消活动请求
         activity.CancelActivityResponse:
             type: object
@@ -1821,35 +1887,35 @@ components:
             properties:
                 orgId:
                     type: string
-                    description: '组织ID 必填 @gotags: query:"orgId,required"'
+                    description: '组织ID 必填 @gotags: json:"orgId,required"'
                 title:
                     type: string
-                    description: '活动标题 必填 @gotags: query:"title,required"'
+                    description: '活动标题 必填 @gotags: json:"title,required"'
                 description:
                     type: string
-                    description: '活动描述 可选 @gotags: query:"description"'
+                    description: '活动描述 可选 @gotags: json:"description"'
                 coverUrl:
                     type: string
-                    description: '封面图URL 可选 @gotags: query:"coverUrl"'
+                    description: '封面图URL 可选 @gotags: json:"coverUrl"'
                 startTime:
                     type: string
-                    description: '开始时间 必填 @gotags: query:"startTime,required"'
+                    description: '开始时间 必填 @gotags: json:"startTime,required"'
                 endTime:
                     type: string
-                    description: '结束时间 必填 @gotags: query:"endTime,required"'
+                    description: '结束时间 必填 @gotags: json:"endTime,required"'
                 location:
                     type: string
-                    description: '地点名称 必填 @gotags: query:"location,required"'
+                    description: '地点名称 必填 @gotags: json:"location,required"'
                 address:
                     type: string
-                    description: '详细地址 可选 @gotags: query:"address"'
+                    description: '详细地址 可选 @gotags: json:"address"'
                 duration:
                     type: number
-                    description: '预估工时（小时） 必填 @gotags: query:"duration,required"'
+                    description: '预估工时（小时） 必填 @gotags: json:"duration,required"'
                     format: double
                 maxPeople:
                     type: integer
-                    description: '最大招募人数（0表示不限） 必填 @gotags: query:"maxPeople,required"'
+                    description: '最大招募人数（0表示不限） 必填 @gotags: json:"maxPeople,required"'
                     format: int32
             description: CreateActivityRequest 创建活动请求
         activity.CreateActivityResponse:
@@ -1891,11 +1957,11 @@ components:
                     description: '活动ID 必填 @gotags: path:"id,required"'
                 checkInValidMinutes:
                     type: integer
-                    description: '签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"checkInValidMinutes"'
+                    description: '签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"'
                     format: int32
                 checkOutValidMinutes:
                     type: integer
-                    description: '签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"checkOutValidMinutes"'
+                    description: '签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"'
                     format: int32
             description: GenerateAttendanceCodesRequest 生成签到码/签退码请求
         activity.GenerateAttendanceCodesResponse:
@@ -1953,16 +2019,16 @@ components:
             properties:
                 page:
                     type: integer
-                    description: '页码 可选 @gotags: query:"page"'
+                    description: '页码 可选 @gotags: json:"page"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '页大小 可选 @gotags: query:"pageSize"'
+                    description: '页大小 可选 @gotags: json:"pageSize"'
                     format: int32
                 status:
                     type: integer
                     description: |-
-                        状态筛选 可选 @gotags: query:"status"
+                        状态筛选 可选 @gotags: json:"status"
                          1-报名中, 2-已结束, 3-已取消
                     format: int32
         activity.MyActivitiesResponse:
@@ -2060,11 +2126,11 @@ components:
                     description: '活动ID 必填 @gotags: path:"id,required"'
                 codeType:
                     type: integer
-                    description: '重置码类型（1-签到码，2-签退码）必填 @gotags: query:"codeType,required"'
+                    description: '重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"'
                     format: int32
                 validMinutes:
                     type: integer
-                    description: '码有效时长（分钟）可选，<=0 表示不过期 @gotags: query:"validMinutes"'
+                    description: '码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"'
                     format: int32
             description: ResetAttendanceCodeRequest 重置签到码/签退码请求
         activity.ResetAttendanceCodeResponse:
@@ -2098,32 +2164,32 @@ components:
                     description: '活动ID 必填 @gotags: path:"id,required"'
                 title:
                     type: string
-                    description: '活动标题 可选 @gotags: query:"title"'
+                    description: '活动标题 可选 @gotags: json:"title"'
                 description:
                     type: string
-                    description: '活动描述 可选 @gotags: query:"description"'
+                    description: '活动描述 可选 @gotags: json:"description"'
                 coverUrl:
                     type: string
-                    description: '封面图URL 可选 @gotags: query:"coverUrl"'
+                    description: '封面图URL 可选 @gotags: json:"coverUrl"'
                 startTime:
                     type: string
-                    description: '开始时间 可选 @gotags: query:"startTime"'
+                    description: '开始时间 可选 @gotags: json:"startTime"'
                 endTime:
                     type: string
-                    description: '结束时间 可选 @gotags: query:"endTime"'
+                    description: '结束时间 可选 @gotags: json:"endTime"'
                 location:
                     type: string
-                    description: '地点名称 可选 @gotags: query:"location"'
+                    description: '地点名称 可选 @gotags: json:"location"'
                 address:
                     type: string
-                    description: '详细地址 可选 @gotags: query:"address"'
+                    description: '详细地址 可选 @gotags: json:"address"'
                 duration:
                     type: number
-                    description: '预估工时（小时） 可选 @gotags: query:"duration"'
+                    description: '预估工时（小时） 可选 @gotags: json:"duration"'
                     format: double
                 maxPeople:
                     type: integer
-                    description: '最大招募人数（0表示不限） 可选 @gotags: query:"maxPeople"'
+                    description: '最大招募人数（0表示不限） 可选 @gotags: json:"maxPeople"'
                     format: int32
             description: UpdateActivityRequest 更新活动请求
         activity.UpdateActivityResponse:
@@ -2133,6 +2199,25 @@ components:
                     type: string
                     description: 消息
             description: UpdateActivityResponse 更新活动响应
+        analytics.OpsDashboardSummaryResponse:
+            type: object
+            properties:
+                signupCount:
+                    type: string
+                approvedSignupCount:
+                    type: string
+                attendanceCount:
+                    type: string
+                attendanceRate:
+                    type: number
+                    format: double
+                grantedWorkHours:
+                    type: number
+                    format: double
+                start:
+                    type: string
+                end:
+                    type: string
         analytics.OrgFunnelSummaryResponse:
             type: object
             properties:
@@ -2167,16 +2252,16 @@ components:
             properties:
                 loginType:
                     type: string
-                    description: '登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: query:"loginType,required"'
+                    description: '登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"'
                 identifier:
                     type: string
-                    description: '登录标识（用户名/邮箱/手机号） 必填 @gotags: query:"identifier,required"'
+                    description: '登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"'
                 password:
                     type: string
-                    description: '密码 必填 @gotags: query:"password,required"'
+                    description: '密码 必填 @gotags: json:"password,required"'
                 identity:
                     type: string
-                    description: '身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: query:"identity,required"'
+                    description: '身份类型 volunteer-志愿者 organization-组织管理者 必填 @gotags: json:"identity,required"'
             description: LoginRequest 登录请求
         api.LoginResponse:
             type: object
@@ -2206,7 +2291,7 @@ components:
             properties:
                 token:
                     type: string
-                    description: '要注销的令牌 必填 @gotags: query:"token,required"'
+                    description: '要注销的令牌 必填 @gotags: json:"token,required"'
             description: LogoutRequest 登出请求
         api.LogoutResponse:
             type: object
@@ -2223,7 +2308,7 @@ components:
             properties:
                 refreshToken:
                     type: string
-                    description: '刷新令牌 必填 @gotags: query:"refreshToken,required"'
+                    description: '刷新令牌 必填 @gotags: json:"refreshToken,required"'
             description: RefreshTokenRequest 刷新令牌请求
         api.RefreshTokenResponse:
             type: object
@@ -2284,16 +2369,16 @@ components:
             properties:
                 sessionId:
                     type: string
-                    description: '可选会话ID @gotags: query:"session_id"'
+                    description: '可选会话ID @gotags: json:"session_id"'
                 topic:
                     type: string
-                    description: '活动主题 必填 @gotags: query:"topic,required"'
+                    description: '活动主题 必填 @gotags: json:"topic,required"'
                 targetPeople:
                     type: string
-                    description: '目标人群 @gotags: query:"target_people"'
+                    description: '目标人群 @gotags: json:"target_people"'
                 location:
                     type: string
-                    description: '地点 @gotags: query:"location"'
+                    description: '地点 @gotags: json:"location"'
             description: 活动草案快捷入口请求
         assistant.AssistantActivityDraftActionResponse:
             type: object
@@ -2311,13 +2396,13 @@ components:
             properties:
                 sessionId:
                     type: string
-                    description: '会话ID 必填 @gotags: query:"session_id,required"'
+                    description: '会话ID 必填 @gotags: json:"session_id,required"'
                 message:
                     type: string
-                    description: '用户消息 必填 @gotags: query:"message,required"'
+                    description: '用户消息 必填 @gotags: json:"message,required"'
                 stream:
                     type: boolean
-                    description: '是否流式（当前仅占位） @gotags: query:"stream"'
+                    description: '是否流式（当前仅占位） @gotags: json:"stream"'
             description: 对话请求
         assistant.AssistantChatResponse:
             type: object
@@ -2340,10 +2425,10 @@ components:
             properties:
                 scene:
                     type: string
-                    description: '场景：general/activity_draft/ops_advisor 必填 @gotags: query:"scene,required"'
+                    description: '场景：general/activity_draft/ops_advisor 必填 @gotags: json:"scene,required"'
                 title:
                     type: string
-                    description: '会话标题 可选 @gotags: query:"title"'
+                    description: '会话标题 可选 @gotags: json:"title"'
             description: 创建会话请求
         assistant.AssistantCreateSessionResponse:
             type: object
@@ -2457,10 +2542,10 @@ components:
             properties:
                 id:
                     type: string
-                    description: '审核记录id @gotags: query:"id,required"'
+                    description: '审核记录id @gotags: json:"id,required"'
                 reason:
                     type: string
-                    description: '原因 @gotags: query:"reason"'
+                    description: '原因 @gotags: json:"reason"'
             description: 执行审核请求参数
         audit.AuditApprovalResponse:
             type: object
@@ -2473,14 +2558,14 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '审核记录ID列表 @gotags: query:"ids,required"'
+                    description: '审核记录ID列表 @gotags: json:"ids,required"'
                 action:
                     type: integer
-                    description: '动作: 1-通过 2-驳回 @gotags: query:"action,required"'
+                    description: '动作: 1-通过 2-驳回 @gotags: json:"action,required"'
                     format: int32
                 reason:
                     type: string
-                    description: '备注/原因 @gotags: query:"reason"'
+                    description: '备注/原因 @gotags: json:"reason"'
         audit.AuditBatchDecisionResponse:
             type: object
             properties:
@@ -2546,10 +2631,10 @@ components:
             properties:
                 id:
                     type: string
-                    description: '审核记录id @gotags: query:"id,required"'
+                    description: '审核记录id @gotags: json:"id,required"'
                 reason:
                     type: string
-                    description: '原因 @gotags: query:"reason"'
+                    description: '原因 @gotags: json:"reason"'
             description: 执行审核驳回请求参数
         audit.AuditRejectionResponse:
             type: object
@@ -2587,36 +2672,38 @@ components:
         audit.PendingAuditListRequest:
             type: object
             properties:
-                targetType:
-                    type: integer
-                    description: '审核目标类型（单值） @gotags: query:"targetType"'
-                    format: int32
+                targetTypes:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '审核目标类型集合 @gotags: json:"targetTypes"'
                 status:
                     type: array
                     items:
                         type: integer
                         format: int32
-                    description: '审核状态集合 @gotags: query:"status"'
+                    description: '审核状态集合 @gotags: json:"status"'
                 keyword:
                     type: string
-                    description: '标题/副标题关键词 @gotags: query:"keyword"'
+                    description: '标题/副标题关键词 @gotags: json:"keyword"'
                 page:
                     type: integer
-                    description: '页码（从1开始） @gotags: query:"page"'
+                    description: '页码（从1开始） @gotags: json:"page"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '每页条数 @gotags: query:"pageSize"'
+                    description: '每页条数 @gotags: json:"pageSize"'
                     format: int32
                 createdFrom:
                     type: string
-                    description: '创建时间起始（可选） @gotags: query:"createdFrom"'
+                    description: '创建时间起始（可选） @gotags: json:"createdFrom"'
                 createdTo:
                     type: string
-                    description: '创建时间结束（可选） @gotags: query:"createdTo"'
+                    description: '创建时间结束（可选） @gotags: json:"createdTo"'
                 slaHours:
                     type: integer
-                    description: '超时阈值小时（可选，默认24） @gotags: query:"slaHours"'
+                    description: '超时阈值小时（可选，默认24） @gotags: json:"slaHours"'
                     format: int32
             description: 统一待审核列表查询参数
         audit.PendingAuditListResponse:
@@ -2675,22 +2762,22 @@ components:
             properties:
                 accountId:
                     type: string
-                    description: '账号ID @gotags: query:"accountId"'
+                    description: '账号ID @gotags: json:"accountId"'
                 roleId:
                     type: string
-                    description: '角色ID @gotags: query:"roleId"'
+                    description: '角色ID @gotags: json:"roleId"'
                 scopeType:
                     type: string
-                    description: '作用域类型 @gotags: query:"scopeType"'
+                    description: '作用域类型 @gotags: json:"scopeType"'
                 scopeId:
                     type: string
-                    description: '作用域ID @gotags: query:"scopeId"'
+                    description: '作用域ID @gotags: json:"scopeId"'
                 expiresAt:
                     type: string
-                    description: '过期时间 @gotags: query:"expiresAt"'
+                    description: '过期时间 @gotags: json:"expiresAt"'
                 remark:
                     type: string
-                    description: '备注 @gotags: query:"remark"'
+                    description: '备注 @gotags: json:"remark"'
         authz.AccountRoleGrantResponse:
             type: object
             properties:
@@ -2704,7 +2791,7 @@ components:
                     description: '授权绑定ID @gotags: path:"bindingId,required"'
                 remark:
                     type: string
-                    description: '备注 @gotags: query:"remark"'
+                    description: '备注 @gotags: json:"remark"'
         authz.AccountRoleRevokeResponse:
             type: object
             properties:
@@ -2760,13 +2847,13 @@ components:
             properties:
                 roleCode:
                     type: string
-                    description: '角色编码 @gotags: query:"roleCode"'
+                    description: '角色编码 @gotags: json:"roleCode"'
                 roleName:
                     type: string
-                    description: '角色名称 @gotags: query:"roleName"'
+                    description: '角色名称 @gotags: json:"roleName"'
                 description:
                     type: string
-                    description: '描述 @gotags: query:"description"'
+                    description: '描述 @gotags: json:"description"'
         authz.RoleCreateResponse:
             type: object
             properties:
@@ -2830,7 +2917,7 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '权限ID列表 @gotags: query:"permissionIds"'
+                    description: '权限ID列表 @gotags: json:"permissionIds"'
         authz.RolePermissionsSetResponse:
             type: object
             properties:
@@ -2844,7 +2931,7 @@ components:
                     description: '角色ID @gotags: path:"id,required"'
                 status:
                     type: integer
-                    description: '状态 @gotags: query:"status"'
+                    description: '状态 @gotags: json:"status"'
                     format: int32
         authz.RoleStatusUpdateResponse:
             type: object
@@ -2859,10 +2946,10 @@ components:
                     description: '角色ID @gotags: path:"id,required"'
                 roleName:
                     type: string
-                    description: '角色名称 @gotags: query:"roleName"'
+                    description: '角色名称 @gotags: json:"roleName"'
                 description:
                     type: string
-                    description: '描述 @gotags: query:"description"'
+                    description: '描述 @gotags: json:"description"'
         authz.RoleUpdateResponse:
             type: object
             properties:
@@ -2875,20 +2962,20 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '可选导出活动ID列表 @gotags: query:"idList"'
+                    description: '可选导出活动ID列表 @gotags: json:"idList"'
                 keyword:
                     type: string
-                    description: '活动关键字 @gotags: query:"keyword"'
+                    description: '活动关键字 @gotags: json:"keyword"'
                 status:
                     type: integer
-                    description: '状态（0=不过滤） @gotags: query:"status"'
+                    description: '状态（0=不过滤） @gotags: json:"status"'
                     format: int32
                 startFrom:
                     type: string
-                    description: '开始时间（可选） @gotags: query:"startFrom"'
+                    description: '开始时间（可选） @gotags: json:"startFrom"'
                 startTo:
                     type: string
-                    description: '结束时间（可选） @gotags: query:"startTo"'
+                    description: '结束时间（可选） @gotags: json:"startTo"'
         exportapi.ExportActivitiesResponse:
             type: object
             properties: {}
@@ -2897,16 +2984,16 @@ components:
             properties:
                 periodType:
                     type: string
-                    description: '周/月模板 必填 @gotags: query:"periodType,required"'
+                    description: '周/月模板 必填 @gotags: json:"periodType,required"'
                 orgId:
                     type: string
-                    description: '组织ID 必填 @gotags: query:"orgId,required"'
+                    description: '组织ID 必填 @gotags: json:"orgId,required"'
                 start:
                     type: string
-                    description: '开始时间 可选 @gotags: query:"start"'
+                    description: '开始时间 可选 @gotags: json:"start"'
                 end:
                     type: string
-                    description: '结束时间 可选 @gotags: query:"end"'
+                    description: '结束时间 可选 @gotags: json:"end"'
         exportapi.ExportOpsReportResponse:
             type: object
             properties: {}
@@ -2917,19 +3004,58 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '可选导出志愿者ID列表 @gotags: query:"idList"'
+                    description: '可选导出志愿者ID列表 @gotags: json:"idList"'
                 keyword:
                     type: string
-                    description: '志愿者姓名关键字 @gotags: query:"keyword"'
+                    description: '志愿者姓名关键字 @gotags: json:"keyword"'
                 auditStatus:
                     type: integer
-                    description: '审核状态（0=不过滤） @gotags: query:"auditStatus"'
+                    description: '审核状态（0=不过滤） @gotags: json:"auditStatus"'
                     format: int32
                 status:
                     type: integer
-                    description: '状态（0=不过滤） @gotags: query:"status"'
+                    description: '状态（0=不过滤） @gotags: json:"status"'
                     format: int32
         exportapi.ExportVolunteersResponse:
+            type: object
+            properties: {}
+        importapi.ImportActivitiesRequest:
+            type: object
+            properties: {}
+        importapi.ImportFailureItem:
+            type: object
+            properties:
+                rowNumber:
+                    type: integer
+                    format: int32
+                reason:
+                    type: string
+                raw:
+                    type: string
+        importapi.ImportResultResponse:
+            type: object
+            properties:
+                totalCount:
+                    type: integer
+                    format: int32
+                successCount:
+                    type: integer
+                    format: int32
+                failedCount:
+                    type: integer
+                    format: int32
+                errorFileName:
+                    type: string
+                errorFileContentType:
+                    type: string
+                errorFileContent:
+                    type: string
+                    format: bytes
+                failures:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/importapi.ImportFailureItem'
+        importapi.ImportVolunteersRequest:
             type: object
             properties: {}
         membership.MemberInfo:
@@ -2997,14 +3123,14 @@ components:
             properties:
                 membershipId:
                     type: string
-                    description: '成员关系ID 必填 @gotags: query:"membershipId,required"'
+                    description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
                 status:
                     type: integer
-                    description: '成员状态 必填 @gotags: query:"status,required"'
+                    description: '成员状态 必填 @gotags: json:"status,required"'
                     format: int32
                 reviewComment:
                     type: string
-                    description: '审核意见 可选 @gotags: query:"reviewComment"'
+                    description: '审核意见 可选 @gotags: json:"reviewComment"'
             description: MemberStatusUpdateRequest 更新成员状态请求
         membership.MemberStatusUpdateResponse:
             type: object
@@ -3090,10 +3216,10 @@ components:
             properties:
                 volunteerId:
                     type: string
-                    description: '志愿者ID 必填 @gotags: query:"volunteerId,required"'
+                    description: '志愿者ID 必填 @gotags: json:"volunteerId,required"'
                 organizationId:
                     type: string
-                    description: '组织ID 必填 @gotags: query:"organizationId,required"'
+                    description: '组织ID 必填 @gotags: json:"organizationId,required"'
             description: VolunteerJoinRequest 志愿者加入组织请求
         membership.VolunteerJoinResponse:
             type: object
@@ -3114,10 +3240,10 @@ components:
             properties:
                 membershipId:
                     type: string
-                    description: '成员关系ID 必填 @gotags: query:"membershipId,required"'
+                    description: '成员关系ID 必填 @gotags: json:"membershipId,required"'
                 reason:
                     type: string
-                    description: '退出原因 可选 @gotags: query:"reason"'
+                    description: '退出原因 可选 @gotags: json:"reason"'
             description: VolunteerLeaveRequest 志愿者退出组织请求
         membership.VolunteerLeaveResponse:
             type: object
@@ -3192,7 +3318,7 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '收件箱ID列表 @gotags: query:"ids,required"'
+                    description: '收件箱ID列表 @gotags: json:"ids,required"'
             description: NotificationReadRequest 批量已读请求
         notification.NotificationReadResponse:
             type: object
@@ -3209,10 +3335,10 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '组织ID列表 必填 @gotags: query:"ids,required"'
+                    description: '组织ID列表 必填 @gotags: json:"ids,required"'
                 reason:
                     type: string
-                    description: '停用原因 可选 @gotags: query:"reason"'
+                    description: '停用原因 可选 @gotags: json:"reason"'
             description: BatchDisableOrganizationRequest 批量停用组织请求
         organization.BatchDisableOrganizationResponse:
             type: object
@@ -3237,10 +3363,10 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '组织ID列表 必填 @gotags: query:"ids,required"'
+                    description: '组织ID列表 必填 @gotags: json:"ids,required"'
                 reason:
                     type: string
-                    description: '启用原因 可选 @gotags: query:"reason"'
+                    description: '启用原因 可选 @gotags: json:"reason"'
             description: BatchEnableOrganizationRequest 批量启用组织请求
         organization.BatchEnableOrganizationResponse:
             type: object
@@ -3265,7 +3391,7 @@ components:
                     type: array
                     items:
                         type: string
-                    description: '组织ID列表 必填 @gotags: query:"ids,required"'
+                    description: '组织ID列表 必填 @gotags: json:"ids,required"'
             description: BulkDeleteOrganizationRequest 批量删除组织请求
         organization.BulkDeleteOrganizationResponse:
             type: object
@@ -3297,7 +3423,7 @@ components:
                     description: '组织ID 必填 @gotags: path:"id,required"'
                 reason:
                     type: string
-                    description: '停用原因 可选 @gotags: query:"reason"'
+                    description: '停用原因 可选 @gotags: json:"reason"'
             description: DisableOrganizationRequest 停用组织请求
         organization.DisableOrganizationResponse:
             type: object
@@ -3314,7 +3440,7 @@ components:
                     description: '组织ID 必填 @gotags: path:"id,required"'
                 reason:
                     type: string
-                    description: '启用原因 可选 @gotags: query:"reason"'
+                    description: '启用原因 可选 @gotags: json:"reason"'
             description: EnableOrganizationRequest 启用组织请求
         organization.EnableOrganizationResponse:
             type: object
@@ -3328,37 +3454,37 @@ components:
             properties:
                 name:
                     type: string
-                    description: '组织名称 必填 @gotags: query:"name,required"'
+                    description: '组织名称 必填 @gotags: json:"name,required"'
                 organizationCode:
                     type: string
-                    description: '组织代码 可选 @gotags: query:"organizationCode"'
+                    description: '组织代码 可选 @gotags: json:"organizationCode"'
                 contactPerson:
                     type: string
-                    description: '联系人 必填 @gotags: query:"contactPerson,required"'
+                    description: '联系人 必填 @gotags: json:"contactPerson,required"'
                 contactPhone:
                     type: string
-                    description: '联系电话 必填 @gotags: query:"contactPhone,required"'
+                    description: '联系电话 必填 @gotags: json:"contactPhone,required"'
                 email:
                     type: string
-                    description: '邮箱 可选 @gotags: query:"email"'
+                    description: '邮箱 可选 @gotags: json:"email"'
                 address:
                     type: string
-                    description: '地址 可选 @gotags: query:"address"'
+                    description: '地址 可选 @gotags: json:"address"'
                 organizationType:
                     type: string
-                    description: '组织类型 可选 @gotags: query:"organizationType"'
+                    description: '组织类型 可选 @gotags: json:"organizationType"'
                 region:
                     type: string
-                    description: '地区 可选 @gotags: query:"region"'
+                    description: '地区 可选 @gotags: json:"region"'
                 description:
                     type: string
-                    description: '描述 可选 @gotags: query:"description"'
+                    description: '描述 可选 @gotags: json:"description"'
                 websiteUrl:
                     type: string
-                    description: '网站地址 可选 @gotags: query:"websiteUrl"'
+                    description: '网站地址 可选 @gotags: json:"websiteUrl"'
                 logoUrl:
                     type: string
-                    description: 'Logo地址 可选 @gotags: query:"logoUrl"'
+                    description: 'Logo地址 可选 @gotags: json:"logoUrl"'
             description: OrganizationCreateRequest 创建组织请求
         organization.OrganizationCreateResponse:
             type: object
@@ -3472,26 +3598,26 @@ components:
             properties:
                 keyword:
                     type: string
-                    description: '搜索关键字 可选 @gotags: query:"keyword"'
+                    description: '搜索关键字 可选 @gotags: json:"keyword"'
                 status:
                     type: array
                     items:
                         type: integer
                         format: int32
-                    description: '状态筛选 可选 @gotags: query:"status"'
+                    description: '状态筛选 可选 @gotags: json:"status"'
                 organizationType:
                     type: string
-                    description: '组织类型筛选 可选 @gotags: query:"organizationType"'
+                    description: '组织类型筛选 可选 @gotags: json:"organizationType"'
                 region:
                     type: string
-                    description: '地区筛选 可选 @gotags: query:"region"'
+                    description: '地区筛选 可选 @gotags: json:"region"'
                 page:
                     type: integer
-                    description: '页码 必填 @gotags: query:"page,required"'
+                    description: '页码 必填 @gotags: json:"page,required"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '页大小 必填 @gotags: query:"pageSize,required"'
+                    description: '页大小 必填 @gotags: json:"pageSize,required"'
                     format: int32
             description: OrganizationListRequest 组织列表请求
         organization.OrganizationListResponse:
@@ -3510,32 +3636,32 @@ components:
             properties:
                 keyword:
                     type: string
-                    description: '搜索关键字 可选 @gotags: query:"keyword"'
+                    description: '搜索关键字 可选 @gotags: json:"keyword"'
                 status:
                     type: array
                     items:
                         type: integer
                         format: int32
-                    description: '状态筛选 可选 @gotags: query:"status"'
+                    description: '状态筛选 可选 @gotags: json:"status"'
                 organizationType:
                     type: string
-                    description: '组织类型筛选 可选 @gotags: query:"organizationType"'
+                    description: '组织类型筛选 可选 @gotags: json:"organizationType"'
                 region:
                     type: string
-                    description: '地区筛选 可选 @gotags: query:"region"'
+                    description: '地区筛选 可选 @gotags: json:"region"'
                 startDate:
                     type: string
-                    description: '创建时间范围筛选 开始时间 可选 @gotags: query:"startDate"'
+                    description: '创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"'
                 endDate:
                     type: string
-                    description: '创建时间范围筛选 结束时间 可选 @gotags: query:"endDate"'
+                    description: '创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"'
                 page:
                     type: integer
-                    description: '页码 必填 @gotags: query:"page,required"'
+                    description: '页码 必填 @gotags: json:"page,required"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '页大小 必填 @gotags: query:"pageSize,required"'
+                    description: '页大小 必填 @gotags: json:"pageSize,required"'
                     format: int32
             description: OrganizationSearchRequest 搜索组织请求
         organization.OrganizationSearchResponse:
@@ -3601,22 +3727,22 @@ components:
             properties:
                 name:
                     type: string
-                    description: '联系人姓名 必填 @gotags: query:"name,required"'
+                    description: '联系人姓名 必填 @gotags: json:"name,required"'
                 phone:
                     type: string
-                    description: '手机号 必填 @gotags: query:"phone,required"'
+                    description: '手机号 必填 @gotags: json:"phone,required"'
                 email:
                     type: string
-                    description: '邮箱 必填 @gotags: query:"email,required"'
+                    description: '邮箱 必填 @gotags: json:"email,required"'
                 password:
                     type: string
-                    description: '密码 必填 @gotags: query:"password,required"'
+                    description: '密码 必填 @gotags: json:"password,required"'
                 organizationName:
                     type: string
-                    description: '组织名称 @gotags: query:"organizationName,required"'
+                    description: '组织名称 @gotags: json:"organizationName,required"'
                 code:
                     type: string
-                    description: '统一社会信用代码/组织机构代码 @gotags: query:"code"'
+                    description: '统一社会信用代码/组织机构代码 @gotags: json:"code"'
             description: 组织管理者注册请求
         register.RegisterResponse:
             type: object
@@ -3627,26 +3753,26 @@ components:
             properties:
                 name:
                     type: string
-                    description: '名称 必填 @gotags: query:"name,required"'
+                    description: '名称 必填 @gotags: json:"name,required"'
                 phone:
                     type: string
-                    description: '手机号 必填 @gotags: query:"phone,required"'
+                    description: '手机号 必填 @gotags: json:"phone,required"'
                 email:
                     type: string
-                    description: '邮箱 必填 @gotags: query:"email,required"'
+                    description: '邮箱 必填 @gotags: json:"email,required"'
                 password:
                     type: string
-                    description: '密码 必填 @gotags: query:"password,required"'
+                    description: '密码 必填 @gotags: json:"password,required"'
                 age:
                     type: integer
-                    description: '年龄 @gotags: query:"age"'
+                    description: '年龄 @gotags: json:"age"'
                     format: int32
                 gender:
                     type: string
-                    description: '性别 @gotags: query:"gender"'
+                    description: '性别 @gotags: json:"gender"'
                 userName:
                     type: string
-                    description: '用户名 @gotags: query:"username,required"'
+                    description: '用户名 @gotags: json:"username,required"'
             description: VolunteerRegisterRequest 志愿者注册请求
         volunteer.MyProfileResponse:
             type: object
@@ -3881,17 +4007,17 @@ components:
             properties:
                 signupId:
                     type: string
-                    description: '报名ID 必填 @gotags: query:"signupId,required"'
+                    description: '报名ID 必填 @gotags: json:"signupId,required"'
                 hours:
                     type: number
-                    description: '重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: query:"hours"'
+                    description: '重算工时（小时）可选；<=0则按签到签退时间自动计算 @gotags: json:"hours"'
                     format: double
                 reason:
                     type: string
-                    description: '重算原因 必填 @gotags: query:"reason,required"'
+                    description: '重算原因 必填 @gotags: json:"reason,required"'
                 idempotencyKey:
                     type: string
-                    description: '幂等键 必填 @gotags: query:"idempotencyKey,required"'
+                    description: '幂等键 必填 @gotags: json:"idempotencyKey,required"'
         workhour.RecalculateWorkHourResponse:
             type: object
             properties:
@@ -3910,13 +4036,13 @@ components:
             properties:
                 signupId:
                     type: string
-                    description: '报名ID 必填 @gotags: query:"signupId,required"'
+                    description: '报名ID 必填 @gotags: json:"signupId,required"'
                 reason:
                     type: string
-                    description: '作废原因 必填 @gotags: query:"reason,required"'
+                    description: '作废原因 必填 @gotags: json:"reason,required"'
                 idempotencyKey:
                     type: string
-                    description: '幂等键 必填 @gotags: query:"idempotencyKey,required"'
+                    description: '幂等键 必填 @gotags: json:"idempotencyKey,required"'
         workhour.VoidWorkHourResponse:
             type: object
             properties:
@@ -3987,21 +4113,21 @@ components:
             properties:
                 page:
                     type: integer
-                    description: '页码 可选 @gotags: query:"page"'
+                    description: '页码 可选 @gotags: json:"page"'
                     format: int32
                 pageSize:
                     type: integer
-                    description: '页大小 可选 @gotags: query:"pageSize"'
+                    description: '页大小 可选 @gotags: json:"pageSize"'
                     format: int32
                 activityId:
                     type: string
-                    description: '活动ID 可选 @gotags: query:"activityId"'
+                    description: '活动ID 可选 @gotags: json:"activityId"'
                 signupId:
                     type: string
-                    description: '报名ID 可选 @gotags: query:"signupId"'
+                    description: '报名ID 可选 @gotags: json:"signupId"'
                 operationType:
                     type: integer
-                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: query:"operationType"'
+                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"'
                     format: int32
         workhour.WorkHourLogListResponse:
             type: object
@@ -4017,6 +4143,7 @@ tags:
     - name: ActivityService
       description: 活动管理服务端接口
     - name: AnalyticsService
+      description: 看板相关
     - name: AssistantService
       description: AI 助手服务
     - name: AuditService
@@ -4027,6 +4154,7 @@ tags:
       description: RBAC administration service.
     - name: ExportService
       description: 导出功能
+    - name: ImportService
     - name: MembershipService
       description: 志愿者-组织关联关系管理服务端接口
     - name: NotificationService

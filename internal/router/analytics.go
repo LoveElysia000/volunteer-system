@@ -8,4 +8,5 @@ import (
 
 func RegisterAnalyticsRouter(r *route.RouterGroup) {
 	r.GET("/analytics/org/funnel", handler.OrgFunnelSummary)
+	r.GET("/analytics/org/dashboard", handler.OpsDashboardSummary)
 }
