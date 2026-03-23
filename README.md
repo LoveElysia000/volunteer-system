@@ -103,6 +103,48 @@ docker compose up -d --build
 首次启动会自动执行 `deploy/ddl.sql` 初始化数据库。  
 默认 `MySQL/Redis` 仅绑定到服务器本机（`127.0.0.1`），不会直接暴露到公网。
 
+本机连接示例：
+
+```bash
+mysql -h127.0.0.1 -P3306 -uroot -p
+redis-cli -h 127.0.0.1 -p 6379
+```
+
+服务器外连接示例（推荐通过 SSH 隧道）：
+
+当前 `docker-compose.prod.yml` 将 `MySQL/Redis` 绑定到服务器本机 `127.0.0.1`，因此无法直接从服务器外部访问。
+如需在自己的电脑连接服务器内部署的数据库/缓存，先建立 SSH 隧道：
+
+```bash
+ssh -N \
+  -L 3306:127.0.0.1:3306 \
+  -L 6379:127.0.0.1:6379 \
+  <server_user>@<server_host>
+```
+
+如果 SSH 端口不是默认 `22`，例如 `2222`：
+
+```bash
+ssh -p 2222 -N \
+  -L 3306:127.0.0.1:3306 \
+  -L 6379:127.0.0.1:6379 \
+  <server_user>@<server_host>
+```
+
+建立隧道后，在本机像连接本地服务一样访问：
+
+```bash
+mysql -h127.0.0.1 -P3306 -uroot -p
+redis-cli -h 127.0.0.1 -p 6379
+```
+
+如果不想暴露宿主机端口，也可以直接进入容器：
+
+```bash
+docker exec -it volunteer-system-mysql mysql -uroot -p
+docker exec -it volunteer-system-redis redis-cli
+```
+
 ## CI/CD 自动化部署（GitHub Actions + GHCR + SSH）
 
 ### 1. 服务器首次准备

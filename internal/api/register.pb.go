@@ -37,8 +37,8 @@ type VolunteerRegisterRequest struct {
 	Age int32 `protobuf:"varint,5,opt,name=age,proto3" json:"age"`
 	// 性别 @gotags: json:"gender"
 	Gender string `protobuf:"bytes,6,opt,name=gender,proto3" json:"gender"`
-	// 用户名 @gotags: json:"username,required"
-	UserName      string `protobuf:"bytes,7,opt,name=userName,proto3" json:"username,required"`
+	// 用户名 @gotags: json:"userName,required"
+	UserName      string `protobuf:"bytes,7,opt,name=userName,proto3" json:"userName,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -136,7 +136,9 @@ type OrganizationRegisterRequest struct {
 	// 组织名称 @gotags: json:"organizationName,required"
 	OrganizationName string `protobuf:"bytes,5,opt,name=organizationName,proto3" json:"organizationName,required"`
 	// 统一社会信用代码/组织机构代码 @gotags: json:"code"
-	Code          string `protobuf:"bytes,6,opt,name=code,proto3" json:"code"`
+	Code string `protobuf:"bytes,6,opt,name=code,proto3" json:"code"`
+	// 用户名 @gotags: json:"userName,required"
+	UserName      string `protobuf:"bytes,7,opt,name=userName,proto3" json:"userName,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -213,6 +215,13 @@ func (x *OrganizationRegisterRequest) GetCode() string {
 	return ""
 }
 
+func (x *OrganizationRegisterRequest) GetUserName() string {
+	if x != nil {
+		return x.UserName
+	}
+	return ""
+}
+
 // RegisterResponse 统一注册响应
 type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -262,14 +271,15 @@ const file_internal_api_register_proto_rawDesc = "" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x10\n" +
 	"\x03age\x18\x05 \x01(\x05R\x03age\x12\x16\n" +
 	"\x06gender\x18\x06 \x01(\tR\x06gender\x12\x1a\n" +
-	"\buserName\x18\a \x01(\tR\buserName\"\xb9\x01\n" +
+	"\buserName\x18\a \x01(\tR\buserName\"\xd5\x01\n" +
 	"\x1bOrganizationRegisterRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12*\n" +
 	"\x10organizationName\x18\x05 \x01(\tR\x10organizationName\x12\x12\n" +
-	"\x04code\x18\x06 \x01(\tR\x04code\"\x12\n" +
+	"\x04code\x18\x06 \x01(\tR\x04code\x12\x1a\n" +
+	"\buserName\x18\a \x01(\tR\buserName\"\x12\n" +
 	"\x10RegisterResponse2\x9e\x02\n" +
 	"\x0fRegisterService\x12w\n" +
 	"\x11VolunteerRegister\x12\".register.VolunteerRegisterRequest\x1a\x1a.register.RegisterResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/volunteer/register\x12\x80\x01\n" +

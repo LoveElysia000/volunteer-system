@@ -2252,10 +2252,10 @@ components:
             properties:
                 loginType:
                     type: string
-                    description: '登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"'
+                    description: '登录类型 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"'
                 identifier:
                     type: string
-                    description: '登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"'
+                    description: '登录标识（邮箱/手机号） 必填 @gotags: json:"identifier,required"'
                 password:
                     type: string
                     description: '密码 必填 @gotags: json:"password,required"'
@@ -2339,7 +2339,7 @@ components:
                 userId:
                     type: string
                     description: 用户ID
-                username:
+                userName:
                     type: string
                     description: 用户名
                 email:
@@ -3743,6 +3743,9 @@ components:
                 code:
                     type: string
                     description: '统一社会信用代码/组织机构代码 @gotags: json:"code"'
+                userName:
+                    type: string
+                    description: '用户名 @gotags: json:"userName,required"'
             description: 组织管理者注册请求
         register.RegisterResponse:
             type: object
@@ -3772,7 +3775,7 @@ components:
                     description: '性别 @gotags: json:"gender"'
                 userName:
                     type: string
-                    description: '用户名 @gotags: json:"username,required"'
+                    description: '用户名 @gotags: json:"userName,required"'
             description: VolunteerRegisterRequest 志愿者注册请求
         volunteer.MyProfileResponse:
             type: object

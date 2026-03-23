@@ -38,10 +38,10 @@ service AuthService {
 }
 // LoginRequest 登录请求
 message LoginRequest {
-  // 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
+  // 登录类型 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
   string loginType = 1;
   
-  // 登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"
+  // 登录标识（邮箱/手机号） 必填 @gotags: json:"identifier,required"
   string identifier = 2;
 
   // 密码 必填 @gotags: json:"password,required"
@@ -72,7 +72,7 @@ message UserInfo {
   // 用户ID
   string userId = 1;
   // 用户名
-  string username = 2;
+  string userName = 2;
   // 邮箱
   string email = 3;
   // 手机号

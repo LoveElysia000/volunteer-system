@@ -17,13 +17,26 @@ func ConvertSysAccountToUserInfo(account *model.SysAccount) *api.UserInfo {
 		identity = value
 	}
 
+	phone := ""
+	if account.Mobile != "" {
+		decrypted, err := DecryptSensitiveField(account.Mobile)
+		if err == nil {
+			phone = decrypted
+		}
+	}
+
+	displayName := account.Username
+	if displayName == "" {
+		displayName = "用户" + phone
+	}
+
 	return &api.UserInfo{
 		UserId:      strconv.FormatInt(account.ID, 10),
-		Username:    account.Username, // 使用手机号作为用户名
-		Email:       "",               // 如果需要邮箱，需要从其他表获取
-		Phone:       account.Mobile,
-		DisplayName: account.Mobile, // 使用手机号作为显示名
-		AvatarUrl:   "",             // 默认头像URL
+		UserName:    account.Username,
+		Email:       account.Email,
+		Phone:       phone,
+		DisplayName: displayName,
+		AvatarUrl:   "",
 		Identity:    identity,
 		CreatedAt:   account.CreatedAt.Unix(),
 		UpdatedAt:   account.UpdatedAt.Unix(),

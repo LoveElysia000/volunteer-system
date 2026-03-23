@@ -28,7 +28,7 @@ type ImportService struct {
 }
 
 type volunteerImportRow struct {
-	Username string
+	UserName string
 	RealName string
 	Mobile   string
 	Email    string
@@ -155,7 +155,7 @@ func parseVolunteerImportFile(filename string, content []byte) ([]volunteerImpor
 			continue
 		}
 		result = append(result, volunteerImportRow{
-			Username: importCell(row, 0),
+			UserName: importCell(row, 0),
 			RealName: importCell(row, 1),
 			Mobile:   importCell(row, 2),
 			Email:    importCell(row, 3),
@@ -403,7 +403,7 @@ func (s *ImportService) importVolunteerRow(row volunteerImportRow) error {
 
 	account := &model.SysAccount{}
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		account.Username = strings.TrimSpace(row.Username)
+		account.Username = strings.TrimSpace(row.UserName)
 		account.Mobile = mobilePair.Encrypted
 		account.MobileHash = mobilePair.Hash
 		account.Email = email
@@ -459,14 +459,14 @@ func (s *ImportService) importActivityRow(operatorID int64, row activityImportRo
 }
 
 func validateVolunteerImportRow(row volunteerImportRow) error {
-	row.Username = strings.TrimSpace(row.Username)
+	row.UserName = strings.TrimSpace(row.UserName)
 	row.RealName = strings.TrimSpace(row.RealName)
 	row.Mobile = strings.TrimSpace(row.Mobile)
 	row.Email = strings.TrimSpace(strings.ToLower(row.Email))
 	row.Password = strings.TrimSpace(row.Password)
 	row.Gender = strings.TrimSpace(row.Gender)
 
-	if row.Username == "" {
+	if row.UserName == "" {
 		return errors.New("用户名不能为空")
 	}
 	if row.RealName == "" {
@@ -536,7 +536,7 @@ func validateActivityImportRow(row activityImportRow) (*model.Activity, error) {
 
 func marshalVolunteerImportRow(row volunteerImportRow) string {
 	return strings.Join([]string{
-		row.Username,
+		row.UserName,
 		row.RealName,
 		row.Mobile,
 		row.Email,

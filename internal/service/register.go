@@ -193,7 +193,7 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建系统账户
 		account = &model.SysAccount{
-			Username:     req.OrganizationName,
+			Username:     req.UserName,
 			Mobile:       mobilePair.Encrypted,
 			MobileHash:   mobilePair.Hash,
 			Email:        req.Email,
@@ -273,6 +273,14 @@ func (s *RegisterService) validateVolunteerRequest(req *api.VolunteerRegisterReq
 		return errors.New("邮箱不能为空")
 	}
 
+	if req.Password == "" {
+		return errors.New("密码不能为空")
+	}
+
+	if req.UserName == "" {
+		return errors.New("用户名不能为空")
+	}
+
 	// 验证邮箱格式
 	if !s.isValidEmail(req.Email) {
 		return errors.New("邮箱格式不正确")
@@ -315,6 +323,10 @@ func (s *RegisterService) validateOrganizationRequest(req *api.OrganizationRegis
 		return errors.New("邮箱不能为空")
 	}
 
+	if req.Password == "" {
+		return errors.New("密码不能为空")
+	}
+
 	// 验证邮箱格式
 	if !s.isValidEmail(req.Email) {
 		return errors.New("邮箱格式不正确")
@@ -322,6 +334,10 @@ func (s *RegisterService) validateOrganizationRequest(req *api.OrganizationRegis
 
 	if req.OrganizationName == "" {
 		return errors.New("组织名称不能为空")
+	}
+
+	if req.UserName == "" {
+		return errors.New("用户名不能为空")
 	}
 
 	return nil

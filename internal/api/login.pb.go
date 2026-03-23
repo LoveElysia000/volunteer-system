@@ -25,9 +25,9 @@ const (
 // LoginRequest 登录请求
 type LoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 登录类型 username-用户名 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
+	// 登录类型 email-邮箱 phone-手机号 必填 @gotags: json:"loginType,required"
 	LoginType string `protobuf:"bytes,1,opt,name=loginType,proto3" json:"loginType,required"`
-	// 登录标识（用户名/邮箱/手机号） 必填 @gotags: json:"identifier,required"
+	// 登录标识（邮箱/手机号） 必填 @gotags: json:"identifier,required"
 	Identifier string `protobuf:"bytes,2,opt,name=identifier,proto3" json:"identifier,required"`
 	// 密码 必填 @gotags: json:"password,required"
 	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,required"`
@@ -99,17 +99,17 @@ func (x *LoginRequest) GetIdentity() string {
 type LoginResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 登录是否成功
-	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success"`
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	// 响应消息
-	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	// 认证令牌
-	AccessToken string `protobuf:"bytes,3,opt,name=accessToken,proto3" json:"accessToken"`
+	AccessToken string `protobuf:"bytes,3,opt,name=accessToken,proto3" json:"accessToken,omitempty"`
 	// 刷新令牌
-	RefreshToken string `protobuf:"bytes,4,opt,name=refreshToken,proto3" json:"refreshToken"`
+	RefreshToken string `protobuf:"bytes,4,opt,name=refreshToken,proto3" json:"refreshToken,omitempty"`
 	// 令牌过期时间（Unix时间戳）
-	ExpiresAt int64 `protobuf:"varint,5,opt,name=expiresAt,proto3" json:"expiresAt"`
+	ExpiresAt int64 `protobuf:"varint,5,opt,name=expiresAt,proto3" json:"expiresAt,omitempty"`
 	// 用户信息
-	UserInfo      *UserInfo `protobuf:"bytes,6,opt,name=userInfo,proto3" json:"userInfo"`
+	UserInfo      *UserInfo `protobuf:"bytes,6,opt,name=userInfo,proto3" json:"userInfo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -190,23 +190,23 @@ func (x *LoginResponse) GetUserInfo() *UserInfo {
 type UserInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 用户ID
-	UserId string `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId"`
+	UserId string `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
 	// 用户名
-	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username"`
+	UserName string `protobuf:"bytes,2,opt,name=userName,proto3" json:"userName,omitempty"`
 	// 邮箱
-	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email"`
+	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	// 手机号
-	Phone string `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone"`
+	Phone string `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone,omitempty"`
 	// 显示名称
-	DisplayName string `protobuf:"bytes,5,opt,name=displayName,proto3" json:"displayName"`
+	DisplayName string `protobuf:"bytes,5,opt,name=displayName,proto3" json:"displayName,omitempty"`
 	// 头像URL
-	AvatarUrl string `protobuf:"bytes,6,opt,name=avatarUrl,proto3" json:"avatarUrl"`
+	AvatarUrl string `protobuf:"bytes,6,opt,name=avatarUrl,proto3" json:"avatarUrl,omitempty"`
 	// 身份类型
-	Identity string `protobuf:"bytes,7,opt,name=identity,proto3" json:"identity"`
+	Identity string `protobuf:"bytes,7,opt,name=identity,proto3" json:"identity,omitempty"`
 	// 创建时间
-	CreatedAt int64 `protobuf:"varint,8,opt,name=createdAt,proto3" json:"createdAt"`
+	CreatedAt int64 `protobuf:"varint,8,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
 	// 更新时间
-	UpdatedAt     int64 `protobuf:"varint,9,opt,name=updatedAt,proto3" json:"updatedAt"`
+	UpdatedAt     int64 `protobuf:"varint,9,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -248,9 +248,9 @@ func (x *UserInfo) GetUserId() string {
 	return ""
 }
 
-func (x *UserInfo) GetUsername() string {
+func (x *UserInfo) GetUserName() string {
 	if x != nil {
-		return x.Username
+		return x.UserName
 	}
 	return ""
 }
@@ -308,7 +308,7 @@ func (x *UserInfo) GetUpdatedAt() int64 {
 type LogoutRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 要注销的令牌 必填 @gotags: json:"token,required"
-	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,required"`
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -354,9 +354,9 @@ func (x *LogoutRequest) GetToken() string {
 type LogoutResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 登出是否成功
-	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success"`
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	// 响应消息
-	Message       string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	Message       string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -409,7 +409,7 @@ func (x *LogoutResponse) GetMessage() string {
 type RefreshTokenRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 刷新令牌 必填 @gotags: json:"refreshToken,required"
-	RefreshToken  string `protobuf:"bytes,1,opt,name=refreshToken,proto3" json:"refreshToken,required"`
+	RefreshToken  string `protobuf:"bytes,1,opt,name=refreshToken,proto3" json:"refreshToken,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -455,17 +455,17 @@ func (x *RefreshTokenRequest) GetRefreshToken() string {
 type RefreshTokenResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 刷新是否成功
-	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success"`
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	// 响应消息
-	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	// 新的访问令牌
-	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token"`
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	// 新的刷新令牌
-	RefreshToken string `protobuf:"bytes,4,opt,name=refreshToken,proto3" json:"refreshToken"`
+	RefreshToken string `protobuf:"bytes,4,opt,name=refreshToken,proto3" json:"refreshToken,omitempty"`
 	// 令牌过期时间（Unix时间戳）
-	ExpiresAt int64 `protobuf:"varint,5,opt,name=expiresAt,proto3" json:"expiresAt"`
+	ExpiresAt int64 `protobuf:"varint,5,opt,name=expiresAt,proto3" json:"expiresAt,omitempty"`
 	// 用户信息
-	UserInfo      *UserInfo `protobuf:"bytes,6,opt,name=userInfo,proto3" json:"userInfo"`
+	UserInfo      *UserInfo `protobuf:"bytes,6,opt,name=userInfo,proto3" json:"userInfo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -563,7 +563,7 @@ const file_internal_api_login_proto_rawDesc = "" +
 	"\buserInfo\x18\x06 \x01(\v2\r.api.UserInfoR\buserInfo\"\x82\x02\n" +
 	"\bUserInfo\x12\x16\n" +
 	"\x06userId\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
+	"\buserName\x18\x02 \x01(\tR\buserName\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x14\n" +
 	"\x05phone\x18\x04 \x01(\tR\x05phone\x12 \n" +
 	"\vdisplayName\x18\x05 \x01(\tR\vdisplayName\x12\x1c\n" +

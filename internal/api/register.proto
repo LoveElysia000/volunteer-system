@@ -42,7 +42,7 @@ message VolunteerRegisterRequest {
   int32 age = 5;
   // 性别 @gotags: json:"gender"
   string gender = 6;
-  // 用户名 @gotags: json:"username,required"
+  // 用户名 @gotags: json:"userName,required"
   string userName = 7;
 }
 
@@ -60,6 +60,8 @@ message OrganizationRegisterRequest {
   string organizationName = 5;
   // 统一社会信用代码/组织机构代码 @gotags: json:"code"
   string code = 6;
+  // 用户名 @gotags: json:"userName,required"
+  string userName = 7;
 }
 
 // RegisterResponse 统一注册响应

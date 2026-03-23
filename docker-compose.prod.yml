@@ -27,6 +27,8 @@ services:
     image: mysql:8.0
     container_name: volunteer-system-mysql
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3306:3306"
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -49,6 +51,8 @@ services:
     image: redis:7-alpine
     container_name: volunteer-system-redis
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
