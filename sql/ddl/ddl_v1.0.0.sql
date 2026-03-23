@@ -5,7 +5,7 @@
 
 CREATE TABLE `sys_accounts` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `username` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '用户名',
+  `user_name` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '用户名',
   `mobile` VARCHAR(256) NOT NULL DEFAULT '' COMMENT '手机号 (AES-GCM加密后存储)',
   `mobile_hash` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '手机号哈希值 (SHA-256, 用于唯一性检查)',
   `email` VARCHAR(100) NOT NULL DEFAULT '' COMMENT '邮箱 (唯一登录标识)',
@@ -22,7 +22,7 @@ CREATE TABLE `sys_accounts` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_mobile_hash` (`mobile_hash`) COMMENT '手机号哈希去重索引',
   UNIQUE KEY `uk_email` (`email`) COMMENT '邮箱去重索引',
-  KEY `idx_username` (`username`) COMMENT '用户名索引',
+  KEY `idx_user_name` (`user_name`) COMMENT '用户名索引',
   KEY `idx_identity_status` (`identity_type`, `status`) COMMENT '身份状态联合索引',
   KEY `idx_last_login` (`last_login_time`) COMMENT '登录时间索引',
   KEY `idx_created_at` (`created_at`) COMMENT '注册时间索引'

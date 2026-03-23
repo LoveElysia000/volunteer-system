@@ -354,8 +354,8 @@ func (s *VolunteerService) VolunteerHomeSummary(_ *api.VolunteerHomeSummaryReque
 			log.Error("查询志愿者首页摘要失败: 查询账号异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteer.ID)
 			return nil, err
 		}
-	} else if account != nil && account.Username != "" {
-		nickname = account.Username
+	} else if account != nil && account.UserName != "" {
+		nickname = account.UserName
 	}
 
 	now := time.Now()

@@ -90,7 +90,7 @@ func (s *RegisterService) RegisterVolunteer(req *api.VolunteerRegisterRequest) (
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建系统账户
 		account = &model.SysAccount{
-			Username:     req.UserName,
+			UserName:     req.UserName,
 			Mobile:       mobilePair.Encrypted,
 			MobileHash:   mobilePair.Hash,
 			Email:        req.Email,
@@ -193,7 +193,7 @@ func (s *RegisterService) RegisterOrganization(req *api.OrganizationRegisterRequ
 	err = s.repo.DB.Transaction(func(tx *gorm.DB) error {
 		// 创建系统账户
 		account = &model.SysAccount{
-			Username:     req.UserName,
+			UserName:     req.UserName,
 			Mobile:       mobilePair.Encrypted,
 			MobileHash:   mobilePair.Hash,
 			Email:        req.Email,

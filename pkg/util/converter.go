@@ -25,14 +25,14 @@ func ConvertSysAccountToUserInfo(account *model.SysAccount) *api.UserInfo {
 		}
 	}
 
-	displayName := account.Username
+	displayName := account.UserName
 	if displayName == "" {
 		displayName = "用户" + phone
 	}
 
 	return &api.UserInfo{
 		UserId:      strconv.FormatInt(account.ID, 10),
-		UserName:    account.Username,
+		UserName:    account.UserName,
 		Email:       account.Email,
 		Phone:       phone,
 		DisplayName: displayName,

@@ -15,7 +15,7 @@ const TableNameSysAccount = "sys_accounts"
 // SysAccount 用户账号主表（所有用户的基础登录信息）
 type SysAccount struct {
 	ID            int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                      // 主键ID
-	Username      string         `gorm:"column:username;not null;comment:用户名" json:"username"`                                // 用户名
+	UserName      string         `gorm:"column:user_name;not null;comment:用户名" json:"user_name"`                              // 用户名
 	Mobile        string         `gorm:"column:mobile;not null;comment:手机号 (AES-GCM加密后存储)" json:"mobile"`                     // 手机号 (AES-GCM加密后存储)
 	MobileHash    string         `gorm:"column:mobile_hash;not null;comment:手机号哈希值 (SHA-256, 用于唯一性检查)" json:"mobile_hash"`    // 手机号哈希值 (SHA-256, 用于唯一性检查)
 	Email         string         `gorm:"column:email;not null;comment:邮箱 (唯一登录标识)" json:"email"`                              // 邮箱 (唯一登录标识)

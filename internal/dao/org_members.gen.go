@@ -34,6 +34,8 @@ func newOrgMember(db *gorm.DB, opts ...gen.DOOption) orgMember {
 	_orgMember.Status = field.NewInt32(tableName, "status")
 	_orgMember.AppliedAt = field.NewTime(tableName, "applied_at")
 	_orgMember.JoinedAt = field.NewTime(tableName, "joined_at")
+	_orgMember.LeftAt = field.NewTime(tableName, "left_at")
+	_orgMember.LeaveReason = field.NewString(tableName, "leave_reason")
 	_orgMember.CreatedAt = field.NewTime(tableName, "created_at")
 	_orgMember.UpdatedAt = field.NewTime(tableName, "updated_at")
 
@@ -47,15 +49,17 @@ type orgMember struct {
 	orgMemberDo orgMemberDo
 
 	ALL         field.Asterisk
-	ID          field.Int64 // 主键ID
-	OrgID       field.Int64 // 组织ID (关联organizations.id)
-	VolunteerID field.Int64 // 志愿者ID (关联volunteers.id)
-	Role        field.Int32 // 角色: 1-普通成员, 2-管理员, 3-负责人
-	Status      field.Int32 // 成员状态: 1-待审核, 2-正式成员, 3-已拒绝, 4-已退出
-	AppliedAt   field.Time  // 申请时间
-	JoinedAt    field.Time  // 正式加入时间
-	CreatedAt   field.Time  // 创建时间
-	UpdatedAt   field.Time  // 更新时间
+	ID          field.Int64  // 主键ID
+	OrgID       field.Int64  // 组织ID (关联organizations.id)
+	VolunteerID field.Int64  // 志愿者ID (关联volunteers.id)
+	Role        field.Int32  // 角色: 1-普通成员, 2-管理员, 3-负责人
+	Status      field.Int32  // 成员状态: 1-待审核, 2-正式成员, 3-已拒绝, 4-已退出
+	AppliedAt   field.Time   // 申请时间
+	JoinedAt    field.Time   // 正式加入时间
+	LeftAt      field.Time   // 退出时间
+	LeaveReason field.String // 退出原因
+	CreatedAt   field.Time   // 创建时间
+	UpdatedAt   field.Time   // 更新时间
 
 	fieldMap map[string]field.Expr
 }
@@ -79,6 +83,8 @@ func (o *orgMember) updateTableName(table string) *orgMember {
 	o.Status = field.NewInt32(table, "status")
 	o.AppliedAt = field.NewTime(table, "applied_at")
 	o.JoinedAt = field.NewTime(table, "joined_at")
+	o.LeftAt = field.NewTime(table, "left_at")
+	o.LeaveReason = field.NewString(table, "leave_reason")
 	o.CreatedAt = field.NewTime(table, "created_at")
 	o.UpdatedAt = field.NewTime(table, "updated_at")
 
@@ -107,7 +113,7 @@ func (o *orgMember) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (o *orgMember) fillFieldMap() {
-	o.fieldMap = make(map[string]field.Expr, 9)
+	o.fieldMap = make(map[string]field.Expr, 11)
 	o.fieldMap["id"] = o.ID
 	o.fieldMap["org_id"] = o.OrgID
 	o.fieldMap["volunteer_id"] = o.VolunteerID
@@ -115,6 +121,8 @@ func (o *orgMember) fillFieldMap() {
 	o.fieldMap["status"] = o.Status
 	o.fieldMap["applied_at"] = o.AppliedAt
 	o.fieldMap["joined_at"] = o.JoinedAt
+	o.fieldMap["left_at"] = o.LeftAt
+	o.fieldMap["leave_reason"] = o.LeaveReason
 	o.fieldMap["created_at"] = o.CreatedAt
 	o.fieldMap["updated_at"] = o.UpdatedAt
 }

@@ -17,35 +17,23 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:                 db,
-		RbacAccountRole:    newRbacAccountRole(db, opts...),
-		RbacChangeLog:      newRbacChangeLog(db, opts...),
-		RbacPermission:     newRbacPermission(db, opts...),
-		RbacRole:           newRbacRole(db, opts...),
-		RbacRolePermission: newRbacRolePermission(db, opts...),
+		db:         db,
+		SysAccount: newSysAccount(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	RbacAccountRole    rbacAccountRole
-	RbacChangeLog      rbacChangeLog
-	RbacPermission     rbacPermission
-	RbacRole           rbacRole
-	RbacRolePermission rbacRolePermission
+	SysAccount sysAccount
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:                 db,
-		RbacAccountRole:    q.RbacAccountRole.clone(db),
-		RbacChangeLog:      q.RbacChangeLog.clone(db),
-		RbacPermission:     q.RbacPermission.clone(db),
-		RbacRole:           q.RbacRole.clone(db),
-		RbacRolePermission: q.RbacRolePermission.clone(db),
+		db:         db,
+		SysAccount: q.SysAccount.clone(db),
 	}
 }
 
@@ -59,30 +47,18 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:                 db,
-		RbacAccountRole:    q.RbacAccountRole.replaceDB(db),
-		RbacChangeLog:      q.RbacChangeLog.replaceDB(db),
-		RbacPermission:     q.RbacPermission.replaceDB(db),
-		RbacRole:           q.RbacRole.replaceDB(db),
-		RbacRolePermission: q.RbacRolePermission.replaceDB(db),
+		db:         db,
+		SysAccount: q.SysAccount.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	RbacAccountRole    *rbacAccountRoleDo
-	RbacChangeLog      *rbacChangeLogDo
-	RbacPermission     *rbacPermissionDo
-	RbacRole           *rbacRoleDo
-	RbacRolePermission *rbacRolePermissionDo
+	SysAccount *sysAccountDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		RbacAccountRole:    q.RbacAccountRole.WithContext(ctx),
-		RbacChangeLog:      q.RbacChangeLog.WithContext(ctx),
-		RbacPermission:     q.RbacPermission.WithContext(ctx),
-		RbacRole:           q.RbacRole.WithContext(ctx),
-		RbacRolePermission: q.RbacRolePermission.WithContext(ctx),
+		SysAccount: q.SysAccount.WithContext(ctx),
 	}
 }
 

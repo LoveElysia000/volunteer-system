@@ -403,7 +403,7 @@ func (s *ImportService) importVolunteerRow(row volunteerImportRow) error {
 
 	account := &model.SysAccount{}
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		account.Username = strings.TrimSpace(row.UserName)
+		account.UserName = strings.TrimSpace(row.UserName)
 		account.Mobile = mobilePair.Encrypted
 		account.MobileHash = mobilePair.Hash
 		account.Email = email

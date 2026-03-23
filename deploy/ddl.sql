@@ -7,7 +7,7 @@
 -- 1) 系统账号表
 CREATE TABLE IF NOT EXISTS `sys_accounts` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `username` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '用户名',
+  `user_name` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '用户名',
   `mobile` VARCHAR(256) NOT NULL DEFAULT '' COMMENT '手机号 (AES-GCM加密后存储)',
   `mobile_hash` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '手机号哈希值 (SHA-256, 用于唯一性检查)',
   `email` VARCHAR(100) NOT NULL DEFAULT '' COMMENT '邮箱 (唯一登录标识)',

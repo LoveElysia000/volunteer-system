@@ -28,7 +28,7 @@ func newSysAccount(db *gorm.DB, opts ...gen.DOOption) sysAccount {
 	tableName := _sysAccount.sysAccountDo.TableName()
 	_sysAccount.ALL = field.NewAsterisk(tableName)
 	_sysAccount.ID = field.NewInt64(tableName, "id")
-	_sysAccount.Username = field.NewString(tableName, "username")
+	_sysAccount.UserName = field.NewString(tableName, "user_name")
 	_sysAccount.Mobile = field.NewString(tableName, "mobile")
 	_sysAccount.MobileHash = field.NewString(tableName, "mobile_hash")
 	_sysAccount.Email = field.NewString(tableName, "email")
@@ -51,7 +51,7 @@ type sysAccount struct {
 
 	ALL           field.Asterisk
 	ID            field.Int64  // 主键ID
-	Username      field.String // 用户名
+	UserName      field.String // 用户名
 	Mobile        field.String // 手机号 (AES-GCM加密后存储)
 	MobileHash    field.String // 手机号哈希值 (SHA-256, 用于唯一性检查)
 	Email         field.String // 邮箱 (唯一登录标识)
@@ -79,7 +79,7 @@ func (s sysAccount) As(alias string) *sysAccount {
 func (s *sysAccount) updateTableName(table string) *sysAccount {
 	s.ALL = field.NewAsterisk(table)
 	s.ID = field.NewInt64(table, "id")
-	s.Username = field.NewString(table, "username")
+	s.UserName = field.NewString(table, "user_name")
 	s.Mobile = field.NewString(table, "mobile")
 	s.MobileHash = field.NewString(table, "mobile_hash")
 	s.Email = field.NewString(table, "email")
@@ -118,7 +118,7 @@ func (s *sysAccount) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 func (s *sysAccount) fillFieldMap() {
 	s.fieldMap = make(map[string]field.Expr, 12)
 	s.fieldMap["id"] = s.ID
-	s.fieldMap["username"] = s.Username
+	s.fieldMap["user_name"] = s.UserName
 	s.fieldMap["mobile"] = s.Mobile
 	s.fieldMap["mobile_hash"] = s.MobileHash
 	s.fieldMap["email"] = s.Email

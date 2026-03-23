@@ -12,13 +12,8 @@ database:
   #   - "volunteers"
   #   - "organizations"
   # 活动相关表
-  # - "org_members"
+  - "sys_accounts"
   # - "activity_signups"
-   - "rbac_roles"
-   - "rbac_permissions"
-   - "rbac_role_permissions"
-   - "rbac_account_roles"
-   - "rbac_change_logs"
   # 输出目录
   outPath: "./internal/dao"
   # 查询代码文件名，默认: gen.go
