@@ -339,9 +339,10 @@ Authorization: Bearer <accessToken>
 | --- | --- | --- | --- |
 | `POST /api/volunteers/list` | 有组织管理权限的账号 | `{ keyword:string, page:int32, pageSize:int32 }` | `{ total:int32, list: VolunteerListItem[] }` |
 | `GET /api/volunteers/detail/:id` | 当前志愿者本人，或有组织管理权限且能覆盖该志愿者的账号 | 路径参数 `id:int64` | `{ volunteer: VolunteerInfo }` |
-| `GET /api/volunteers/my/profile/:id` | 当前志愿者本人 | 路径参数 `id:int64` | `{ volunteer: VolunteerInfo }` |
+| `GET /api/volunteers/my/profile/:id` | 当前志愿者本人 | 路径参数 `id:int64` | `{ volunteer: VolunteerInfo, accountInfo: VolunteerAccountInfo, profile: VolunteerProfileInfo, verification: VolunteerVerificationInfo }` |
 | `GET /api/volunteers/home/summary` | 当前志愿者本人 | 无 | `{ nickname:string, level:int32, stats: VolunteerHomeSummaryStats, monthlyGrowth:double, needHoursToNextLevel:double }` |
-| `PUT /api/volunteers/:id` | 当前志愿者本人，或有组织管理权限且能覆盖该志愿者的账号 | 路径参数 `id:int64` + `{ realName:string, gender:int32, birthday:string, avatarUrl:string, introduction:string }` | `{}` |
+| `PUT /api/volunteers/account` | 当前志愿者本人 | `{ userName:string, email:string, phone:string }` | `{}` |
+| `PUT /api/volunteers/:id` | 当前志愿者本人，或有组织管理权限且能覆盖该志愿者的账号 | 路径参数 `id:int64` + `{ gender:int32, birthday:string, avatarUrl:string, introduction:string }` | `{}` |
 | `POST /api/volunteers/real-name/submit` | 当前志愿者本人 | `{ realName:string, idCard:string }` | `{ auditId:int64, status:int32 }` |
 
 ### 4.2 关键返回结构
@@ -405,9 +406,10 @@ Authorization: Bearer <accessToken>
 | 接口 | 给谁用 | 请求结构 | 返回 data 结构 |
 | --- | --- | --- | --- |
 | `POST /api/organizations/list` | 有组织管理权限的账号 | `{ keyword:string, status:int32[], organizationType:string, region:string, page:int32, pageSize:int32 }` | `{ total:int32, list: OrganizationListItem[] }` |
-| `GET /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` | `{ organization: OrganizationInfo }` |
+| `GET /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` | `{ organization: OrganizationInfo, accountInfo: OrganizationAccountInfo, organizationProfile: OrganizationProfileInfo, organizationCertification: OrganizationCertificationInfo }` |
 | `POST /api/organizations/create` | 已登录用户 | `{ name:string, organizationCode:string, contactPerson:string, contactPhone:string, email:string, address:string, organizationType:string, region:string, description:string, websiteUrl:string, logoUrl:string }` | `{ id:int64, message:string }` |
-| `PUT /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` + 可更新字段 `{ name:string, organizationCode:string, contactPerson:string, contactPhone:string, email:string, address:string, organizationType:string, region:string, description:string, websiteUrl:string, logoUrl:string }` | `{ message:string }` |
+| `PUT /api/organizations/account` | 当前组织管理者本人 | `{ userName:string, email:string, phone:string }` | `{}` |
+| `PUT /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` + 可更新字段 `{ name:string, organizationCode:string, contactPerson:string, contactPhone:string, address:string, description:string, logoUrl:string }` | `{ message:string }` |
 | `DELETE /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` | `{ message:string }` |
 | `POST /api/organizations/:id/disable` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` + `{ reason:string }` | `{ message:string }` |
 | `POST /api/organizations/:id/enable` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id:int64` + `{ reason:string }` | `{ message:string }` |
@@ -467,8 +469,9 @@ Authorization: Bearer <accessToken>
 
 - 说明：
   `POST /api/organizations/create` 当前任何已登录账号都可调用
-  当前组织列表/详情返回里的 `email`、`organizationType`、`region`、`websiteUrl` 默认为空字符串
-  `create/update` 接口虽然接收 `email`、`organizationType`、`region`、`websiteUrl`，但当前后端未持久化这些字段，前端联调时不要依赖回显
+当前组织列表返回里的 `email`、`organizationType`、`region` 仍可能为空字符串
+组织详情中的 `accountInfo.email` 与 `organization.contactPhone` 现已分别从账户信息和解密后的组织联系电话返回
+`PUT /api/organizations/:id` 现仅更新组织主体资料；账户信息请改用 `PUT /api/organizations/account`
 
 ---
 

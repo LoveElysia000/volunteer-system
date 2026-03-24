@@ -50,9 +50,10 @@
 | --- | --- | --- | --- |
 | `POST /api/volunteers/list` | 有组织管理权限的账号 | `keyword:string, page:int32, pageSize:int32` | `total:int32, list:VolunteerListItem[]` |
 | `GET /api/volunteers/detail/:id` | 当前志愿者本人，或有组织管理权限且能覆盖该志愿者的账号 | 路径参数 `id` | `volunteer` |
-| `GET /api/volunteers/my/profile/:id` | 志愿者 | 路径参数 `id` | `volunteer` |
+| `GET /api/volunteers/my/profile/:id` | 志愿者 | 路径参数 `id` | `volunteer, accountInfo, profile, verification` |
 | `GET /api/volunteers/home/summary` | 志愿者 | 无 | `nickname:string, level:int32, stats:VolunteerHomeSummaryStats, monthlyGrowth:double, needHoursToNextLevel:double` |
-| `PUT /api/volunteers/:id` | 当前志愿者本人，或有组织管理权限且能覆盖该志愿者的账号 | `realName:string, gender:int32, birthday:string, avatarUrl:string, introduction:string` | `data:{}` |
+| `PUT /api/volunteers/account` | 当前志愿者本人 | `userName:string, email:string, phone:string` | `data:{}` |
+| `PUT /api/volunteers/:id` | 当前志愿者本人，或有组织管理权限且能覆盖该志愿者的账号 | `gender:int32, birthday:string, avatarUrl:string, introduction:string` | `data:{}` |
 | `POST /api/volunteers/real-name/submit` | 志愿者 | `realName:string, idCard:string` | `auditId:int64, status:int32` |
 
 ## 4. 组织相关
@@ -60,9 +61,10 @@
 | 接口 | 给谁用 | 核心入参 | 核心返回 |
 | --- | --- | --- | --- |
 | `POST /api/organizations/list` | 有组织管理权限的账号 | `keyword:string, status:int32[], organizationType:string, region:string, page:int32, pageSize:int32` | `total:int32, list:OrganizationListItem[]` |
-| `GET /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` | `organization` |
+| `GET /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` | `organization, accountInfo, organizationProfile, organizationCertification` |
 | `POST /api/organizations/create` | 已登录用户 | `name:string, organizationCode:string, contactPerson:string, contactPhone:string, email:string, address:string, organizationType:string, region:string, description:string, websiteUrl:string, logoUrl:string` | `id:int64, message:string` |
-| `PUT /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` + 可更新字段 | `message` |
+| `PUT /api/organizations/account` | 当前组织管理者本人 | `userName:string, email:string, phone:string` | `data:{}` |
+| `PUT /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` + `name:string, organizationCode:string, contactPerson:string, contactPhone:string, address:string, description:string, logoUrl:string` | `message` |
 | `DELETE /api/organizations/:id` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` | `message` |
 | `POST /api/organizations/:id/disable` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` + `reason` | `message` |
 | `POST /api/organizations/:id/enable` | 有组织管理权限且能管理该组织的账号 | 路径参数 `id` + `reason` | `message` |

@@ -48,6 +48,14 @@ service VolunteerService {
     };
   }
 
+  // 更新志愿者账户信息（志愿者端）
+  rpc VolunteerAccountUpdate(VolunteerAccountUpdateRequest) returns (VolunteerAccountUpdateResponse) {
+    option (google.api.http) = {
+      put : "/api/volunteers/account"
+      body: "*"
+    };
+  }
+
   // 提交志愿者实名认证申请（走审核流）
   rpc VolunteerRealNameSubmit(VolunteerRealNameSubmitRequest) returns (VolunteerRealNameSubmitResponse) {
     option (google.api.http) = {
@@ -122,6 +130,12 @@ message MyProfileRequest {
 message MyProfileResponse {
   // 志愿者信息
   VolunteerInfo volunteer = 1;
+  // 账户信息
+  VolunteerAccountInfo accountInfo = 2;
+  // 个人资料
+  VolunteerProfileInfo profile = 3;
+  // 实名认证信息
+  VolunteerVerificationInfo verification = 4;
 }
 
 // VolunteerHomeSummaryRequest 志愿者首页摘要请求（志愿者端）
@@ -184,24 +198,67 @@ message VolunteerInfo {
   int32 status = 15;
 }
 
+// VolunteerAccountInfo 志愿者账户信息
+message VolunteerAccountInfo {
+  // 用户名
+  string userName = 1;
+  // 邮箱
+  string email = 2;
+  // 手机号
+  string phone = 3;
+}
+
+// VolunteerProfileInfo 志愿者个人资料
+message VolunteerProfileInfo {
+  // 性别: 0-未知, 1-男, 2-女
+  int32 gender = 1;
+  // 出生日期
+  string birthday = 2;
+  // 头像URL
+  string avatarUrl = 3;
+  // 个人简介
+  string introduction = 4;
+}
+
+// VolunteerVerificationInfo 志愿者实名认证信息
+message VolunteerVerificationInfo {
+  // 真实姓名
+  string realName = 1;
+  // 身份证号
+  string idCard = 2;
+  // 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+  int32 auditStatus = 3;
+}
+
 // VolunteerUpdateRequest 更新志愿者请求
 message VolunteerUpdateRequest {
   // 志愿者ID @gotags: path:"id,required"
   int64 volunteerId = 1;
-  // 真实姓名 可选 @gotags: json:"realName"
-  string realName = 2;
   // 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
-  int32 gender = 3;
+  int32 gender = 2;
   // 出生日期 可选 @gotags: json:"birthday"
-  string birthday = 4;
+  string birthday = 3;
   // 头像URL 可选 @gotags: json:"avatarUrl"
-  string avatarUrl = 5;
+  string avatarUrl = 4;
   // 个人简介 可选 @gotags: json:"introduction"
-  string introduction = 6;
+  string introduction = 5;
 }
 
 // VolunteerUpdateResponse 更新志愿者响应
 message VolunteerUpdateResponse {}
+
+// VolunteerAccountUpdateRequest 更新志愿者账户信息请求
+message VolunteerAccountUpdateRequest {
+  // 用户名 可选 @gotags: json:"userName"
+  string userName = 1;
+  // 邮箱 可选 @gotags: json:"email"
+  string email = 2;
+  // 手机号 可选 @gotags: json:"phone"
+  string phone = 3;
+}
+
+// VolunteerAccountUpdateResponse 更新志愿者账户信息响应
+message VolunteerAccountUpdateResponse {}
 
 // VolunteerRealNameSubmitRequest 志愿者实名认证提审请求
 message VolunteerRealNameSubmitRequest {

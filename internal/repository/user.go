@@ -114,6 +114,14 @@ func (r *Repository) FindByEmail(db *gorm.DB, email string) (*model.SysAccount, 
 	return &user, nil
 }
 
+// UpdateAccountByID 根据账号ID更新账户信息。
+func (r *Repository) UpdateAccountByID(db *gorm.DB, userID int64, updates map[string]any) error {
+	return db.WithContext(r.ctx).
+		Model(&model.SysAccount{}).
+		Where("id = ?", userID).
+		Updates(updates).Error
+}
+
 // UpdateAccountStatusByID 根据账号ID更新账号状态。
 func (r *Repository) UpdateAccountStatusByID(db *gorm.DB, userID int64, status int32) error {
 	return db.WithContext(r.ctx).

@@ -15,6 +15,8 @@ func RegisterOrganizationRouter(r *route.RouterGroup) {
 	r.POST("/organizations/create", handler.CreateOrganization)
 	// 更新组织
 	r.PUT("/organizations/:id", handler.UpdateOrganization)
+	// 更新组织管理者账户信息
+	r.PUT("/organizations/account", handler.OrganizationAccountUpdate)
 	// 删除组织
 	r.DELETE("/organizations/:id", handler.DeleteOrganization)
 	// 停用组织

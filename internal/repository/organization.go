@@ -132,11 +132,24 @@ func (r *Repository) GetOrganizationList(db *gorm.DB, queryMap map[string]any, l
 func (r *Repository) FindOrganizationIDsByKeyword(db *gorm.DB, keyword string) ([]int64, error) {
 	var ids []int64
 	err := db.WithContext(r.ctx).Model(&model.Organization{}).
-		Where("org_name LIKE ? OR contact_person LIKE ? OR contact_phone LIKE ?",
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%").
+		Where("org_name LIKE ? OR contact_person LIKE ?",
+			"%"+keyword+"%", "%"+keyword+"%").
 		Pluck("id", &ids).Error
 	if err != nil {
 		return nil, err
 	}
 	return ids, nil
+}
+
+// ListOrganizations returns organizations matching queryMap without pagination.
+func (r *Repository) ListOrganizations(db *gorm.DB, queryMap map[string]any) ([]*model.Organization, error) {
+	organizations := make([]*model.Organization, 0)
+	query := db.WithContext(r.ctx).Table("organizations as org").Select("org.*")
+	for key, value := range queryMap {
+		query = query.Where(key, value)
+	}
+	if err := query.Order("org.created_at DESC").Find(&organizations).Error; err != nil {
+		return nil, err
+	}
+	return organizations, nil
 }

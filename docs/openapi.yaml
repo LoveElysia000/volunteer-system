@@ -1195,6 +1195,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/organization.EnableOrganizationResponse'
+    /api/organizations/account:
+        put:
+            tags:
+                - OrganizationService
+            description: 更新组织管理者账户信息
+            operationId: OrganizationService_OrganizationAccountUpdate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.OrganizationAccountUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationAccountUpdateResponse'
     /api/organizations/batch-disable:
         post:
             tags:
@@ -1415,6 +1434,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/volunteer.VolunteerUpdateResponse'
+    /api/volunteers/account:
+        put:
+            tags:
+                - VolunteerService
+            description: 更新志愿者账户信息（志愿者端）
+            operationId: VolunteerService_VolunteerAccountUpdate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerAccountUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerAccountUpdateResponse'
     /api/volunteers/detail/:id:
         get:
             tags:
@@ -3449,6 +3487,43 @@ components:
                     type: string
                     description: 消息
             description: EnableOrganizationResponse 启用组织响应
+        organization.OrganizationAccountInfo:
+            type: object
+            properties:
+                userName:
+                    type: string
+                    description: 用户名
+                email:
+                    type: string
+                    description: 邮箱
+                phone:
+                    type: string
+                    description: 手机号
+            description: OrganizationAccountInfo 组织管理者账户信息
+        organization.OrganizationAccountUpdateRequest:
+            type: object
+            properties:
+                userName:
+                    type: string
+                    description: '用户名 可选 @gotags: json:"userName"'
+                email:
+                    type: string
+                    description: '邮箱 可选 @gotags: json:"email"'
+                phone:
+                    type: string
+                    description: '手机号 可选 @gotags: json:"phone"'
+            description: OrganizationAccountUpdateRequest 更新组织管理者账户信息请求
+        organization.OrganizationAccountUpdateResponse:
+            type: object
+            properties: {}
+            description: OrganizationAccountUpdateResponse 更新组织管理者账户信息响应
+        organization.OrganizationCertificationInfo:
+            type: object
+            properties:
+                organizationCode:
+                    type: string
+                    description: 组织代码
+            description: OrganizationCertificationInfo 组织资质信息
         organization.OrganizationCreateRequest:
             type: object
             properties:
@@ -3503,6 +3578,18 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/organization.OrganizationInfo'
                     description: 组织信息
+                accountInfo:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.OrganizationAccountInfo'
+                    description: 账户信息
+                organizationProfile:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.OrganizationProfileInfo'
+                    description: 组织主体资料
+                organizationCertification:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.OrganizationCertificationInfo'
+                    description: 组织资质信息
             description: OrganizationDetailResponse 组织详情响应
         organization.OrganizationInfo:
             type: object
@@ -3631,6 +3718,28 @@ components:
                     items:
                         $ref: '#/components/schemas/organization.OrganizationListItem'
             description: OrganizationListResponse 组织列表响应
+        organization.OrganizationProfileInfo:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 组织名称
+                contactPerson:
+                    type: string
+                    description: 联系人
+                contactPhone:
+                    type: string
+                    description: 联系电话
+                address:
+                    type: string
+                    description: 地址
+                description:
+                    type: string
+                    description: 描述
+                logoUrl:
+                    type: string
+                    description: Logo地址
+            description: OrganizationProfileInfo 组织主体资料
         organization.OrganizationSearchRequest:
             type: object
             properties:
@@ -3693,9 +3802,6 @@ components:
                 contactPhone:
                     type: string
                     description: '联系电话 可选 @gotags: json:"contactPhone"'
-                email:
-                    type: string
-                    description: '邮箱 可选 @gotags: json:"email"'
                 address:
                     type: string
                     description: '地址 可选 @gotags: json:"address"'
@@ -3784,7 +3890,49 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/volunteer.VolunteerInfo'
                     description: 志愿者信息
+                accountInfo:
+                    allOf:
+                        - $ref: '#/components/schemas/volunteer.VolunteerAccountInfo'
+                    description: 账户信息
+                profile:
+                    allOf:
+                        - $ref: '#/components/schemas/volunteer.VolunteerProfileInfo'
+                    description: 个人资料
+                verification:
+                    allOf:
+                        - $ref: '#/components/schemas/volunteer.VolunteerVerificationInfo'
+                    description: 实名认证信息
             description: MyProfileResponse 我的个人信息响应（志愿者端）
+        volunteer.VolunteerAccountInfo:
+            type: object
+            properties:
+                userName:
+                    type: string
+                    description: 用户名
+                email:
+                    type: string
+                    description: 邮箱
+                phone:
+                    type: string
+                    description: 手机号
+            description: VolunteerAccountInfo 志愿者账户信息
+        volunteer.VolunteerAccountUpdateRequest:
+            type: object
+            properties:
+                userName:
+                    type: string
+                    description: '用户名 可选 @gotags: json:"userName"'
+                email:
+                    type: string
+                    description: '邮箱 可选 @gotags: json:"email"'
+                phone:
+                    type: string
+                    description: '手机号 可选 @gotags: json:"phone"'
+            description: VolunteerAccountUpdateRequest 更新志愿者账户信息请求
+        volunteer.VolunteerAccountUpdateResponse:
+            type: object
+            properties: {}
+            description: VolunteerAccountUpdateResponse 更新志愿者账户信息响应
         volunteer.VolunteerDetailResponse:
             type: object
             properties:
@@ -3957,6 +4105,23 @@ components:
                     items:
                         $ref: '#/components/schemas/volunteer.VolunteerListItem'
             description: VolunteerListResponse 志愿者列表响应
+        volunteer.VolunteerProfileInfo:
+            type: object
+            properties:
+                gender:
+                    type: integer
+                    description: '性别: 0-未知, 1-男, 2-女'
+                    format: int32
+                birthday:
+                    type: string
+                    description: 出生日期
+                avatarUrl:
+                    type: string
+                    description: 头像URL
+                introduction:
+                    type: string
+                    description: 个人简介
+            description: VolunteerProfileInfo 志愿者个人资料
         volunteer.VolunteerRealNameSubmitRequest:
             type: object
             properties:
@@ -3984,9 +4149,6 @@ components:
                 volunteerId:
                     type: string
                     description: '志愿者ID @gotags: path:"id,required"'
-                realName:
-                    type: string
-                    description: '真实姓名 可选 @gotags: json:"realName"'
                 gender:
                     type: integer
                     description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"'
@@ -4005,6 +4167,20 @@ components:
             type: object
             properties: {}
             description: VolunteerUpdateResponse 更新志愿者响应
+        volunteer.VolunteerVerificationInfo:
+            type: object
+            properties:
+                realName:
+                    type: string
+                    description: 真实姓名
+                idCard:
+                    type: string
+                    description: 身份证号
+                auditStatus:
+                    type: integer
+                    description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
+                    format: int32
+            description: VolunteerVerificationInfo 志愿者实名认证信息
         workhour.RecalculateWorkHourRequest:
             type: object
             properties:

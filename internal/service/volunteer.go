@@ -297,33 +297,20 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 		return nil, errors.New("无权查看他人信息")
 	}
 
-	// 格式化生日
-	birthday := ""
-	if volunteer.Birthday != nil {
-		birthday = volunteer.Birthday.Format("2006-01-02")
+	account, err := s.repo.FindByID(s.repo.DB, userID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("查询我的个人信息失败: 查询账户信息异常: %v, user_id=%d", err, userID)
+			return nil, err
+		}
+		account = nil
 	}
 
-	// 组装返回数据
-	resp := &api.MyProfileResponse{
-		Volunteer: &api.VolunteerInfo{
-			Id:           volunteer.ID,
-			AccountId:    volunteer.AccountID,
-			RealName:     volunteer.RealName,
-			Gender:       volunteer.Gender,
-			Birthday:     birthday,
-			IdCard:       volunteer.IDCard,
-			AvatarUrl:    volunteer.AvatarURL,
-			Introduction: volunteer.Introduction,
-			TotalHours:   volunteer.TotalHours,
-			ServiceCount: volunteer.ServiceCount,
-			CreditScore:  volunteer.CreditScore,
-			Status:       volunteer.Status,
-			AuditStatus:  volunteer.AuditStatus,
-			CreatedAt:    volunteer.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:    volunteer.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
+	resp, err := buildVolunteerMyProfileResponse(volunteer, account)
+	if err != nil {
+		log.Error("查询我的个人信息失败: 组装响应异常: %v, user_id=%d, volunteer_id=%d", err, userID, volunteer.ID)
+		return nil, err
 	}
-
 	return resp, nil
 }
 
@@ -405,11 +392,6 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 
 	updateQuery := map[string]any{}
 
-	// 产品策略：真实姓名仅允许通过实名认证审核链路变更。
-	if req.RealName != "" {
-		return nil, errors.New("真实姓名请通过实名认证申请更新")
-	}
-
 	// 简化处理：gender=0 视为“不更新”，仅在传入非 0 时更新性别。
 	if req.Gender != 0 {
 		if req.Gender < 0 || req.Gender > 2 {
@@ -486,6 +468,56 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 
 	var resp api.VolunteerUpdateResponse
 	return &resp, nil
+}
+
+func (s *VolunteerService) VolunteerAccountUpdate(req *api.VolunteerAccountUpdateRequest) (*api.VolunteerAccountUpdateResponse, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return nil, err
+	}
+
+	account, err := s.repo.FindByID(s.repo.DB, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("账户不存在")
+		}
+		log.Error("更新账户信息失败: 查询账户异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+
+	updates, err := buildVolunteerAccountUpdateMutations(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if email, ok := updates["email"].(string); ok && email != "" && email != account.Email {
+		exists, checkErr := s.repo.CheckEmailExists(s.repo.DB, email)
+		if checkErr != nil {
+			log.Error("更新账户信息失败: 检查邮箱异常: %v, user_id=%d", checkErr, userID)
+			return nil, errors.New("检查邮箱失败")
+		}
+		if exists {
+			return nil, errors.New("邮箱已存在")
+		}
+	}
+
+	if mobileHash, ok := updates["mobile_hash"].(string); ok && mobileHash != "" && mobileHash != account.MobileHash {
+		exists, checkErr := s.repo.CheckMobileExists(s.repo.DB, mobileHash)
+		if checkErr != nil {
+			log.Error("更新账户信息失败: 检查手机号异常: %v, user_id=%d", checkErr, userID)
+			return nil, errors.New("检查手机号失败")
+		}
+		if exists {
+			return nil, errors.New("手机号已存在")
+		}
+	}
+
+	if err := s.repo.UpdateAccountByID(s.repo.DB, userID, updates); err != nil {
+		log.Error("更新账户信息失败: %v, user_id=%d", err, userID)
+		return nil, errors.New("更新账户信息失败")
+	}
+
+	return &api.VolunteerAccountUpdateResponse{}, nil
 }
 
 // VolunteerRealNameSubmit 提交志愿者实名认证申请（走审核流，不直接写主表）。

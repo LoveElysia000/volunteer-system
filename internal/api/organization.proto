@@ -42,6 +42,14 @@ service OrganizationService {
     };
   }
 
+  // 更新组织管理者账户信息
+  rpc OrganizationAccountUpdate(OrganizationAccountUpdateRequest) returns (OrganizationAccountUpdateResponse) {
+    option (google.api.http) = {
+      put : "/api/organizations/account"
+      body: "*"
+    };
+  }
+
   // 删除组织
   rpc DeleteOrganization(DeleteOrganizationRequest) returns (DeleteOrganizationResponse) {
     option (google.api.http) = {
@@ -156,6 +164,12 @@ message OrganizationDetailRequest {
 message OrganizationDetailResponse {
   // 组织信息
   OrganizationInfo organization = 1;
+  // 账户信息
+  OrganizationAccountInfo accountInfo = 2;
+  // 组织主体资料
+  OrganizationProfileInfo organizationProfile = 3;
+  // 组织资质信息
+  OrganizationCertificationInfo organizationCertification = 4;
 }
 
 // OrganizationInfo 组织信息
@@ -192,6 +206,38 @@ message OrganizationInfo {
   string createdAt = 17;
   // 更新时间
   string updatedAt = 18;
+}
+
+// OrganizationAccountInfo 组织管理者账户信息
+message OrganizationAccountInfo {
+  // 用户名
+  string userName = 1;
+  // 邮箱
+  string email = 2;
+  // 手机号
+  string phone = 3;
+}
+
+// OrganizationProfileInfo 组织主体资料
+message OrganizationProfileInfo {
+  // 组织名称
+  string name = 1;
+  // 联系人
+  string contactPerson = 2;
+  // 联系电话
+  string contactPhone = 3;
+  // 地址
+  string address = 4;
+  // 描述
+  string description = 5;
+  // Logo地址
+  string logoUrl = 6;
+}
+
+// OrganizationCertificationInfo 组织资质信息
+message OrganizationCertificationInfo {
+  // 组织代码
+  string organizationCode = 1;
 }
 
 // OrganizationCreateRequest 创建组织请求
@@ -240,20 +286,18 @@ message OrganizationUpdateRequest {
   string contactPerson = 4;
   // 联系电话 可选 @gotags: json:"contactPhone"
   string contactPhone = 5;
-  // 邮箱 可选 @gotags: json:"email"
-  string email = 6;
   // 地址 可选 @gotags: json:"address"
-  string address = 7;
+  string address = 6;
   // 组织类型 可选 @gotags: json:"organizationType"
-  string organizationType = 8;
+  string organizationType = 7;
   // 地区 可选 @gotags: json:"region"
-  string region = 9;
+  string region = 8;
   // 描述 可选 @gotags: json:"description"
-  string description = 10;
+  string description = 9;
   // 网站地址 可选 @gotags: json:"websiteUrl"
-  string websiteUrl = 11;
+  string websiteUrl = 10;
   // Logo地址 可选 @gotags: json:"logoUrl"
-  string logoUrl = 12;
+  string logoUrl = 11;
 }
 
 // OrganizationUpdateResponse 更新组织响应
@@ -261,6 +305,19 @@ message OrganizationUpdateResponse {
   // 消息
   string message = 1;
 }
+
+// OrganizationAccountUpdateRequest 更新组织管理者账户信息请求
+message OrganizationAccountUpdateRequest {
+  // 用户名 可选 @gotags: json:"userName"
+  string userName = 1;
+  // 邮箱 可选 @gotags: json:"email"
+  string email = 2;
+  // 手机号 可选 @gotags: json:"phone"
+  string phone = 3;
+}
+
+// OrganizationAccountUpdateResponse 更新组织管理者账户信息响应
+message OrganizationAccountUpdateResponse {}
 
 // DeleteOrganizationRequest 删除组织请求
 message DeleteOrganizationRequest {

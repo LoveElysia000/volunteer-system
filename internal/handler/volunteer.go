@@ -80,6 +80,20 @@ func VolunteerUpdate(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+func VolunteerAccountUpdate(ctx context.Context, c *app.RequestContext) {
+	var req api.VolunteerAccountUpdateRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewVolunteerService(ctx, c).VolunteerAccountUpdate(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func VolunteerRealNameSubmit(ctx context.Context, c *app.RequestContext) {
 	var req api.VolunteerRealNameSubmitRequest
 	if err := c.BindAndValidate(&req); err != nil {

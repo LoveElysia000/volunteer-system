@@ -66,6 +66,20 @@ func UpdateOrganization(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+func OrganizationAccountUpdate(ctx context.Context, c *app.RequestContext) {
+	var req api.OrganizationAccountUpdateRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewOrganizationService(ctx, c).OrganizationAccountUpdate(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func DeleteOrganization(ctx context.Context, c *app.RequestContext) {
 	var req api.DeleteOrganizationRequest
 	if err := c.BindAndValidate(&req); err != nil {

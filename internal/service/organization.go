@@ -173,7 +173,7 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 
 	trimmedKeyword := strings.TrimSpace(req.Keyword)
 	if trimmedKeyword != "" {
-		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, trimmedKeyword)
+		ids, err := s.findManageableOrganizationIDsByKeyword(queryMap, trimmedKeyword)
 		if err != nil {
 			log.Error("构建组织查询条件失败: %v", err)
 			return nil, err
@@ -203,18 +203,12 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 		if org == nil {
 			continue
 		}
-		list = append(list, &api.OrganizationListItem{
-			Id:               org.ID,
-			Name:             org.OrgName,
-			OrganizationCode: org.LicenseCode,
-			ContactPerson:    org.ContactPerson,
-			ContactPhone:     org.ContactPhone,
-			Address:          org.Address,
-			Status:           org.Status,
-			OrganizationType: "",
-			Region:           "",
-			CreatedAt:        org.CreatedAt.Format(util.DateTimeLayout),
-		})
+		item, buildErr := buildOrganizationListItem(org)
+		if buildErr != nil {
+			log.Error("组装组织列表项失败: %v, org_id=%d", buildErr, org.ID)
+			return nil, buildErr
+		}
+		list = append(list, item)
 	}
 
 	return &api.OrganizationListResponse{
@@ -234,29 +228,19 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 	if err != nil {
 		return nil, err
 	}
-
-	// 组装返回数据
-	resp := &api.OrganizationDetailResponse{
-		Organization: &api.OrganizationInfo{
-			Id:               organization.ID,
-			AccountId:        organization.AccountID,
-			Name:             organization.OrgName,
-			OrganizationCode: organization.LicenseCode,
-			ContactPerson:    organization.ContactPerson,
-			ContactPhone:     organization.ContactPhone,
-			Email:            "",
-			Address:          organization.Address,
-			Status:           organization.Status,
-			OrganizationType: "",
-			Region:           "",
-			Description:      organization.Introduction,
-			WebsiteUrl:       "",
-			LogoUrl:          organization.LogoURL,
-			CreatedAt:        organization.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:        organization.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
+	account, err := s.repo.FindByID(s.repo.DB, organization.AccountID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("查询组织详情失败: 查询账户异常: %v, org_id=%d, account_id=%d", err, organization.ID, organization.AccountID)
+			return nil, err
+		}
+		account = nil
 	}
-
+	resp, err := buildOrganizationDetailResponse(organization, account)
+	if err != nil {
+		log.Error("查询组织详情失败: 组装响应异常: %v, org_id=%d", err, organization.ID)
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -289,12 +273,20 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 
 	var createdOrgID int64
 	err = s.withTransaction(func(tx *gorm.DB) error {
+		contactPhone := req.ContactPhone
+		if strings.TrimSpace(req.ContactPhone) != "" {
+			pair, phoneErr := util.ProcessSensitiveField(strings.TrimSpace(req.ContactPhone))
+			if phoneErr != nil {
+				return errors.New("联系电话处理失败")
+			}
+			contactPhone = pair.Encrypted
+		}
 		org := &model.Organization{
 			AccountID:     userID,
 			OrgName:       req.Name,
 			LicenseCode:   req.OrganizationCode,
 			ContactPerson: req.ContactPerson,
-			ContactPhone:  req.ContactPhone,
+			ContactPhone:  contactPhone,
 			Address:       req.Address,
 			LogoURL:       req.LogoUrl,
 			Introduction:  req.Description,
@@ -368,7 +360,11 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 		updateQuery["contact_person"] = req.ContactPerson
 	}
 	if req.ContactPhone != "" {
-		updateQuery["contact_phone"] = req.ContactPhone
+		pair, phoneErr := util.ProcessSensitiveField(strings.TrimSpace(req.ContactPhone))
+		if phoneErr != nil {
+			return nil, errors.New("联系电话处理失败")
+		}
+		updateQuery["contact_phone"] = pair.Encrypted
 	}
 	if req.Address != "" {
 		updateQuery["address"] = req.Address
@@ -395,6 +391,96 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 	return &api.OrganizationUpdateResponse{
 		Message: "更新成功",
 	}, nil
+}
+
+func (s *OrganizationService) OrganizationAccountUpdate(req *api.OrganizationAccountUpdateRequest) (*api.OrganizationAccountUpdateResponse, error) {
+	userID, err := middleware.GetUserIDInt(s.c)
+	if err != nil {
+		return nil, err
+	}
+
+	account, err := s.repo.FindByID(s.repo.DB, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("账户不存在")
+		}
+		log.Error("更新组织账户信息失败: 查询账户异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+
+	updates, err := buildOrganizationAccountUpdateMutations(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if email, ok := updates["email"].(string); ok && email != "" && email != account.Email {
+		exists, checkErr := s.repo.CheckEmailExists(s.repo.DB, email)
+		if checkErr != nil {
+			log.Error("更新组织账户信息失败: 检查邮箱异常: %v, user_id=%d", checkErr, userID)
+			return nil, errors.New("检查邮箱失败")
+		}
+		if exists {
+			return nil, errors.New("邮箱已存在")
+		}
+	}
+
+	if mobileHash, ok := updates["mobile_hash"].(string); ok && mobileHash != "" && mobileHash != account.MobileHash {
+		exists, checkErr := s.repo.CheckMobileExists(s.repo.DB, mobileHash)
+		if checkErr != nil {
+			log.Error("更新组织账户信息失败: 检查手机号异常: %v, user_id=%d", checkErr, userID)
+			return nil, errors.New("检查手机号失败")
+		}
+		if exists {
+			return nil, errors.New("手机号已存在")
+		}
+	}
+
+	if err := s.repo.UpdateAccountByID(s.repo.DB, userID, updates); err != nil {
+		log.Error("更新组织账户信息失败: %v, user_id=%d", err, userID)
+		return nil, errors.New("更新组织账户信息失败")
+	}
+
+	return &api.OrganizationAccountUpdateResponse{}, nil
+}
+
+func (s *OrganizationService) findManageableOrganizationIDsByKeyword(baseQueryMap map[string]any, keyword string) ([]int64, error) {
+	ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, keyword)
+	if err != nil {
+		return nil, err
+	}
+
+	queryMap := make(map[string]any, len(baseQueryMap))
+	for key, value := range baseQueryMap {
+		queryMap[key] = value
+	}
+	organizations, err := s.repo.ListOrganizations(s.repo.DB, queryMap)
+	if err != nil {
+		return nil, err
+	}
+
+	idSet := make(map[int64]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+	for _, org := range organizations {
+		if org == nil {
+			continue
+		}
+		matched, matchErr := organizationPhoneContainsKeyword(org.ContactPhone, keyword)
+		if matchErr != nil {
+			log.Warn("组织联系电话匹配关键字失败: org_id=%d err=%v", org.ID, matchErr)
+			continue
+		}
+		if matched {
+			idSet[org.ID] = struct{}{}
+		}
+	}
+
+	result := make([]int64, 0, len(idSet))
+	for id := range idSet {
+		result = append(result, id)
+	}
+	return result, nil
 }
 
 func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequest) (*api.DeleteOrganizationResponse, error) {
@@ -494,7 +580,7 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 
 	trimmedKeyword := strings.TrimSpace(req.Keyword)
 	if trimmedKeyword != "" {
-		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, trimmedKeyword)
+		ids, err := s.findManageableOrganizationIDsByKeyword(queryMap, trimmedKeyword)
 		if err != nil {
 			log.Error("构建组织搜索条件失败: %v", err)
 			return nil, err
@@ -542,18 +628,12 @@ func (s *OrganizationService) SearchOrganizations(req *api.OrganizationSearchReq
 		if org == nil {
 			continue
 		}
-		list = append(list, &api.OrganizationListItem{
-			Id:               org.ID,
-			Name:             org.OrgName,
-			OrganizationCode: org.LicenseCode,
-			ContactPerson:    org.ContactPerson,
-			ContactPhone:     org.ContactPhone,
-			Address:          org.Address,
-			Status:           org.Status,
-			OrganizationType: "",
-			Region:           "",
-			CreatedAt:        org.CreatedAt.Format(util.DateTimeLayout),
-		})
+		item, buildErr := buildOrganizationListItem(org)
+		if buildErr != nil {
+			log.Error("组装组织搜索结果失败: %v, org_id=%d", buildErr, org.ID)
+			return nil, buildErr
+		}
+		list = append(list, item)
 	}
 
 	return &api.OrganizationSearchResponse{

@@ -425,7 +425,13 @@ func (x *MyProfileRequest) GetId() int64 {
 type MyProfileResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 志愿者信息
-	Volunteer     *VolunteerInfo `protobuf:"bytes,1,opt,name=volunteer,proto3" json:"volunteer"`
+	Volunteer *VolunteerInfo `protobuf:"bytes,1,opt,name=volunteer,proto3" json:"volunteer"`
+	// 账户信息
+	AccountInfo *VolunteerAccountInfo `protobuf:"bytes,2,opt,name=accountInfo,proto3" json:"accountInfo"`
+	// 个人资料
+	Profile *VolunteerProfileInfo `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile"`
+	// 实名认证信息
+	Verification  *VolunteerVerificationInfo `protobuf:"bytes,4,opt,name=verification,proto3" json:"verification"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -463,6 +469,27 @@ func (*MyProfileResponse) Descriptor() ([]byte, []int) {
 func (x *MyProfileResponse) GetVolunteer() *VolunteerInfo {
 	if x != nil {
 		return x.Volunteer
+	}
+	return nil
+}
+
+func (x *MyProfileResponse) GetAccountInfo() *VolunteerAccountInfo {
+	if x != nil {
+		return x.AccountInfo
+	}
+	return nil
+}
+
+func (x *MyProfileResponse) GetProfile() *VolunteerProfileInfo {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
+func (x *MyProfileResponse) GetVerification() *VolunteerVerificationInfo {
+	if x != nil {
+		return x.Verification
 	}
 	return nil
 }
@@ -821,28 +848,227 @@ func (x *VolunteerInfo) GetStatus() int32 {
 	return 0
 }
 
+// VolunteerAccountInfo 志愿者账户信息
+type VolunteerAccountInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 用户名
+	UserName string `protobuf:"bytes,1,opt,name=userName,proto3" json:"userName"`
+	// 邮箱
+	Email string `protobuf:"bytes,2,opt,name=email,proto3" json:"email"`
+	// 手机号
+	Phone         string `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VolunteerAccountInfo) Reset() {
+	*x = VolunteerAccountInfo{}
+	mi := &file_internal_api_volunteer_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VolunteerAccountInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolunteerAccountInfo) ProtoMessage() {}
+
+func (x *VolunteerAccountInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_volunteer_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolunteerAccountInfo.ProtoReflect.Descriptor instead.
+func (*VolunteerAccountInfo) Descriptor() ([]byte, []int) {
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *VolunteerAccountInfo) GetUserName() string {
+	if x != nil {
+		return x.UserName
+	}
+	return ""
+}
+
+func (x *VolunteerAccountInfo) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *VolunteerAccountInfo) GetPhone() string {
+	if x != nil {
+		return x.Phone
+	}
+	return ""
+}
+
+// VolunteerProfileInfo 志愿者个人资料
+type VolunteerProfileInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 性别: 0-未知, 1-男, 2-女
+	Gender int32 `protobuf:"varint,1,opt,name=gender,proto3" json:"gender"`
+	// 出生日期
+	Birthday string `protobuf:"bytes,2,opt,name=birthday,proto3" json:"birthday"`
+	// 头像URL
+	AvatarUrl string `protobuf:"bytes,3,opt,name=avatarUrl,proto3" json:"avatarUrl"`
+	// 个人简介
+	Introduction  string `protobuf:"bytes,4,opt,name=introduction,proto3" json:"introduction"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VolunteerProfileInfo) Reset() {
+	*x = VolunteerProfileInfo{}
+	mi := &file_internal_api_volunteer_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VolunteerProfileInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolunteerProfileInfo) ProtoMessage() {}
+
+func (x *VolunteerProfileInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_volunteer_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolunteerProfileInfo.ProtoReflect.Descriptor instead.
+func (*VolunteerProfileInfo) Descriptor() ([]byte, []int) {
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *VolunteerProfileInfo) GetGender() int32 {
+	if x != nil {
+		return x.Gender
+	}
+	return 0
+}
+
+func (x *VolunteerProfileInfo) GetBirthday() string {
+	if x != nil {
+		return x.Birthday
+	}
+	return ""
+}
+
+func (x *VolunteerProfileInfo) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *VolunteerProfileInfo) GetIntroduction() string {
+	if x != nil {
+		return x.Introduction
+	}
+	return ""
+}
+
+// VolunteerVerificationInfo 志愿者实名认证信息
+type VolunteerVerificationInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 真实姓名
+	RealName string `protobuf:"bytes,1,opt,name=realName,proto3" json:"realName"`
+	// 身份证号
+	IdCard string `protobuf:"bytes,2,opt,name=idCard,proto3" json:"idCard"`
+	// 实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回
+	AuditStatus   int32 `protobuf:"varint,3,opt,name=auditStatus,proto3" json:"auditStatus"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VolunteerVerificationInfo) Reset() {
+	*x = VolunteerVerificationInfo{}
+	mi := &file_internal_api_volunteer_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VolunteerVerificationInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolunteerVerificationInfo) ProtoMessage() {}
+
+func (x *VolunteerVerificationInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_volunteer_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolunteerVerificationInfo.ProtoReflect.Descriptor instead.
+func (*VolunteerVerificationInfo) Descriptor() ([]byte, []int) {
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *VolunteerVerificationInfo) GetRealName() string {
+	if x != nil {
+		return x.RealName
+	}
+	return ""
+}
+
+func (x *VolunteerVerificationInfo) GetIdCard() string {
+	if x != nil {
+		return x.IdCard
+	}
+	return ""
+}
+
+func (x *VolunteerVerificationInfo) GetAuditStatus() int32 {
+	if x != nil {
+		return x.AuditStatus
+	}
+	return 0
+}
+
 // VolunteerUpdateRequest 更新志愿者请求
 type VolunteerUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 志愿者ID @gotags: path:"id,required"
 	VolunteerId int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId" path:"id,required"`
-	// 真实姓名 可选 @gotags: json:"realName"
-	RealName string `protobuf:"bytes,2,opt,name=realName,proto3" json:"realName"`
 	// 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
-	Gender int32 `protobuf:"varint,3,opt,name=gender,proto3" json:"gender"`
+	Gender int32 `protobuf:"varint,2,opt,name=gender,proto3" json:"gender"`
 	// 出生日期 可选 @gotags: json:"birthday"
-	Birthday string `protobuf:"bytes,4,opt,name=birthday,proto3" json:"birthday"`
+	Birthday string `protobuf:"bytes,3,opt,name=birthday,proto3" json:"birthday"`
 	// 头像URL 可选 @gotags: json:"avatarUrl"
-	AvatarUrl string `protobuf:"bytes,5,opt,name=avatarUrl,proto3" json:"avatarUrl"`
+	AvatarUrl string `protobuf:"bytes,4,opt,name=avatarUrl,proto3" json:"avatarUrl"`
 	// 个人简介 可选 @gotags: json:"introduction"
-	Introduction  string `protobuf:"bytes,6,opt,name=introduction,proto3" json:"introduction"`
+	Introduction  string `protobuf:"bytes,5,opt,name=introduction,proto3" json:"introduction"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *VolunteerUpdateRequest) Reset() {
 	*x = VolunteerUpdateRequest{}
-	mi := &file_internal_api_volunteer_proto_msgTypes[11]
+	mi := &file_internal_api_volunteer_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +1080,7 @@ func (x *VolunteerUpdateRequest) String() string {
 func (*VolunteerUpdateRequest) ProtoMessage() {}
 
 func (x *VolunteerUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_volunteer_proto_msgTypes[11]
+	mi := &file_internal_api_volunteer_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +1093,7 @@ func (x *VolunteerUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VolunteerUpdateRequest.ProtoReflect.Descriptor instead.
 func (*VolunteerUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{11}
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *VolunteerUpdateRequest) GetVolunteerId() int64 {
@@ -875,13 +1101,6 @@ func (x *VolunteerUpdateRequest) GetVolunteerId() int64 {
 		return x.VolunteerId
 	}
 	return 0
-}
-
-func (x *VolunteerUpdateRequest) GetRealName() string {
-	if x != nil {
-		return x.RealName
-	}
-	return ""
 }
 
 func (x *VolunteerUpdateRequest) GetGender() int32 {
@@ -921,7 +1140,7 @@ type VolunteerUpdateResponse struct {
 
 func (x *VolunteerUpdateResponse) Reset() {
 	*x = VolunteerUpdateResponse{}
-	mi := &file_internal_api_volunteer_proto_msgTypes[12]
+	mi := &file_internal_api_volunteer_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -933,7 +1152,7 @@ func (x *VolunteerUpdateResponse) String() string {
 func (*VolunteerUpdateResponse) ProtoMessage() {}
 
 func (x *VolunteerUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_volunteer_proto_msgTypes[12]
+	mi := &file_internal_api_volunteer_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -946,7 +1165,108 @@ func (x *VolunteerUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VolunteerUpdateResponse.ProtoReflect.Descriptor instead.
 func (*VolunteerUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{12}
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{15}
+}
+
+// VolunteerAccountUpdateRequest 更新志愿者账户信息请求
+type VolunteerAccountUpdateRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 用户名 可选 @gotags: json:"userName"
+	UserName string `protobuf:"bytes,1,opt,name=userName,proto3" json:"userName"`
+	// 邮箱 可选 @gotags: json:"email"
+	Email string `protobuf:"bytes,2,opt,name=email,proto3" json:"email"`
+	// 手机号 可选 @gotags: json:"phone"
+	Phone         string `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VolunteerAccountUpdateRequest) Reset() {
+	*x = VolunteerAccountUpdateRequest{}
+	mi := &file_internal_api_volunteer_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VolunteerAccountUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolunteerAccountUpdateRequest) ProtoMessage() {}
+
+func (x *VolunteerAccountUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_volunteer_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolunteerAccountUpdateRequest.ProtoReflect.Descriptor instead.
+func (*VolunteerAccountUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *VolunteerAccountUpdateRequest) GetUserName() string {
+	if x != nil {
+		return x.UserName
+	}
+	return ""
+}
+
+func (x *VolunteerAccountUpdateRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *VolunteerAccountUpdateRequest) GetPhone() string {
+	if x != nil {
+		return x.Phone
+	}
+	return ""
+}
+
+// VolunteerAccountUpdateResponse 更新志愿者账户信息响应
+type VolunteerAccountUpdateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VolunteerAccountUpdateResponse) Reset() {
+	*x = VolunteerAccountUpdateResponse{}
+	mi := &file_internal_api_volunteer_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VolunteerAccountUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolunteerAccountUpdateResponse) ProtoMessage() {}
+
+func (x *VolunteerAccountUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_api_volunteer_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolunteerAccountUpdateResponse.ProtoReflect.Descriptor instead.
+func (*VolunteerAccountUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{17}
 }
 
 // VolunteerRealNameSubmitRequest 志愿者实名认证提审请求
@@ -962,7 +1282,7 @@ type VolunteerRealNameSubmitRequest struct {
 
 func (x *VolunteerRealNameSubmitRequest) Reset() {
 	*x = VolunteerRealNameSubmitRequest{}
-	mi := &file_internal_api_volunteer_proto_msgTypes[13]
+	mi := &file_internal_api_volunteer_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -974,7 +1294,7 @@ func (x *VolunteerRealNameSubmitRequest) String() string {
 func (*VolunteerRealNameSubmitRequest) ProtoMessage() {}
 
 func (x *VolunteerRealNameSubmitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_volunteer_proto_msgTypes[13]
+	mi := &file_internal_api_volunteer_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -987,7 +1307,7 @@ func (x *VolunteerRealNameSubmitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VolunteerRealNameSubmitRequest.ProtoReflect.Descriptor instead.
 func (*VolunteerRealNameSubmitRequest) Descriptor() ([]byte, []int) {
-	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{13}
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *VolunteerRealNameSubmitRequest) GetRealName() string {
@@ -1017,7 +1337,7 @@ type VolunteerRealNameSubmitResponse struct {
 
 func (x *VolunteerRealNameSubmitResponse) Reset() {
 	*x = VolunteerRealNameSubmitResponse{}
-	mi := &file_internal_api_volunteer_proto_msgTypes[14]
+	mi := &file_internal_api_volunteer_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1029,7 +1349,7 @@ func (x *VolunteerRealNameSubmitResponse) String() string {
 func (*VolunteerRealNameSubmitResponse) ProtoMessage() {}
 
 func (x *VolunteerRealNameSubmitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_volunteer_proto_msgTypes[14]
+	mi := &file_internal_api_volunteer_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1362,7 @@ func (x *VolunteerRealNameSubmitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VolunteerRealNameSubmitResponse.ProtoReflect.Descriptor instead.
 func (*VolunteerRealNameSubmitResponse) Descriptor() ([]byte, []int) {
-	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{14}
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *VolunteerRealNameSubmitResponse) GetAuditId() int64 {
@@ -1086,7 +1406,7 @@ type BaseVolunteer struct {
 
 func (x *BaseVolunteer) Reset() {
 	*x = BaseVolunteer{}
-	mi := &file_internal_api_volunteer_proto_msgTypes[15]
+	mi := &file_internal_api_volunteer_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1098,7 +1418,7 @@ func (x *BaseVolunteer) String() string {
 func (*BaseVolunteer) ProtoMessage() {}
 
 func (x *BaseVolunteer) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_api_volunteer_proto_msgTypes[15]
+	mi := &file_internal_api_volunteer_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1111,7 +1431,7 @@ func (x *BaseVolunteer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BaseVolunteer.ProtoReflect.Descriptor instead.
 func (*BaseVolunteer) Descriptor() ([]byte, []int) {
-	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{15}
+	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *BaseVolunteer) GetName() string {
@@ -1210,9 +1530,12 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\x17VolunteerDetailResponse\x126\n" +
 	"\tvolunteer\x18\x01 \x01(\v2\x18.volunteer.VolunteerInfoR\tvolunteer\"\"\n" +
 	"\x10MyProfileRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"K\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\x93\x02\n" +
 	"\x11MyProfileResponse\x126\n" +
-	"\tvolunteer\x18\x01 \x01(\v2\x18.volunteer.VolunteerInfoR\tvolunteer\"\x1d\n" +
+	"\tvolunteer\x18\x01 \x01(\v2\x18.volunteer.VolunteerInfoR\tvolunteer\x12A\n" +
+	"\vaccountInfo\x18\x02 \x01(\v2\x1f.volunteer.VolunteerAccountInfoR\vaccountInfo\x129\n" +
+	"\aprofile\x18\x03 \x01(\v2\x1f.volunteer.VolunteerProfileInfoR\aprofile\x12H\n" +
+	"\fverification\x18\x04 \x01(\v2$.volunteer.VolunteerVerificationInfoR\fverification\"\x1d\n" +
 	"\x1bVolunteerHomeSummaryRequest\"\xe6\x01\n" +
 	"\x1cVolunteerHomeSummaryResponse\x12\x1a\n" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x14\n" +
@@ -1242,15 +1565,32 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\vauditStatus\x18\f \x01(\x05R\vauditStatus\x12\x1c\n" +
 	"\tcreatedAt\x18\r \x01(\tR\tcreatedAt\x12\x1c\n" +
 	"\tupdatedAt\x18\x0e \x01(\tR\tupdatedAt\x12\x16\n" +
-	"\x06status\x18\x0f \x01(\x05R\x06status\"\xcc\x01\n" +
+	"\x06status\x18\x0f \x01(\x05R\x06status\"^\n" +
+	"\x14VolunteerAccountInfo\x12\x1a\n" +
+	"\buserName\x18\x01 \x01(\tR\buserName\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
+	"\x05phone\x18\x03 \x01(\tR\x05phone\"\x8c\x01\n" +
+	"\x14VolunteerProfileInfo\x12\x16\n" +
+	"\x06gender\x18\x01 \x01(\x05R\x06gender\x12\x1a\n" +
+	"\bbirthday\x18\x02 \x01(\tR\bbirthday\x12\x1c\n" +
+	"\tavatarUrl\x18\x03 \x01(\tR\tavatarUrl\x12\"\n" +
+	"\fintroduction\x18\x04 \x01(\tR\fintroduction\"q\n" +
+	"\x19VolunteerVerificationInfo\x12\x1a\n" +
+	"\brealName\x18\x01 \x01(\tR\brealName\x12\x16\n" +
+	"\x06idCard\x18\x02 \x01(\tR\x06idCard\x12 \n" +
+	"\vauditStatus\x18\x03 \x01(\x05R\vauditStatus\"\xb0\x01\n" +
 	"\x16VolunteerUpdateRequest\x12 \n" +
-	"\vvolunteerId\x18\x01 \x01(\x03R\vvolunteerId\x12\x1a\n" +
-	"\brealName\x18\x02 \x01(\tR\brealName\x12\x16\n" +
-	"\x06gender\x18\x03 \x01(\x05R\x06gender\x12\x1a\n" +
-	"\bbirthday\x18\x04 \x01(\tR\bbirthday\x12\x1c\n" +
-	"\tavatarUrl\x18\x05 \x01(\tR\tavatarUrl\x12\"\n" +
-	"\fintroduction\x18\x06 \x01(\tR\fintroduction\"\x19\n" +
-	"\x17VolunteerUpdateResponse\"T\n" +
+	"\vvolunteerId\x18\x01 \x01(\x03R\vvolunteerId\x12\x16\n" +
+	"\x06gender\x18\x02 \x01(\x05R\x06gender\x12\x1a\n" +
+	"\bbirthday\x18\x03 \x01(\tR\bbirthday\x12\x1c\n" +
+	"\tavatarUrl\x18\x04 \x01(\tR\tavatarUrl\x12\"\n" +
+	"\fintroduction\x18\x05 \x01(\tR\fintroduction\"\x19\n" +
+	"\x17VolunteerUpdateResponse\"g\n" +
+	"\x1dVolunteerAccountUpdateRequest\x12\x1a\n" +
+	"\buserName\x18\x01 \x01(\tR\buserName\x12\x14\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
+	"\x05phone\x18\x03 \x01(\tR\x05phone\" \n" +
+	"\x1eVolunteerAccountUpdateResponse\"T\n" +
 	"\x1eVolunteerRealNameSubmitRequest\x12\x1a\n" +
 	"\brealName\x18\x01 \x01(\tR\brealName\x12\x16\n" +
 	"\x06idCard\x18\x02 \x01(\tR\x06idCard\"S\n" +
@@ -1268,13 +1608,14 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"statusName\x18\a \x01(\tR\n" +
 	"statusName\x12\x1a\n" +
 	"\bjoinDate\x18\b \x01(\tR\bjoinDate\x12\x1c\n" +
-	"\tleaveDate\x18\t \x01(\tR\tleaveDate2\xb0\x06\n" +
+	"\tleaveDate\x18\t \x01(\tR\tleaveDate2\xc4\a\n" +
 	"\x10VolunteerService\x12s\n" +
 	"\rVolunteerList\x12\x1f.volunteer.VolunteerListRequest\x1a .volunteer.VolunteerListResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/volunteers/list\x12|\n" +
 	"\x0fVolunteerDetail\x12!.volunteer.VolunteerDetailRequest\x1a\".volunteer.VolunteerDetailResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/volunteers/detail/:id\x12n\n" +
 	"\tMyProfile\x12\x1b.volunteer.MyProfileRequest\x1a\x1c.volunteer.MyProfileResponse\"&\x82\xd3\xe4\x93\x02 \x12\x1e/api/volunteers/my/profile/:id\x12\x8d\x01\n" +
 	"\x14VolunteerHomeSummary\x12&.volunteer.VolunteerHomeSummaryRequest\x1a'.volunteer.VolunteerHomeSummaryResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/volunteers/home/summary\x12x\n" +
-	"\x0fVolunteerUpdate\x12!.volunteer.VolunteerUpdateRequest\x1a\".volunteer.VolunteerUpdateResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\x1a\x13/api/volunteers/:id\x12\x9d\x01\n" +
+	"\x0fVolunteerUpdate\x12!.volunteer.VolunteerUpdateRequest\x1a\".volunteer.VolunteerUpdateResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\x1a\x13/api/volunteers/:id\x12\x91\x01\n" +
+	"\x16VolunteerAccountUpdate\x12(.volunteer.VolunteerAccountUpdateRequest\x1a).volunteer.VolunteerAccountUpdateResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\x1a\x17/api/volunteers/account\x12\x9d\x01\n" +
 	"\x17VolunteerRealNameSubmit\x12).volunteer.VolunteerRealNameSubmitRequest\x1a*.volunteer.VolunteerRealNameSubmitResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/volunteers/real-name/submit\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (
@@ -1289,7 +1630,7 @@ func file_internal_api_volunteer_proto_rawDescGZIP() []byte {
 	return file_internal_api_volunteer_proto_rawDescData
 }
 
-var file_internal_api_volunteer_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_internal_api_volunteer_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_internal_api_volunteer_proto_goTypes = []any{
 	(*VolunteerListRequest)(nil),            // 0: volunteer.VolunteerListRequest
 	(*VolunteerListResponse)(nil),           // 1: volunteer.VolunteerListResponse
@@ -1302,34 +1643,44 @@ var file_internal_api_volunteer_proto_goTypes = []any{
 	(*VolunteerHomeSummaryResponse)(nil),    // 8: volunteer.VolunteerHomeSummaryResponse
 	(*VolunteerHomeSummaryStats)(nil),       // 9: volunteer.VolunteerHomeSummaryStats
 	(*VolunteerInfo)(nil),                   // 10: volunteer.VolunteerInfo
-	(*VolunteerUpdateRequest)(nil),          // 11: volunteer.VolunteerUpdateRequest
-	(*VolunteerUpdateResponse)(nil),         // 12: volunteer.VolunteerUpdateResponse
-	(*VolunteerRealNameSubmitRequest)(nil),  // 13: volunteer.VolunteerRealNameSubmitRequest
-	(*VolunteerRealNameSubmitResponse)(nil), // 14: volunteer.VolunteerRealNameSubmitResponse
-	(*BaseVolunteer)(nil),                   // 15: volunteer.BaseVolunteer
+	(*VolunteerAccountInfo)(nil),            // 11: volunteer.VolunteerAccountInfo
+	(*VolunteerProfileInfo)(nil),            // 12: volunteer.VolunteerProfileInfo
+	(*VolunteerVerificationInfo)(nil),       // 13: volunteer.VolunteerVerificationInfo
+	(*VolunteerUpdateRequest)(nil),          // 14: volunteer.VolunteerUpdateRequest
+	(*VolunteerUpdateResponse)(nil),         // 15: volunteer.VolunteerUpdateResponse
+	(*VolunteerAccountUpdateRequest)(nil),   // 16: volunteer.VolunteerAccountUpdateRequest
+	(*VolunteerAccountUpdateResponse)(nil),  // 17: volunteer.VolunteerAccountUpdateResponse
+	(*VolunteerRealNameSubmitRequest)(nil),  // 18: volunteer.VolunteerRealNameSubmitRequest
+	(*VolunteerRealNameSubmitResponse)(nil), // 19: volunteer.VolunteerRealNameSubmitResponse
+	(*BaseVolunteer)(nil),                   // 20: volunteer.BaseVolunteer
 }
 var file_internal_api_volunteer_proto_depIdxs = []int32{
 	2,  // 0: volunteer.VolunteerListResponse.list:type_name -> volunteer.VolunteerListItem
 	10, // 1: volunteer.VolunteerDetailResponse.volunteer:type_name -> volunteer.VolunteerInfo
 	10, // 2: volunteer.MyProfileResponse.volunteer:type_name -> volunteer.VolunteerInfo
-	9,  // 3: volunteer.VolunteerHomeSummaryResponse.stats:type_name -> volunteer.VolunteerHomeSummaryStats
-	0,  // 4: volunteer.VolunteerService.VolunteerList:input_type -> volunteer.VolunteerListRequest
-	3,  // 5: volunteer.VolunteerService.VolunteerDetail:input_type -> volunteer.VolunteerDetailRequest
-	5,  // 6: volunteer.VolunteerService.MyProfile:input_type -> volunteer.MyProfileRequest
-	7,  // 7: volunteer.VolunteerService.VolunteerHomeSummary:input_type -> volunteer.VolunteerHomeSummaryRequest
-	11, // 8: volunteer.VolunteerService.VolunteerUpdate:input_type -> volunteer.VolunteerUpdateRequest
-	13, // 9: volunteer.VolunteerService.VolunteerRealNameSubmit:input_type -> volunteer.VolunteerRealNameSubmitRequest
-	1,  // 10: volunteer.VolunteerService.VolunteerList:output_type -> volunteer.VolunteerListResponse
-	4,  // 11: volunteer.VolunteerService.VolunteerDetail:output_type -> volunteer.VolunteerDetailResponse
-	6,  // 12: volunteer.VolunteerService.MyProfile:output_type -> volunteer.MyProfileResponse
-	8,  // 13: volunteer.VolunteerService.VolunteerHomeSummary:output_type -> volunteer.VolunteerHomeSummaryResponse
-	12, // 14: volunteer.VolunteerService.VolunteerUpdate:output_type -> volunteer.VolunteerUpdateResponse
-	14, // 15: volunteer.VolunteerService.VolunteerRealNameSubmit:output_type -> volunteer.VolunteerRealNameSubmitResponse
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	11, // 3: volunteer.MyProfileResponse.accountInfo:type_name -> volunteer.VolunteerAccountInfo
+	12, // 4: volunteer.MyProfileResponse.profile:type_name -> volunteer.VolunteerProfileInfo
+	13, // 5: volunteer.MyProfileResponse.verification:type_name -> volunteer.VolunteerVerificationInfo
+	9,  // 6: volunteer.VolunteerHomeSummaryResponse.stats:type_name -> volunteer.VolunteerHomeSummaryStats
+	0,  // 7: volunteer.VolunteerService.VolunteerList:input_type -> volunteer.VolunteerListRequest
+	3,  // 8: volunteer.VolunteerService.VolunteerDetail:input_type -> volunteer.VolunteerDetailRequest
+	5,  // 9: volunteer.VolunteerService.MyProfile:input_type -> volunteer.MyProfileRequest
+	7,  // 10: volunteer.VolunteerService.VolunteerHomeSummary:input_type -> volunteer.VolunteerHomeSummaryRequest
+	14, // 11: volunteer.VolunteerService.VolunteerUpdate:input_type -> volunteer.VolunteerUpdateRequest
+	16, // 12: volunteer.VolunteerService.VolunteerAccountUpdate:input_type -> volunteer.VolunteerAccountUpdateRequest
+	18, // 13: volunteer.VolunteerService.VolunteerRealNameSubmit:input_type -> volunteer.VolunteerRealNameSubmitRequest
+	1,  // 14: volunteer.VolunteerService.VolunteerList:output_type -> volunteer.VolunteerListResponse
+	4,  // 15: volunteer.VolunteerService.VolunteerDetail:output_type -> volunteer.VolunteerDetailResponse
+	6,  // 16: volunteer.VolunteerService.MyProfile:output_type -> volunteer.MyProfileResponse
+	8,  // 17: volunteer.VolunteerService.VolunteerHomeSummary:output_type -> volunteer.VolunteerHomeSummaryResponse
+	15, // 18: volunteer.VolunteerService.VolunteerUpdate:output_type -> volunteer.VolunteerUpdateResponse
+	17, // 19: volunteer.VolunteerService.VolunteerAccountUpdate:output_type -> volunteer.VolunteerAccountUpdateResponse
+	19, // 20: volunteer.VolunteerService.VolunteerRealNameSubmit:output_type -> volunteer.VolunteerRealNameSubmitResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_internal_api_volunteer_proto_init() }
@@ -1343,7 +1694,7 @@ func file_internal_api_volunteer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_api_volunteer_proto_rawDesc), len(file_internal_api_volunteer_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
