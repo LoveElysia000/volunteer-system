@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"volunteer-system/internal/response"
+	"volunteer-system/pkg/logger"
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -60,6 +61,7 @@ func Auth() app.HandlerFunc {
 		c.Set(UserIDKey, claims.UserID)
 		c.Set(TokenTypeKey, claims.TokenType)
 		c.Set(DeviceIDKey, claims.DeviceID)
+		logger.SetCurrentRequestField("user_id", claims.UserID)
 
 		c.Next(ctx)
 	}
@@ -91,6 +93,7 @@ func Optional() app.HandlerFunc {
 		c.Set(UserIDKey, claims.UserID)
 		c.Set(TokenTypeKey, claims.TokenType)
 		c.Set(DeviceIDKey, claims.DeviceID)
+		logger.SetCurrentRequestField("user_id", claims.UserID)
 
 		c.Next(ctx)
 	}

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -53,6 +55,8 @@ var (
 		maxAgeDay: 28,
 		compress:  true,
 	}
+
+	requestContexts sync.Map
 )
 
 // Init 初始化日志器
@@ -159,7 +163,7 @@ func getRotationConfig() rotationConfig {
 }
 
 func newHandler(writer io.Writer, leveler slog.Leveler) slog.Handler {
-	return slog.NewTextHandler(writer, &slog.HandlerOptions{
+	return slog.NewJSONHandler(writer, &slog.HandlerOptions{
 		AddSource:   true,
 		Level:       leveler,
 		ReplaceAttr: replaceAttrs,
@@ -215,7 +219,7 @@ func parseSlogLevel(levelStr string) slog.Level {
 }
 
 // log 内部日志方法
-func (l *Logger) log(level slog.Level, format string, args ...interface{}) {
+func (l *Logger) log(level slog.Level, msg string, attrs ...any) {
 	l.mu.RLock()
 	inner := l.inner
 	l.mu.RUnlock()
@@ -229,31 +233,139 @@ func (l *Logger) log(level slog.Level, format string, args ...interface{}) {
 		return
 	}
 
-	msg := fmt.Sprintf(format, args...)
-
 	var pcs [1]uintptr
 	runtime.Callers(3, pcs[:])
 
 	record := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	if attrs := currentRequestAttrs(); len(attrs) > 0 {
+		record.Add(attrs...)
+	}
+	if len(attrs) > 0 {
+		record.Add(attrs...)
+	}
 	_ = inner.Handler().Handle(ctx, record)
+}
+
+func (l *Logger) logf(level slog.Level, format string, args ...interface{}) {
+	l.log(level, fmt.Sprintf(format, args...))
+}
+
+// BindCurrentRequest binds request-scoped log fields to the current goroutine.
+func BindCurrentRequest(fields map[string]string) func() {
+	gid := currentGoroutineID()
+	requestContexts.Store(gid, cloneRequestFields(fields))
+	return func() {
+		requestContexts.Delete(gid)
+	}
+}
+
+// SetCurrentRequestField updates one request-scoped log field for the current goroutine.
+func SetCurrentRequestField(key, value string) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return
+	}
+
+	gid := currentGoroutineID()
+	current, _ := requestContexts.Load(gid)
+	fields, _ := current.(map[string]string)
+	if fields == nil {
+		fields = make(map[string]string, 1)
+	} else {
+		fields = cloneRequestFields(fields)
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		delete(fields, key)
+	} else {
+		fields[key] = value
+	}
+
+	if len(fields) == 0 {
+		requestContexts.Delete(gid)
+		return
+	}
+	requestContexts.Store(gid, fields)
+}
+
+func currentRequestAttrs() []any {
+	current, ok := requestContexts.Load(currentGoroutineID())
+	if !ok {
+		return nil
+	}
+
+	fields, ok := current.(map[string]string)
+	if !ok || len(fields) == 0 {
+		return nil
+	}
+
+	keys := make([]string, 0, len(fields))
+	for key, value := range fields {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+
+	attrs := make([]any, 0, len(keys)*2)
+	for _, key := range keys {
+		attrs = append(attrs, key, fields[key])
+	}
+	return attrs
+}
+
+func cloneRequestFields(fields map[string]string) map[string]string {
+	if len(fields) == 0 {
+		return map[string]string{}
+	}
+
+	cloned := make(map[string]string, len(fields))
+	for key, value := range fields {
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" {
+			continue
+		}
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func currentGoroutineID() uint64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	line := strings.TrimPrefix(string(buf[:n]), "goroutine ")
+	idField := line[:strings.IndexByte(line, ' ')]
+	id, err := strconv.ParseUint(idField, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }
 
 // Debug 输出调试日志
 func (l *Logger) Debug(format string, args ...interface{}) {
-	l.log(slog.LevelDebug, format, args...)
+	l.logf(slog.LevelDebug, format, args...)
 }
 
 // Info 输出信息日志
 func (l *Logger) Info(format string, args ...interface{}) {
-	l.log(slog.LevelInfo, format, args...)
+	l.logf(slog.LevelInfo, format, args...)
 }
 
 // Warn 输出警告日志
 func (l *Logger) Warn(format string, args ...interface{}) {
-	l.log(slog.LevelWarn, format, args...)
+	l.logf(slog.LevelWarn, format, args...)
 }
 
 // Error 输出错误日志
 func (l *Logger) Error(format string, args ...interface{}) {
-	l.log(slog.LevelError, format, args...)
+	l.logf(slog.LevelError, format, args...)
+}
+
+// InfoAttrs outputs an info log with structured attributes.
+func (l *Logger) InfoAttrs(msg string, attrs ...any) {
+	l.log(slog.LevelInfo, msg, attrs...)
 }
