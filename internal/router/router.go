@@ -9,6 +9,7 @@ import (
 func RegisterRouter(r *server.Hertz) {
 
 	// 全局中间件
+	r.Use(middleware.RequestLog())
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
 
