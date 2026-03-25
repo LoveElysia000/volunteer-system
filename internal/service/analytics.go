@@ -42,17 +42,25 @@ func (s *AnalyticsService) OrgFunnelSummary(req *api.OrgFunnelSummaryRequest) (*
 
 	var startTime *time.Time
 	if strings.TrimSpace(req.Start) != "" {
-		value, err := util.ParseDateTime(strings.TrimSpace(req.Start))
+		rawStart := strings.TrimSpace(req.Start)
+		value, err := util.ParseDateOrDateTime(rawStart)
 		if err != nil {
 			return nil, errors.New("开始时间格式错误")
+		}
+		if !strings.Contains(rawStart, " ") {
+			value = time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
 		}
 		startTime = &value
 	}
 	var endTime *time.Time
 	if strings.TrimSpace(req.End) != "" {
-		value, err := util.ParseDateTime(strings.TrimSpace(req.End))
+		rawEnd := strings.TrimSpace(req.End)
+		value, err := util.ParseDateOrDateTime(rawEnd)
 		if err != nil {
 			return nil, errors.New("结束时间格式错误")
+		}
+		if !strings.Contains(rawEnd, " ") {
+			value = time.Date(value.Year(), value.Month(), value.Day(), 23, 59, 59, 0, value.Location())
 		}
 		endTime = &value
 	}
@@ -103,17 +111,25 @@ func (s *AnalyticsService) OpsDashboardSummary(req *api.OpsDashboardSummaryReque
 
 	var startTime *time.Time
 	if strings.TrimSpace(req.Start) != "" {
-		value, err := util.ParseDateTime(strings.TrimSpace(req.Start))
+		rawStart := strings.TrimSpace(req.Start)
+		value, err := util.ParseDateOrDateTime(rawStart)
 		if err != nil {
 			return nil, errors.New("开始时间格式错误")
+		}
+		if !strings.Contains(rawStart, " ") {
+			value = time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
 		}
 		startTime = &value
 	}
 	var endTime *time.Time
 	if strings.TrimSpace(req.End) != "" {
-		value, err := util.ParseDateTime(strings.TrimSpace(req.End))
+		rawEnd := strings.TrimSpace(req.End)
+		value, err := util.ParseDateOrDateTime(rawEnd)
 		if err != nil {
 			return nil, errors.New("结束时间格式错误")
+		}
+		if !strings.Contains(rawEnd, " ") {
+			value = time.Date(value.Year(), value.Month(), value.Day(), 23, 59, 59, 0, value.Location())
 		}
 		endTime = &value
 	}

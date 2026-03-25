@@ -27,6 +27,20 @@ func ParseDateTime(dateTimeStr string) (time.Time, error) {
 	return time.Parse(DateTimeLayout, dateTimeStr)
 }
 
+// ParseDateOrDateTime 解析日期或日期时间字符串。
+// 支持:
+// - YYYY-MM-DD
+// - YYYY-MM-DD HH:MM:SS
+func ParseDateOrDateTime(raw string) (time.Time, error) {
+	if raw == "" {
+		return time.Time{}, errors.New("日期时间字符串不能为空")
+	}
+	if value, err := ParseDateTime(raw); err == nil {
+		return value, nil
+	}
+	return ParseDate(raw)
+}
+
 // ParsePastDate 解析日期字符串并校验是否为过去日期（不能是未来日期）
 func ParsePastDate(dateStr string) (time.Time, error) {
 	t, err := ParseDate(dateStr)
