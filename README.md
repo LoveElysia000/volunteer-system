@@ -15,7 +15,7 @@
 - 权限管理：RBAC 角色（`super_admin`/`org_owner`/`volunteer`）、权限、账号绑定与变更日志
 - AI 助手：会话、消息、工具调用、SSE 流式输出与用量统计
 
-接口协议以 `internal/api/*.proto` 为准，OpenAPI 产物见 `docs/openapi.yaml`。
+接口协议以 `internal/api/*.proto` 为准，OpenAPI 产物见 `docs/openapi.yaml`，按 router 拆分的联调文档见 `docs/api/README.md`。
 
 ## 技术栈
 
