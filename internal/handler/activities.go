@@ -100,21 +100,6 @@ func ActivityDetail(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
-// MyActivities 获取我的活动列表
-func MyActivities(ctx context.Context, c *app.RequestContext) {
-	var req api.MyActivitiesRequest
-	if err := c.BindAndValidate(&req); err != nil {
-		response.Fail(c, err)
-		return
-	}
-	data, err := service.NewActivityService(ctx, c).MyActivities(&req)
-	if err != nil {
-		response.FailWithCode(c, consts.StatusInternalServerError, err)
-		return
-	}
-	response.Success(c, data)
-}
-
 // ========== 组织端活动管理 ==========
 
 // CreateActivity 创建活动

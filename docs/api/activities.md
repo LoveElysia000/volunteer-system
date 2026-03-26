@@ -6,8 +6,8 @@
 
 - 鉴权：是
 - 身份：志愿者/组织管理者
-- 功能：分页查询活动列表
-- 请求体：`{ page:int32, pageSize:int32, status:int32, keyword:string, startFrom:string, startTo:string, sortBy:string, sortOrder:string }`
+- 功能：统一活动列表接口；默认查询全部活动，`registeredOnly=true` 时查询当前志愿者已报名活动
+- 请求体：`{ page:int32, pageSize:int32, status:int32, keyword:string, startFrom:string, startTo:string, sortBy:string, sortOrder:string, registeredOnly:bool }`
 - 返回 `data`：`ActivityListResponse`
 
 ### `POST /api/activities/signup`
@@ -33,14 +33,6 @@
 - 功能：查看活动详情
 - 路径参数：`id:int64`
 - 返回 `data`：`{ activity:ActivityInfo }`
-
-### `POST /api/activities/my`
-
-- 鉴权：是
-- 身份：志愿者
-- 功能：查询我的活动列表
-- 请求体：`{ page:int32, pageSize:int32, status:int32 }`
-- 返回 `data`：`MyActivitiesResponse`
 
 ### `POST /api/activities/checkin`
 
@@ -148,6 +140,7 @@
 - `startTo:string`
 - `sortBy:string`
 - `sortOrder:string`
+- `registeredOnly:bool`
 
 ### `ActivitySignupRequest`
 
@@ -160,12 +153,6 @@
 ### `ActivityDetailRequest`
 
 - `id:int64`
-
-### `MyActivitiesRequest`
-
-- `page:int32`
-- `pageSize:int32`
-- `status:int32`
 
 ### `ActivityCheckInRequest`
 
@@ -286,36 +273,6 @@
 - `workHourStatus:int32`
 - `grantedHours:double`
 
-### `MyActivitiesResponse`
-
-- `total:int32`
-- `list:MyActivityItem[]`
-
-### `MyActivityItem`
-
-- `id:int64`
-- `orgId:int64`
-- `orgName:string`
-- `title:string`
-- `description:string`
-- `coverUrl:string`
-- `startTime:string`
-- `endTime:string`
-- `location:string`
-- `duration:double`
-- `maxPeople:int32`
-- `currentPeople:int32`
-- `status:int32`
-- `signupTime:string`
-- `checkInStatus:int32`
-- `checkInTime:string`
-- `checkOutStatus:int32`
-- `checkOutTime:string`
-- `workHourStatus:int32`
-- `grantedHours:double`
-- `signupStatus:int32`
-- `auditReason:string`
-
 ### `GenerateAttendanceCodesResponse`
 
 - `success:bool`
@@ -391,3 +348,11 @@
 ### `FinishActivityResponse`
 
 - `message:string`
+
+## 联调说明
+
+- `POST /api/activities/my` 已删除，前端不要再调用。
+- “活动大厅”调用 `POST /api/activities`，不传 `registeredOnly` 或传 `false`。
+- “我的活动”调用 `POST /api/activities`，传 `registeredOnly:true`。
+- `registeredOnly:true` 当前语义为：仅返回当前志愿者“待审核/已报名成功”的活动，不包含已驳回、已取消报名。
+- `registeredOnly` 与 `keyword`、`status`、`startFrom`、`startTo` 可以组合使用，后端会按交集筛选。

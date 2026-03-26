@@ -12,6 +12,64 @@ import (
 	"gorm.io/gorm"
 )
 
+func collectRegisteredActivityIDs(signups []*model.ActivitySignup) []int64 {
+	if len(signups) == 0 {
+		return []int64{}
+	}
+
+	ids := make([]int64, 0, len(signups))
+	for _, signup := range signups {
+		if signup == nil || signup.ActivityID <= 0 {
+			continue
+		}
+		switch signup.Status {
+		case model.ActivitySignupStatusPending, model.ActivitySignupStatusSuccess:
+			ids = append(ids, signup.ActivityID)
+		}
+	}
+	return util.UniquePositiveInt64(ids)
+}
+
+func intersectActivityIDs(left, right []int64) []int64 {
+	if len(left) == 0 || len(right) == 0 {
+		return []int64{}
+	}
+
+	rightSet := make(map[int64]struct{}, len(right))
+	for _, id := range util.UniquePositiveInt64(right) {
+		rightSet[id] = struct{}{}
+	}
+
+	intersection := make([]int64, 0, len(left))
+	for _, id := range util.UniquePositiveInt64(left) {
+		if _, ok := rightSet[id]; ok {
+			intersection = append(intersection, id)
+		}
+	}
+	return intersection
+}
+
+func mergeActivityIDConstraint(filters map[string]any, ids []int64) bool {
+	if len(ids) == 0 {
+		return false
+	}
+
+	normalized := util.UniquePositiveInt64(ids)
+	if len(normalized) == 0 {
+		return false
+	}
+
+	if existingIDs, ok := filters["act.id IN ?"].([]int64); ok {
+		normalized = intersectActivityIDs(existingIDs, normalized)
+		if len(normalized) == 0 {
+			return false
+		}
+	}
+
+	filters["act.id IN ?"] = normalized
+	return true
+}
+
 // buildActivityListFilterMap normalizes ActivityList request filters for repository query.
 func buildActivityListFilterMap(req *api.ActivityListRequest) (map[string]any, error) {
 	if req == nil {

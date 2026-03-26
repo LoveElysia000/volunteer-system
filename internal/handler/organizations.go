@@ -24,6 +24,20 @@ func OrganizationList(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+func PublicOrganizationList(ctx context.Context, c *app.RequestContext) {
+	var req api.OrganizationListRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewOrganizationService(ctx, c).PublicOrganizationList(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func OrganizationDetail(ctx context.Context, c *app.RequestContext) {
 	var req api.OrganizationDetailRequest
 	if err := c.BindAndValidate(&req); err != nil {

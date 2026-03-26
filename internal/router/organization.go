@@ -9,6 +9,8 @@ import (
 func RegisterOrganizationRouter(r *route.RouterGroup) {
 	// 组织列表
 	r.POST("/organizations/list", handler.OrganizationList)
+	// 公开组织列表（志愿者端浏览）
+	r.POST("/organizations/public-list", handler.PublicOrganizationList)
 	// 组织详情
 	r.GET("/organizations/:id", handler.OrganizationDetail)
 	// 创建组织

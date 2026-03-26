@@ -258,6 +258,26 @@ func (r *Repository) ListUserSignupsByActivityIDs(db *gorm.DB, volunteerID int64
 	return signups, nil
 }
 
+// ListVisibleSignupsByVolunteer returns signups that should be visible in unified activity list filtering.
+func (r *Repository) ListVisibleSignupsByVolunteer(db *gorm.DB, volunteerID int64) ([]*model.ActivitySignup, error) {
+	if volunteerID <= 0 {
+		return []*model.ActivitySignup{}, nil
+	}
+
+	var signups []*model.ActivitySignup
+	visibleSignupStatuses := []int32{
+		model.ActivitySignupStatusPending,
+		model.ActivitySignupStatusSuccess,
+	}
+	err := db.WithContext(r.ctx).
+		Where("volunteer_id = ? AND status IN ?", volunteerID, visibleSignupStatuses).
+		Find(&signups).Error
+	if err != nil {
+		return nil, err
+	}
+	return signups, nil
+}
+
 // CountActivitySignups 统计活动报名人数
 func (r *Repository) CountActivitySignups(db *gorm.DB, activityID int64) (int64, error) {
 	var count int64

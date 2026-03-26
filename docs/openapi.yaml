@@ -251,25 +251,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.FinishActivityResponse'
-    /api/activities/my:
-        post:
-            tags:
-                - ActivityService
-            description: 获取我的活动列表
-            operationId: ActivityService_MyActivities
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/activity.MyActivitiesRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.MyActivitiesResponse'
     /api/activities/signup:
         post:
             tags:
@@ -1847,6 +1828,9 @@ components:
                 sortOrder:
                     type: string
                     description: '排序方向：asc/desc 可选 @gotags: json:"sortOrder"'
+                registeredOnly:
+                    type: boolean
+                    description: '是否只看我已报名的活动 可选 @gotags: json:"registeredOnly"'
         activity.ActivityListResponse:
             type: object
             properties:
@@ -2052,110 +2036,6 @@ components:
                     type: string
                     description: 码更新时间
             description: GetActivityAttendanceCodesResponse 查询活动签到码/签退码响应
-        activity.MyActivitiesRequest:
-            type: object
-            properties:
-                page:
-                    type: integer
-                    description: '页码 可选 @gotags: json:"page"'
-                    format: int32
-                pageSize:
-                    type: integer
-                    description: '页大小 可选 @gotags: json:"pageSize"'
-                    format: int32
-                status:
-                    type: integer
-                    description: |-
-                        状态筛选 可选 @gotags: json:"status"
-                         1-报名中, 2-已结束, 3-已取消
-                    format: int32
-        activity.MyActivitiesResponse:
-            type: object
-            properties:
-                total:
-                    type: integer
-                    format: int32
-                list:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/activity.MyActivityItem'
-        activity.MyActivityItem:
-            type: object
-            properties:
-                id:
-                    type: string
-                orgId:
-                    type: string
-                    description: 组织ID
-                orgName:
-                    type: string
-                    description: 组织名称
-                title:
-                    type: string
-                    description: 活动标题
-                description:
-                    type: string
-                    description: 活动描述
-                coverUrl:
-                    type: string
-                    description: 封面图URL
-                startTime:
-                    type: string
-                    description: 开始时间
-                endTime:
-                    type: string
-                    description: 结束时间
-                location:
-                    type: string
-                    description: 地点名称
-                duration:
-                    type: number
-                    description: 预估工时
-                    format: double
-                maxPeople:
-                    type: integer
-                    description: 最大招募人数
-                    format: int32
-                currentPeople:
-                    type: integer
-                    description: 当前已报名人数
-                    format: int32
-                status:
-                    type: integer
-                    description: '状态: 1-报名中, 2-已结束, 3-已取消'
-                    format: int32
-                signupTime:
-                    type: string
-                    description: 报名时间
-                checkInStatus:
-                    type: integer
-                    description: '签到状态: 0-未签到, 1-已签到'
-                    format: int32
-                checkInTime:
-                    type: string
-                    description: 签到时间
-                checkOutStatus:
-                    type: integer
-                    description: '签退状态: 0-未签退, 1-已签退'
-                    format: int32
-                checkOutTime:
-                    type: string
-                    description: 签退时间
-                workHourStatus:
-                    type: integer
-                    description: '工时结算状态: 0-未结算, 1-已发放, 2-已作废'
-                    format: int32
-                grantedHours:
-                    type: number
-                    description: 本次发放工时
-                    format: double
-                signupStatus:
-                    type: integer
-                    description: '报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消'
-                    format: int32
-                auditReason:
-                    type: string
-                    description: 报名审核驳回原因（无则为空）
         activity.ResetAttendanceCodeRequest:
             type: object
             properties:

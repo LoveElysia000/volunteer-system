@@ -32,6 +32,25 @@ func buildOrganizationListItem(org *model.Organization) (*api.OrganizationListIt
 	}, nil
 }
 
+func buildPublicOrganizationListItem(org *model.Organization) (*api.OrganizationListItem, error) {
+	if org == nil {
+		return nil, errors.New("组织信息不存在")
+	}
+
+	return &api.OrganizationListItem{
+		Id:               org.ID,
+		Name:             org.OrgName,
+		OrganizationCode: org.LicenseCode,
+		ContactPerson:    org.ContactPerson,
+		ContactPhone:     "",
+		Address:          org.Address,
+		Status:           org.Status,
+		OrganizationType: "",
+		Region:           "",
+		CreatedAt:        org.CreatedAt.Format(util.DateTimeLayout),
+	}, nil
+}
+
 func buildOrganizationDetailResponse(org *model.Organization, account *model.SysAccount) (*api.OrganizationDetailResponse, error) {
 	if org == nil {
 		return nil, errors.New("组织信息不存在")

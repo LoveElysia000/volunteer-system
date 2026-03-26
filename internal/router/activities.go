@@ -13,7 +13,6 @@ func RegisterActivityRouter(r *route.RouterGroup) {
 	r.POST("/activities/signup", handler.ActivitySignup)
 	r.POST("/activities/cancel", handler.ActivityCancel)
 	r.GET("/activities/:id", handler.ActivityDetail)
-	r.POST("/activities/my", handler.MyActivities)
 	r.POST("/activities/checkin", handler.ActivityCheckIn)
 	r.POST("/activities/checkout", handler.ActivityCheckOut)
 

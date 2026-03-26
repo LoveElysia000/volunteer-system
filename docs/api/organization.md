@@ -10,6 +10,14 @@
 - 请求体：`{ keyword:string, status:int32[], organizationType:string, region:string, page:int32, pageSize:int32 }`
 - 返回 `data`：`OrganizationListResponse`
 
+### `POST /api/organizations/public-list`
+
+- 鉴权：是
+- 身份：志愿者
+- 功能：查询公开组织列表（志愿者端浏览用）
+- 请求体：`{ keyword:string, status:int32[], organizationType:string, region:string, page:int32, pageSize:int32 }`
+- 返回 `data`：`OrganizationListResponse`
+
 ### `GET /api/organizations/:id`
 
 - 鉴权：是
@@ -209,6 +217,13 @@
 - `organizationType:string`
 - `region:string`
 - `createdAt:string`
+
+## 联调说明
+
+- 志愿者端浏览组织时，请调用 `POST /api/organizations/public-list`。
+- 管理端组织列表仍使用 `POST /api/organizations/list`。
+- `public-list` 只返回正常状态组织，前端不需要自行传 `status=[1]`。
+- `public-list` 返回的 `contactPhone` 当前不包含真实联系电话，前端不要依赖该字段展示公开电话。
 
 ### `OrganizationDetailResponse`
 

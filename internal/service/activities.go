@@ -14,7 +14,6 @@ import (
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
-	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -80,20 +79,26 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	if err != nil {
 		return nil, err
 	}
-	keyword := strings.TrimSpace(req.Keyword)
-	if keyword != "" {
-		activityIDs, idErr := s.repo.ListActivityIDsByKeyword(s.repo.DB, keyword)
-		if idErr != nil {
-			log.Error("活动列表查询失败: 关键字查询活动ID异常: %v, keyword=%s", idErr, keyword)
-			return nil, idErr
-		}
-		if len(activityIDs) == 0 {
-			return &api.ActivityListResponse{
-				Total: 0,
-				List:  []*api.ActivityItem{},
-			}, nil
-		}
-		actMap["act.id IN ?"] = activityIDs
+
+	volunteerID, isVolunteer, err := s.resolveActivityListVolunteerID(userID, account)
+	if err != nil {
+		log.Error("活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
+		return nil, err
+	}
+	if req.RegisteredOnly && !isVolunteer {
+		return &api.ActivityListResponse{
+			Total: 0,
+			List:  []*api.ActivityItem{},
+		}, nil
+	}
+
+	if ok, filterErr := s.applyActivityListScopeFilters(req, userID, volunteerID, actMap); filterErr != nil {
+		return nil, filterErr
+	} else if !ok {
+		return &api.ActivityListResponse{
+			Total: 0,
+			List:  []*api.ActivityItem{},
+		}, nil
 	}
 
 	// 查询活动列表
@@ -107,31 +112,10 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 
 	signupMap := make(map[int64]*model.ActivitySignup)
 	// 仅志愿者账号需要计算报名态；组织账号统一返回 false。
-	if account.IdentityType == model.RegisterTypeVolunteerCode && len(activities) > 0 {
-		volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)
-		if getVolunteerErr != nil {
-			log.Error("活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", getVolunteerErr, userID)
-			return nil, getVolunteerErr
-		}
-
-		activityIDs := make([]int64, 0, len(activities))
-		for _, act := range activities {
-			if act == nil {
-				continue
-			}
-			activityIDs = append(activityIDs, act.ID)
-		}
-
-		signups, listErr := s.repo.ListUserSignupsByActivityIDs(s.repo.DB, volunteerID, activityIDs)
-		if listErr != nil {
-			log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", listErr, userID, volunteerID)
-			return nil, listErr
-		}
-		for _, signup := range signups {
-			if signup == nil {
-				continue
-			}
-			signupMap[signup.ActivityID] = signup
+	if isVolunteer && len(activities) > 0 {
+		signupMap, err = s.loadActivitySignupMap(userID, volunteerID, activities)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -164,6 +148,78 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	}
 
 	return resp, nil
+}
+
+func (s *ActivityService) resolveActivityListVolunteerID(userID int64, account *model.SysAccount) (int64, bool, error) {
+	if account == nil || account.IdentityType != model.RegisterTypeVolunteerCode {
+		return 0, false, nil
+	}
+
+	volunteerID, err := s.getVolunteerIDByAccountID(userID)
+	if err != nil {
+		return 0, false, err
+	}
+	return volunteerID, true, nil
+}
+
+func (s *ActivityService) applyActivityListScopeFilters(
+	req *api.ActivityListRequest,
+	userID, volunteerID int64,
+	actMap map[string]any,
+) (bool, error) {
+	if req.RegisteredOnly {
+		signups, err := s.repo.ListVisibleSignupsByVolunteer(s.repo.DB, volunteerID)
+		if err != nil {
+			log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteerID)
+			return false, err
+		}
+		if ok := mergeActivityIDConstraint(actMap, collectRegisteredActivityIDs(signups)); !ok {
+			return false, nil
+		}
+	}
+
+	keyword := strings.TrimSpace(req.Keyword)
+	if keyword == "" {
+		return true, nil
+	}
+
+	activityIDs, err := s.repo.ListActivityIDsByKeyword(s.repo.DB, keyword)
+	if err != nil {
+		log.Error("活动列表查询失败: 关键字查询活动ID异常: %v, keyword=%s", err, keyword)
+		return false, err
+	}
+	if ok := mergeActivityIDConstraint(actMap, activityIDs); !ok {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (s *ActivityService) loadActivitySignupMap(
+	userID, volunteerID int64,
+	activities []*model.Activity,
+) (map[int64]*model.ActivitySignup, error) {
+	activityIDs := make([]int64, 0, len(activities))
+	for _, act := range activities {
+		if act == nil {
+			continue
+		}
+		activityIDs = append(activityIDs, act.ID)
+	}
+
+	signups, err := s.repo.ListUserSignupsByActivityIDs(s.repo.DB, volunteerID, activityIDs)
+	if err != nil {
+		log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteerID)
+		return nil, err
+	}
+
+	signupMap := make(map[int64]*model.ActivitySignup, len(signups))
+	for _, signup := range signups {
+		if signup == nil {
+			continue
+		}
+		signupMap[signup.ActivityID] = signup
+	}
+	return signupMap, nil
 }
 
 // ActivitySignup 活动报名
@@ -380,163 +436,6 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 			WorkHourStatus: workHourStatus,
 			GrantedHours:   grantedHours,
 		},
-	}
-
-	return resp, nil
-}
-
-// MyActivities 获取我的活动列表
-func (s *ActivityService) MyActivities(req *api.MyActivitiesRequest) (*api.MyActivitiesResponse, error) {
-	// 设置默认分页参数
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 50
-	}
-
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 获取当前用户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
-		return nil, err
-	}
-	volunteerID, err := s.getVolunteerIDByAccountID(userID)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
-		return nil, err
-	}
-
-	// 查询我的报名记录
-	pageSize := int(req.PageSize)
-	offset := (int(req.Page) - 1) * pageSize
-	signups, total, err := s.repo.GetMyActivities(s.repo.DB, volunteerID, req.Status, pageSize, offset)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 查询报名记录异常: %v, user_id=%d volunteer_id=%d status=%d page=%d page_size=%d", err, userID, volunteerID, req.Status, req.Page, req.PageSize)
-		return nil, err
-	}
-
-	// 提取活动ID与报名ID列表（去重）
-	activityIDs := make([]int64, 0, len(signups))
-	signupIDs := make([]int64, 0, len(signups))
-	for _, signup := range signups {
-		if signup == nil {
-			continue
-		}
-		signupIDs = append(signupIDs, signup.ID)
-		activityIDs = append(activityIDs, signup.ActivityID)
-	}
-	signupIDs = util.UniquePositiveInt64(signupIDs)
-	activityIDs = util.UniquePositiveInt64(activityIDs)
-
-	// 并发查询活动信息与报名驳回记录。
-	var (
-		activitiesList     []*model.Activity
-		rejectAuditRecords []*model.AuditRecord
-	)
-	group, _ := errgroup.WithContext(s.ctx)
-	group.SetLimit(2)
-	group.Go(func() error {
-		activities, queryErr := s.repo.ListActivitiesByIDs(s.repo.DB, activityIDs)
-		if queryErr != nil {
-			log.Error("我的活动列表查询失败: 批量查询活动异常: %v, user_id=%d volunteer_id=%d activity_count=%d", queryErr, userID, volunteerID, len(activityIDs))
-			return queryErr
-		}
-		activitiesList = activities
-		return nil
-	})
-	group.Go(func() error {
-		rejectRecords, queryErr := s.repo.ListSignupRejectAuditRecords(s.repo.DB, signupIDs)
-		if queryErr != nil {
-			log.Error("我的活动列表查询失败: 查询报名驳回原因异常: %v, user_id=%d volunteer_id=%d signup_count=%d", queryErr, userID, volunteerID, len(signupIDs))
-			return queryErr
-		}
-		rejectAuditRecords = rejectRecords
-		return nil
-	})
-	if waitErr := group.Wait(); waitErr != nil {
-		return nil, waitErr
-	}
-
-	activityMap := make(map[int64]*model.Activity, len(activitiesList))
-	orgIDs := make([]int64, 0, len(activitiesList))
-	for _, act := range activitiesList {
-		if act == nil {
-			continue
-		}
-		activityMap[act.ID] = act
-		orgIDs = append(orgIDs, act.OrgID)
-	}
-	orgIDs = util.UniquePositiveInt64(orgIDs)
-
-	// 批量获取组织名称
-	orgNameMap := make(map[int64]string)
-	organizations, queryErr := s.repo.ListOrganizationsByIDs(s.repo.DB, orgIDs)
-	if queryErr != nil {
-		log.Error("我的活动列表查询失败: 批量查询组织名称异常: %v, user_id=%d volunteer_id=%d org_count=%d", queryErr, userID, volunteerID, len(orgIDs))
-		return nil, queryErr
-	}
-	for _, org := range organizations {
-		if org == nil {
-			continue
-		}
-		orgNameMap[org.ID] = org.OrgName
-	}
-
-	// 在 service 层按 signup_id 聚合最近一条驳回原因。
-	auditReasonMap := make(map[int64]string, len(rejectAuditRecords))
-	for _, record := range rejectAuditRecords {
-		if record == nil || record.TargetID <= 0 {
-			continue
-		}
-		if _, exists := auditReasonMap[record.TargetID]; exists {
-			continue
-		}
-		auditReasonMap[record.TargetID] = record.RejectReason
-	}
-
-	// 组装返回数据
-	resp := &api.MyActivitiesResponse{
-		Total: int32(total),
-		List:  make([]*api.MyActivityItem, 0, len(signups)),
-	}
-
-	for _, signup := range signups {
-		activity := activityMap[signup.ActivityID]
-		if activity == nil {
-			continue
-		}
-
-		checkInTime := util.FormatDateTimePtr(signup.CheckInTime)
-		checkOutTime := util.FormatDateTimePtr(signup.CheckOutTime)
-
-		orgName := orgNameMap[activity.OrgID]
-
-		item := &api.MyActivityItem{
-			Id:             activity.ID,
-			OrgId:          activity.OrgID,
-			OrgName:        orgName,
-			Title:          activity.Title,
-			Description:    activity.Description,
-			CoverUrl:       activity.CoverURL,
-			StartTime:      util.FormatDateTimeOrEmpty(activity.StartTime),
-			EndTime:        util.FormatDateTimeOrEmpty(activity.EndTime),
-			Location:       activity.Location,
-			Duration:       activity.Duration,
-			MaxPeople:      activity.MaxPeople,
-			CurrentPeople:  activity.CurrentPeople,
-			Status:         activity.Status,
-			SignupTime:     util.FormatDateTimeOrEmpty(signup.SignupTime),
-			CheckInStatus:  signup.CheckInStatus,
-			CheckInTime:    checkInTime,
-			CheckOutStatus: signup.CheckOutStatus,
-			CheckOutTime:   checkOutTime,
-			WorkHourStatus: signup.WorkHourStatus,
-			GrantedHours:   signup.GrantedHours,
-			SignupStatus:   signup.Status,
-			AuditReason:    auditReasonMap[signup.ID],
-		}
-		resp.List = append(resp.List, item)
 	}
 
 	return resp, nil

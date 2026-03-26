@@ -58,14 +58,6 @@ service ActivityService {
     };
   }
 
-  // 获取我的活动列表
-  rpc MyActivities(MyActivitiesRequest) returns (MyActivitiesResponse) {
-    option (google.api.http) = {
-      post: "/api/activities/my"
-      body: "*"
-    };
-  }
-
   // ========== 组织端活动管理 ==========
 
   // 创建活动
@@ -158,6 +150,8 @@ message ActivityListRequest {
   string sortBy = 7;
   // 排序方向：asc/desc 可选 @gotags: json:"sortOrder"
   string sortOrder = 8;
+  // 是否只看我已报名的活动 可选 @gotags: json:"registeredOnly"
+  bool registeredOnly = 9;
 }
 
 message ActivityListResponse {
@@ -328,69 +322,6 @@ message ActivityInfo {
   int32 workHourStatus = 21;
   // 本次发放工时
   double grantedHours = 22;
-}
-
-// ========== 我的活动 ==========
-
-message MyActivitiesRequest {
-  // 页码 可选 @gotags: json:"page"
-  int32 page = 1;
-  // 页大小 可选 @gotags: json:"pageSize"
-  int32 pageSize = 2;
-  // 状态筛选 可选 @gotags: json:"status"
-  // 1-报名中, 2-已结束, 3-已取消
-  int32 status = 3;
-}
-
-message MyActivitiesResponse {
-  int32 total = 1;
-  repeated MyActivityItem list = 2;
-}
-
-message MyActivityItem {
-  int64 id = 1;
-  // 组织ID
-  int64 orgId = 2;
-  // 组织名称
-  string orgName = 3;
-  // 活动标题
-  string title = 4;
-  // 活动描述
-  string description = 5;
-  // 封面图URL
-  string coverUrl = 6;
-  // 开始时间
-  string startTime = 7;
-  // 结束时间
-  string endTime = 8;
-  // 地点名称
-  string location = 9;
-  // 预估工时
-  double duration = 10;
-  // 最大招募人数
-  int32 maxPeople = 11;
-  // 当前已报名人数
-  int32 currentPeople = 12;
-  // 状态: 1-报名中, 2-已结束, 3-已取消
-  int32 status = 13;
-  // 报名时间
-  string signupTime = 14;
-  // 签到状态: 0-未签到, 1-已签到
-  int32 checkInStatus = 15;
-  // 签到时间
-  string checkInTime = 16;
-  // 签退状态: 0-未签退, 1-已签退
-  int32 checkOutStatus = 17;
-  // 签退时间
-  string checkOutTime = 18;
-  // 工时结算状态: 0-未结算, 1-已发放, 2-已作废
-  int32 workHourStatus = 19;
-  // 本次发放工时
-  double grantedHours = 20;
-  // 报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
-  int32 signupStatus = 21;
-  // 报名审核驳回原因（无则为空）
-  string auditReason = 22;
 }
 
 // ========== 组织端活动管理 ==========

@@ -102,6 +102,16 @@ func buildManageableOrgFilter(hasGlobalManage bool, scopedOrgIDs []int64) (map[s
 	return filter, nil
 }
 
+func buildPublicOrganizationQueryMap(req *api.OrganizationListRequest) map[string]any {
+	queryMap := map[string]any{
+		"org.status IN ?": []int32{model.OrganizationNormal},
+	}
+	if req == nil {
+		return queryMap
+	}
+	return queryMap
+}
+
 func parseOrganizationSearchDate(dateStr, fieldName string, endOfDay bool) (*time.Time, error) {
 	trimmed := strings.TrimSpace(dateStr)
 	if trimmed == "" {
@@ -206,6 +216,62 @@ func (s *OrganizationService) OrganizationList(req *api.OrganizationListRequest)
 		item, buildErr := buildOrganizationListItem(org)
 		if buildErr != nil {
 			log.Error("组装组织列表项失败: %v, org_id=%d", buildErr, org.ID)
+			return nil, buildErr
+		}
+		list = append(list, item)
+	}
+
+	return &api.OrganizationListResponse{
+		Total: int32(total),
+		List:  list,
+	}, nil
+}
+
+func (s *OrganizationService) PublicOrganizationList(req *api.OrganizationListRequest) (*api.OrganizationListResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+
+	queryMap := buildPublicOrganizationQueryMap(req)
+
+	trimmedKeyword := strings.TrimSpace(req.Keyword)
+	if trimmedKeyword != "" {
+		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, trimmedKeyword)
+		if err != nil {
+			log.Error("构建公开组织查询条件失败: %v", err)
+			return nil, err
+		}
+		if len(ids) == 0 {
+			return &api.OrganizationListResponse{
+				Total: 0,
+				List:  []*api.OrganizationListItem{},
+			}, nil
+		}
+		queryMap["org.id IN ?"] = ids
+	}
+
+	pageSize := int(req.PageSize)
+	offset := (int(req.Page) - 1) * pageSize
+	organizations, total, err := s.repo.GetOrganizationList(s.repo.DB, queryMap, pageSize, offset)
+	if err != nil {
+		log.Error("查询公开组织列表失败: %v", err)
+		return nil, err
+	}
+
+	list := make([]*api.OrganizationListItem, 0, len(organizations))
+	for _, org := range organizations {
+		if org == nil {
+			continue
+		}
+		item, buildErr := buildPublicOrganizationListItem(org)
+		if buildErr != nil {
+			log.Error("组装公开组织列表项失败: %v, org_id=%d", buildErr, org.ID)
 			return nil, buildErr
 		}
 		list = append(list, item)
