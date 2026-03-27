@@ -25,118 +25,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.ActivityListResponse'
-    /api/activities/:id:
-        get:
-            tags:
-                - ActivityService
-            description: 获取活动详情
-            operationId: ActivityService_ActivityDetail
-            parameters:
-                - name: id
-                  in: query
-                  description: '活动ID 必填 @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.ActivityDetailResponse'
-        put:
-            tags:
-                - ActivityService
-            description: 更新活动
-            operationId: ActivityService_UpdateActivity
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/activity.UpdateActivityRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.UpdateActivityResponse'
-        delete:
-            tags:
-                - ActivityService
-            description: 删除活动
-            operationId: ActivityService_DeleteActivity
-            parameters:
-                - name: id
-                  in: query
-                  description: '活动ID 必填 @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.DeleteActivityResponse'
-    /api/activities/attendance-codes/:id:
-        get:
-            tags:
-                - ActivityService
-            description: 查询活动签到码/签退码（组织侧）
-            operationId: ActivityService_GetActivityAttendanceCodes
-            parameters:
-                - name: id
-                  in: query
-                  description: '活动ID 必填 @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.GetActivityAttendanceCodesResponse'
-    /api/activities/attendance-codes/generate/:id:
-        post:
-            tags:
-                - ActivityService
-            description: 生成签到码/签退码（组织侧）
-            operationId: ActivityService_GenerateAttendanceCodes
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/activity.GenerateAttendanceCodesRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.GenerateAttendanceCodesResponse'
-    /api/activities/attendance-codes/reset/:id:
-        post:
-            tags:
-                - ActivityService
-            description: 重置签到码/签退码（组织侧）
-            operationId: ActivityService_ResetAttendanceCode
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/activity.ResetAttendanceCodeRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.ResetAttendanceCodeResponse'
     /api/activities/cancel:
         post:
             tags:
@@ -156,25 +44,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.ActivityCancelResponse'
-    /api/activities/cancel/:id:
-        post:
-            tags:
-                - ActivityService
-            description: 取消活动
-            operationId: ActivityService_CancelActivity
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/activity.CancelActivityRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.CancelActivityResponse'
     /api/activities/checkin:
         post:
             tags:
@@ -232,25 +101,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.CreateActivityResponse'
-    /api/activities/finish/:id:
-        post:
-            tags:
-                - ActivityService
-            description: 完结活动
-            operationId: ActivityService_FinishActivity
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/activity.FinishActivityRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/activity.FinishActivityResponse'
     /api/activities/signup:
         post:
             tags:
@@ -289,6 +139,194 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.ActivitySupplementAttendanceResponse'
+    /api/activities/{activityId}:
+        get:
+            tags:
+                - ActivityService
+            description: 获取活动详情
+            operationId: ActivityService_ActivityDetail
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityDetailResponse'
+        put:
+            tags:
+                - ActivityService
+            description: 更新活动
+            operationId: ActivityService_UpdateActivity
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.UpdateActivityRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.UpdateActivityResponse'
+        delete:
+            tags:
+                - ActivityService
+            description: 删除活动
+            operationId: ActivityService_DeleteActivity
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.DeleteActivityResponse'
+    /api/activities/{activityId}/attendance-codes:
+        get:
+            tags:
+                - ActivityService
+            description: 查询活动签到码/签退码（组织侧）
+            operationId: ActivityService_GetActivityAttendanceCodes
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.GetActivityAttendanceCodesResponse'
+    /api/activities/{activityId}/attendance-codes/generate:
+        post:
+            tags:
+                - ActivityService
+            description: 生成签到码/签退码（组织侧）
+            operationId: ActivityService_GenerateAttendanceCodes
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.GenerateAttendanceCodesRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.GenerateAttendanceCodesResponse'
+    /api/activities/{activityId}/attendance-codes/reset:
+        post:
+            tags:
+                - ActivityService
+            description: 重置签到码/签退码（组织侧）
+            operationId: ActivityService_ResetAttendanceCode
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.ResetAttendanceCodeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ResetAttendanceCodeResponse'
+    /api/activities/{activityId}/cancel:
+        post:
+            tags:
+                - ActivityService
+            description: 取消活动
+            operationId: ActivityService_CancelActivity
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.CancelActivityRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.CancelActivityResponse'
+    /api/activities/{activityId}/finish:
+        post:
+            tags:
+                - ActivityService
+            description: 完结活动
+            operationId: ActivityService_FinishActivity
+            parameters:
+                - name: activityId
+                  in: path
+                  description: '活动ID 必填 @gotags: path:"activityId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.FinishActivityRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.FinishActivityResponse'
     /api/admin/export/activities:
         post:
             tags:
@@ -936,6 +974,89 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.LogoutResponse'
+    /api/me/account:
+        put:
+            tags:
+                - VolunteerService
+            description: 更新志愿者账户信息（志愿者端）
+            operationId: VolunteerService_VolunteerAccountUpdate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerAccountUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerAccountUpdateResponse'
+    /api/me/organizations:
+        get:
+            tags:
+                - MembershipService
+            description: 查询志愿者加入的组织
+            operationId: MembershipService_GetVolunteerOrganizations
+            parameters:
+                - name: status
+                  in: query
+                  description: '状态筛选 可选 @gotags: query:"status"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page
+                  in: query
+                  description: '页码 必填 @gotags: query:"page,required"'
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  description: '页大小 必填 @gotags: query:"pageSize,required"'
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/membership.VolunteerOrganizationsResponse'
+    /api/me/profile:
+        get:
+            tags:
+                - VolunteerService
+            description: 我的个人信息（志愿者端）
+            operationId: VolunteerService_MyProfile
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.MyProfileResponse'
+    /api/me/volunteer-profile:
+        put:
+            tags:
+                - VolunteerService
+            description: 更新志愿者信息（志愿者端）
+            operationId: VolunteerService_VolunteerUpdate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerUpdateResponse'
     /api/memberships/join:
         post:
             tags:
@@ -1083,99 +1204,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/register.RegisterResponse'
-    /api/organizations/:id:
-        get:
-            tags:
-                - OrganizationService
-            description: 组织详情
-            operationId: OrganizationService_OrganizationDetail
-            parameters:
-                - name: id
-                  in: query
-                  description: '组织ID 必填 @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/organization.OrganizationDetailResponse'
-        put:
-            tags:
-                - OrganizationService
-            description: 更新组织信息
-            operationId: OrganizationService_UpdateOrganization
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/organization.OrganizationUpdateRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/organization.OrganizationUpdateResponse'
-        delete:
-            tags:
-                - OrganizationService
-            description: 删除组织
-            operationId: OrganizationService_DeleteOrganization
-            parameters:
-                - name: id
-                  in: query
-                  description: '组织ID 必填 @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/organization.DeleteOrganizationResponse'
-    /api/organizations/:id/disable:
-        post:
-            tags:
-                - OrganizationService
-            description: 停用组织
-            operationId: OrganizationService_DisableOrganization
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/organization.DisableOrganizationRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/organization.DisableOrganizationResponse'
-    /api/organizations/:id/enable:
-        post:
-            tags:
-                - OrganizationService
-            description: 启用组织
-            operationId: OrganizationService_EnableOrganization
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/organization.EnableOrganizationRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/organization.EnableOrganizationResponse'
     /api/organizations/account:
         put:
             tags:
@@ -1309,6 +1337,122 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/organization.OrganizationSearchResponse'
+    /api/organizations/{organizationId}:
+        get:
+            tags:
+                - OrganizationService
+            description: 组织详情
+            operationId: OrganizationService_OrganizationDetail
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationDetailResponse'
+        put:
+            tags:
+                - OrganizationService
+            description: 更新组织信息
+            operationId: OrganizationService_UpdateOrganization
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.OrganizationUpdateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.OrganizationUpdateResponse'
+        delete:
+            tags:
+                - OrganizationService
+            description: 删除组织
+            operationId: OrganizationService_DeleteOrganization
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.DeleteOrganizationResponse'
+    /api/organizations/{organizationId}/disable:
+        post:
+            tags:
+                - OrganizationService
+            description: 停用组织
+            operationId: OrganizationService_DisableOrganization
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.DisableOrganizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.DisableOrganizationResponse'
+    /api/organizations/{organizationId}/enable:
+        post:
+            tags:
+                - OrganizationService
+            description: 启用组织
+            operationId: OrganizationService_EnableOrganization
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/organization.EnableOrganizationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.EnableOrganizationResponse'
     /api/organizations/{organizationId}/members:
         get:
             tags:
@@ -1396,63 +1540,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/register.RegisterResponse'
-    /api/volunteers/:id:
-        put:
-            tags:
-                - VolunteerService
-            description: 更新志愿者信息（志愿者端）
-            operationId: VolunteerService_VolunteerUpdate
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/volunteer.VolunteerUpdateRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerUpdateResponse'
-    /api/volunteers/account:
-        put:
-            tags:
-                - VolunteerService
-            description: 更新志愿者账户信息（志愿者端）
-            operationId: VolunteerService_VolunteerAccountUpdate
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/volunteer.VolunteerAccountUpdateRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerAccountUpdateResponse'
-    /api/volunteers/detail/:id:
-        get:
-            tags:
-                - VolunteerService
-            description: 志愿者详情（管理员端）
-            operationId: VolunteerService_VolunteerDetail
-            parameters:
-                - name: id
-                  in: query
-                  description: '志愿者ID 必填 @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/volunteer.VolunteerDetailResponse'
     /api/volunteers/home/summary:
         get:
             tags:
@@ -1485,25 +1572,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/volunteer.VolunteerListResponse'
-    /api/volunteers/my/profile/:id:
-        get:
-            tags:
-                - VolunteerService
-            description: 我的个人信息（志愿者端）
-            operationId: VolunteerService_MyProfile
-            parameters:
-                - name: id
-                  in: query
-                  description: '志愿者ID @gotags: path:"id,required"'
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/volunteer.MyProfileResponse'
     /api/volunteers/real-name/submit:
         post:
             tags:
@@ -1523,12 +1591,12 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/volunteer.VolunteerRealNameSubmitResponse'
-    /api/volunteers/{volunteerId}/organizations:
+    /api/volunteers/{volunteerId}:
         get:
             tags:
-                - MembershipService
-            description: 查询志愿者加入的组织
-            operationId: MembershipService_GetVolunteerOrganizations
+                - VolunteerService
+            description: 志愿者详情（管理员端）
+            operationId: VolunteerService_VolunteerDetail
             parameters:
                 - name: volunteerId
                   in: path
@@ -1536,31 +1604,13 @@ paths:
                   required: true
                   schema:
                     type: string
-                - name: status
-                  in: query
-                  description: '状态筛选 可选 @gotags: query:"status"'
-                  schema:
-                    type: integer
-                    format: int32
-                - name: page
-                  in: query
-                  description: '页码 必填 @gotags: query:"page,required"'
-                  schema:
-                    type: integer
-                    format: int32
-                - name: pageSize
-                  in: query
-                  description: '页大小 必填 @gotags: query:"pageSize,required"'
-                  schema:
-                    type: integer
-                    format: int32
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/membership.VolunteerOrganizationsResponse'
+                                $ref: '#/components/schemas/volunteer.VolunteerDetailResponse'
     /api/work-hours/list:
         post:
             tags:
@@ -1890,9 +1940,9 @@ components:
         activity.CancelActivityRequest:
             type: object
             properties:
-                id:
+                activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: path:"id,required"'
+                    description: '活动ID 必填 @gotags: path:"activityId,required"'
                 reason:
                     type: string
                     description: '取消原因 可选 @gotags: json:"reason"'
@@ -1960,9 +2010,9 @@ components:
         activity.FinishActivityRequest:
             type: object
             properties:
-                id:
+                activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: path:"id,required"'
+                    description: '活动ID 必填 @gotags: path:"activityId,required"'
             description: FinishActivityRequest 完结活动请求
         activity.FinishActivityResponse:
             type: object
@@ -1974,9 +2024,9 @@ components:
         activity.GenerateAttendanceCodesRequest:
             type: object
             properties:
-                id:
+                activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: path:"id,required"'
+                    description: '活动ID 必填 @gotags: path:"activityId,required"'
                 checkInValidMinutes:
                     type: integer
                     description: '签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"'
@@ -2039,9 +2089,9 @@ components:
         activity.ResetAttendanceCodeRequest:
             type: object
             properties:
-                id:
+                activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: path:"id,required"'
+                    description: '活动ID 必填 @gotags: path:"activityId,required"'
                 codeType:
                     type: integer
                     description: '重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"'
@@ -2077,9 +2127,9 @@ components:
         activity.UpdateActivityRequest:
             type: object
             properties:
-                id:
+                activityId:
                     type: string
-                    description: '活动ID 必填 @gotags: path:"id,required"'
+                    description: '活动ID 必填 @gotags: path:"activityId,required"'
                 title:
                     type: string
                     description: '活动标题 可选 @gotags: json:"title"'
@@ -2254,9 +2304,9 @@ components:
         api.UserInfo:
             type: object
             properties:
-                userId:
+                accountId:
                     type: string
-                    description: 用户ID
+                    description: 账号ID
                 userName:
                     type: string
                     description: 用户名
@@ -3132,9 +3182,6 @@ components:
         membership.VolunteerJoinRequest:
             type: object
             properties:
-                volunteerId:
-                    type: string
-                    description: '志愿者ID 必填 @gotags: json:"volunteerId,required"'
                 organizationId:
                     type: string
                     description: '组织ID 必填 @gotags: json:"organizationId,required"'
@@ -3336,9 +3383,9 @@ components:
         organization.DisableOrganizationRequest:
             type: object
             properties:
-                id:
+                organizationId:
                     type: string
-                    description: '组织ID 必填 @gotags: path:"id,required"'
+                    description: '组织ID 必填 @gotags: path:"organizationId,required"'
                 reason:
                     type: string
                     description: '停用原因 可选 @gotags: json:"reason"'
@@ -3353,9 +3400,9 @@ components:
         organization.EnableOrganizationRequest:
             type: object
             properties:
-                id:
+                organizationId:
                     type: string
-                    description: '组织ID 必填 @gotags: path:"id,required"'
+                    description: '组织ID 必填 @gotags: path:"organizationId,required"'
                 reason:
                     type: string
                     description: '启用原因 可选 @gotags: json:"reason"'
@@ -3667,9 +3714,9 @@ components:
         organization.OrganizationUpdateRequest:
             type: object
             properties:
-                id:
+                organizationId:
                     type: string
-                    description: '组织ID 必填 @gotags: path:"id,required"'
+                    description: '组织ID 必填 @gotags: path:"organizationId,required"'
                 name:
                     type: string
                     description: '组织名称 可选 @gotags: json:"name"'
@@ -4026,9 +4073,6 @@ components:
         volunteer.VolunteerUpdateRequest:
             type: object
             properties:
-                volunteerId:
-                    type: string
-                    description: '志愿者ID @gotags: path:"id,required"'
                 gender:
                     type: integer
                     description: '性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"'

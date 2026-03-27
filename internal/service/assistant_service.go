@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 	"volunteer-system/config"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/ai"
@@ -93,7 +92,7 @@ func (s *AssistantService) CreateSession(req *api.AssistantCreateSessionRequest)
 		return nil, errors.New("请求不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +108,7 @@ func (s *AssistantService) CreateSession(req *api.AssistantCreateSessionRequest)
 		title = defaultSessionTitle(scene)
 	}
 
-	session, err := s.createSessionForUser(userID, scene, title)
+	session, err := s.createSessionForUser(accountID, scene, title)
 	if err != nil {
 		return nil, err
 	}
@@ -132,12 +131,12 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		return nil, err
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := s.repo.GetAiSessionByIDAndUser(s.repo.DB, req.SessionId, userID)
+	session, err := s.repo.GetAiSessionByIDAndUser(s.repo.DB, req.SessionId, accountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("会话不存在")
@@ -152,7 +151,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	requestID := s.resolveRequestID()
 	now := time.Now()
 	// 先原子扣减请求配额，再进入后续流程，避免并发下超额放行。
-	if err := s.checkDailyUserQuota(now, userID, cfg); err != nil {
+	if err := s.checkDailyUserQuota(now, accountID, cfg); err != nil {
 		return nil, err
 	}
 	usageOutcomeRecorded := false
@@ -165,8 +164,8 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		if usageOutcomeRecorded {
 			return
 		}
-		if err := s.repo.AppendAiUsageOutcome(s.repo.DB, now, userID, usageSuccess, usageTokenIn, usageTokenOut, usageEstimatedCost); err != nil {
-			log.Error("补记 AI 失败用量失败: %v, user_id=%d", err, userID)
+		if err := s.repo.AppendAiUsageOutcome(s.repo.DB, now, accountID, usageSuccess, usageTokenIn, usageTokenOut, usageEstimatedCost); err != nil {
+			log.Error("补记 AI 失败用量失败: %v, account_id=%d", err, accountID)
 		}
 	}()
 
@@ -178,7 +177,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		CreatedAt: now,
 	}
 	if err := s.appendAiMessage(userMessage); err != nil {
-		log.Error("写入用户消息失败: %v, session_id=%d user_id=%d", err, session.ID, userID)
+		log.Error("写入用户消息失败: %v, session_id=%d account_id=%d", err, session.ID, accountID)
 		return nil, err
 	}
 
@@ -194,7 +193,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	util.ReverseInPlace(historyRows)
 
 	runtimeInput := &runtimeChatInput{
-		UserID:    userID,
+		UserID:    accountID,
 		SessionID: session.ID,
 		Scene:     session.Scene,
 		Message:   message,
@@ -204,7 +203,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	// 运行时失败时降级为 fallback 输出，尽量保持用户可用体验。
 	runtimeOutput, runtimeErr := s.runRuntime(runtimeInput)
 	if runtimeErr != nil {
-		log.Warn("AI runtime execute failed, using fallback output: %v, session_id=%d user_id=%d", runtimeErr, session.ID, userID)
+		log.Warn("AI runtime execute failed, using fallback output: %v, session_id=%d account_id=%d", runtimeErr, session.ID, accountID)
 		runtimeOutput = s.buildRuntimeFallbackOutput(runtimeOutput, runtimeErr)
 	}
 	if runtimeOutput == nil {
@@ -220,7 +219,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 
 	toolResults := runtimeToolCallsToAssistantResults(runtimeOutput.ToolCalls)
 	// 工具结果先写消息与工具日志，再绑定到本次 assistant 消息。
-	toolLogIDs := s.persistRuntimeToolResults(session.ID, userID, requestID, toolResults)
+	toolLogIDs := s.persistRuntimeToolResults(session.ID, accountID, requestID, toolResults)
 
 	assistantMsg := &model.AiMessage{
 		SessionID:    session.ID,
@@ -235,7 +234,7 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 		CreatedAt:    time.Now(),
 	}
 	if err := s.appendAiMessage(assistantMsg); err != nil {
-		log.Error("写入助手消息失败: %v, session_id=%d user_id=%d", err, session.ID, userID)
+		log.Error("写入助手消息失败: %v, session_id=%d account_id=%d", err, session.ID, accountID)
 		return nil, err
 	}
 
@@ -259,8 +258,8 @@ func (s *AssistantService) Chat(req *api.AssistantChatRequest) (*api.AssistantCh
 	usageTokenIn = runtimeOutput.TokenIn
 	usageTokenOut = runtimeOutput.TokenOut
 	usageEstimatedCost = estimatedCost
-	if err := s.repo.AppendAiUsageOutcome(s.repo.DB, now, userID, runtimeSuccess, runtimeOutput.TokenIn, runtimeOutput.TokenOut, estimatedCost); err != nil {
-		log.Error("更新 AI 用量失败: %v, user_id=%d", err, userID)
+	if err := s.repo.AppendAiUsageOutcome(s.repo.DB, now, accountID, runtimeSuccess, runtimeOutput.TokenIn, runtimeOutput.TokenOut, estimatedCost); err != nil {
+		log.Error("更新 AI 用量失败: %v, account_id=%d", err, accountID)
 	} else {
 		// 主路径写入成功后，关闭 defer 补记。
 		usageOutcomeRecorded = true
@@ -282,12 +281,12 @@ func (s *AssistantService) GetSessionMessages(req *api.AssistantSessionMessagesR
 		return nil, errors.New("会话ID不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = s.repo.GetAiSessionByIDAndUser(s.repo.DB, req.Id, userID)
+	_, err = s.repo.GetAiSessionByIDAndUser(s.repo.DB, req.Id, accountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("会话不存在")
@@ -334,7 +333,7 @@ func (s *AssistantService) ActivityDraftAction(req *api.AssistantActivityDraftAc
 		return nil, errors.New("主题不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
@@ -342,13 +341,13 @@ func (s *AssistantService) ActivityDraftAction(req *api.AssistantActivityDraftAc
 	sessionID := req.SessionId
 	if sessionID <= 0 {
 		// 草案快捷入口允许无会话调用：内部自动创建会话承接上下文。
-		session, err := s.createSessionForUser(userID, assistantSceneActivityDraft, s.generateSessionTitle(req.Topic, assistantSceneActivityDraft))
+		session, err := s.createSessionForUser(accountID, assistantSceneActivityDraft, s.generateSessionTitle(req.Topic, assistantSceneActivityDraft))
 		if err != nil {
 			return nil, err
 		}
 		sessionID = session.ID
 	} else {
-		if _, err := s.repo.GetAiSessionByIDAndUser(s.repo.DB, sessionID, userID); err != nil {
+		if _, err := s.repo.GetAiSessionByIDAndUser(s.repo.DB, sessionID, accountID); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("会话不存在")
 			}

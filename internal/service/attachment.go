@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -77,11 +76,11 @@ func (s *ImportService) ImportVolunteers(filename string, content []byte) (*api.
 	if len(content) == 0 {
 		return nil, errors.New("导入文件不能为空")
 	}
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireAnyOrganizationManagePermission(operatorID); err != nil {
+	if err := s.requireAnyOrganizationManagePermission(operatorAccountID); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +111,7 @@ func (s *ImportService) ImportActivities(filename string, content []byte) (*api.
 	if len(content) == 0 {
 		return nil, errors.New("导入文件不能为空")
 	}
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +125,7 @@ func (s *ImportService) ImportActivities(filename string, content []byte) (*api.
 	successCount := 0
 	for index, row := range rows {
 		rowNumber := int32(index + 2)
-		if err := s.importActivityRow(operatorID, row); err != nil {
+		if err := s.importActivityRow(operatorAccountID, row); err != nil {
 			failures = append(failures, importFailure{
 				RowNumber: rowNumber,
 				Reason:    err.Error(),

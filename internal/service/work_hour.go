@@ -7,7 +7,6 @@ import (
 	"time"
 	"unicode/utf8"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -270,12 +269,12 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 		return nil, errors.New("工时操作类型无效")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 
-	account, err := s.repo.FindByID(s.repo.DB, userID)
+	account, err := s.repo.FindByID(s.repo.DB, accountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("账号不存在")
@@ -289,12 +288,12 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 	switch account.IdentityType {
 	case model.RegisterTypeVolunteerCode:
 		// 志愿者：只能看自己的流水
-		volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
+		volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, accountID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("志愿者信息不存在")
 			}
-			log.Error("工时流水查询失败: 查询志愿者信息异常: %v, user_id=%d", err, userID)
+			log.Error("工时流水查询失败: 查询志愿者信息异常: %v, account_id=%d", err, accountID)
 			return nil, err
 		}
 		if volunteer == nil {
@@ -313,7 +312,7 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 				return nil, err
 			}
 			if err := s.requireOrgPermission(
-				userID,
+				accountID,
 				activity.OrgID,
 				model.PermissionResourceOrganization,
 				model.PermissionActionManage,
@@ -324,7 +323,7 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 			activityFilterLocked = true
 		} else {
 			hasGlobalManage, err := s.hasPermissionByScope(
-				userID,
+				accountID,
 				model.RBACScopeGlobal,
 				0,
 				model.PermissionResourceOrganization,
@@ -336,7 +335,7 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 			if !hasGlobalManage {
 				orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
 					s.repo.DB,
-					userID,
+					accountID,
 					model.PermissionResourceOrganization,
 					model.PermissionActionManage,
 					0,
@@ -417,7 +416,7 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		return nil, err
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +424,7 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		return logEntry != nil &&
 			logEntry.SignupID == req.SignupId &&
 			logEntry.OperationType == model.WorkHourOperationVoid &&
-			logEntry.OperatorID == userID &&
+			logEntry.OperatorID == accountID &&
 			logEntry.Reason == reason
 	}
 
@@ -444,7 +443,7 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		}, nil
 	}
 
-	preSignup, preActivity, preLastLog, err := s.loadWorkHourMutationBase(s.repo.DB, req.SignupId, userID)
+	preSignup, preActivity, preLastLog, err := s.loadWorkHourMutationBase(s.repo.DB, req.SignupId, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +516,7 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 			IdempotencyKey:     idempotencyKey,
 			RefLogID:           refLogID,
 			Reason:             reason,
-			OperatorID:         userID,
+			OperatorID:         accountID,
 		}
 		logID, idempotent, err := s.insertWorkHourLogIdempotent(tx, logItem, isSameIdempotentRequest)
 		if err != nil {
@@ -595,7 +594,7 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		return nil, err
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +602,7 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		return logEntry != nil &&
 			logEntry.SignupID == req.SignupId &&
 			logEntry.OperationType == model.WorkHourOperationRegrant &&
-			logEntry.OperatorID == userID &&
+			logEntry.OperatorID == accountID &&
 			logEntry.Reason == reason
 	}
 
@@ -644,7 +643,7 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		}, nil
 	}
 
-	preSignup, preActivity, preLastLog, err := s.loadWorkHourMutationBase(s.repo.DB, req.SignupId, userID)
+	preSignup, preActivity, preLastLog, err := s.loadWorkHourMutationBase(s.repo.DB, req.SignupId, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -731,7 +730,7 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 			IdempotencyKey:     idempotencyKey,
 			RefLogID:           refLogID,
 			Reason:             reason,
-			OperatorID:         userID,
+			OperatorID:         accountID,
 		}
 		logID, idempotent, err := s.insertWorkHourLogIdempotent(tx, logItem, isSameIdempotentRequest)
 		if err != nil {

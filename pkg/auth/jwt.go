@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,11 +25,21 @@ const (
 )
 
 type Claims struct {
-	UserID    string `json:"sub"`
+	AccountID string `json:"accountId"`
 	TokenID   string `json:"jti"` // JWT ID
 	TokenType string `json:"type"`
 	DeviceID  string `json:"device"`
 	jwt.RegisteredClaims
+}
+
+func (c *Claims) GetAccountID() string {
+	if c == nil {
+		return ""
+	}
+	if strings.TrimSpace(c.AccountID) != "" {
+		return c.AccountID
+	}
+	return strings.TrimSpace(c.Subject)
 }
 
 type TokenPair struct {
@@ -53,15 +64,15 @@ func NewManager(secretKey string, redis *redis.Client) *Manager {
 }
 
 // GenerateTokenPair 生成双 Token
-func (m *Manager) GenerateTokenPair(userID string, deviceID string, accessTokenTTL time.Duration, refreshTokenTTL time.Duration) (string, string, string, string, error) {
+func (m *Manager) GenerateTokenPair(accountID string, deviceID string, accessTokenTTL time.Duration, refreshTokenTTL time.Duration) (string, string, string, string, error) {
 	// 生成 Access Token
-	accessTokenID, accessToken, err := m.generateAccessToken(userID, deviceID, accessTokenTTL)
+	accessTokenID, accessToken, err := m.generateAccessToken(accountID, deviceID, accessTokenTTL)
 	if err != nil {
 		return "", "", "", "", err
 	}
 
 	// 生成 Refresh Token
-	refreshTokenID, refreshToken, err := m.generateRefreshToken(userID, deviceID, refreshTokenTTL)
+	refreshTokenID, refreshToken, err := m.generateRefreshToken(accountID, deviceID, refreshTokenTTL)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -70,17 +81,18 @@ func (m *Manager) GenerateTokenPair(userID string, deviceID string, accessTokenT
 }
 
 // generateAccessToken 生成短期 Access Token
-func (m *Manager) generateAccessToken(userID string, deviceID string, ttl time.Duration) (string, string, error) {
+func (m *Manager) generateAccessToken(accountID string, deviceID string, ttl time.Duration) (string, string, error) {
 	tokenID := uuid.New().String()
 	now := time.Now()
 	claims := Claims{
-		UserID:    userID,
+		AccountID: accountID,
 		TokenID:   tokenID,
 		TokenType: "access",
 		DeviceID:  deviceID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),
+			Subject:   accountID,
 		},
 	}
 
@@ -94,17 +106,18 @@ func (m *Manager) generateAccessToken(userID string, deviceID string, ttl time.D
 }
 
 // generateRefreshToken 生成长期 Refresh Token
-func (m *Manager) generateRefreshToken(userID string, deviceID string, ttl time.Duration) (string, string, error) {
+func (m *Manager) generateRefreshToken(accountID string, deviceID string, ttl time.Duration) (string, string, error) {
 	tokenID := uuid.New().String()
 	now := time.Now()
 	claims := Claims{
-		UserID:    userID,
+		AccountID: accountID,
 		TokenID:   tokenID,
 		TokenType: "refresh",
 		DeviceID:  deviceID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),
+			Subject:   accountID,
 		},
 	}
 
@@ -157,9 +170,9 @@ func (m *Manager) validateToken(tokenString string, expectedType string) (*Claim
 }
 
 // GenerateTokenPairWithStorage 生成双Token（带 Redis 存储）
-func (m *Manager) GenerateTokenPairWithStorage(ctx context.Context, userID string, deviceID string, ipAddress string, userAgent string) (*TokenPair, error) {
+func (m *Manager) GenerateTokenPairWithStorage(ctx context.Context, accountID string, deviceID string, ipAddress string, userAgent string) (*TokenPair, error) {
 	// 1. 调用原有 GenerateTokenPair 生成双 Token
-	_, accessToken, refreshTokenID, refreshToken, err := m.GenerateTokenPair(userID, deviceID, AccessTokenTTL, RefreshTokenTTL)
+	_, accessToken, refreshTokenID, refreshToken, err := m.GenerateTokenPair(accountID, deviceID, AccessTokenTTL, RefreshTokenTTL)
 	if err != nil {
 		return nil, fmt.Errorf("generate token pair failed: %w", err)
 	}
@@ -171,7 +184,7 @@ func (m *Manager) GenerateTokenPairWithStorage(ctx context.Context, userID strin
 	}
 
 	// 3. 添加到用户 Token 列表（存储 tokenID）
-	userTokensKey := fmt.Sprintf("user:tokens:%s", userID)
+	userTokensKey := fmt.Sprintf("user:tokens:%s", accountID)
 	m.redis.Set(ctx, userTokensKey, refreshTokenID, RefreshTokenTTL)
 
 	return &TokenPair{
@@ -190,7 +203,7 @@ func (m *Manager) RefreshTokenWithStorage(ctx context.Context, refreshToken stri
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
 
-	userID := claims.UserID
+	accountID := claims.GetAccountID()
 	deviceID := claims.DeviceID
 	oldTokenID := claims.TokenID
 
@@ -205,7 +218,7 @@ func (m *Manager) RefreshTokenWithStorage(ctx context.Context, refreshToken stri
 	}
 
 	// 3. 检查刷新限流
-	limitKey := fmt.Sprintf("refresh:limit:%s:%s", userID, deviceID)
+	limitKey := fmt.Sprintf("refresh:limit:%s:%s", accountID, deviceID)
 	count, _ := m.redis.Incr(ctx, limitKey).Result()
 	if count == 1 {
 		m.redis.Expire(ctx, limitKey, RefreshLimitWindow)
@@ -216,7 +229,7 @@ func (m *Manager) RefreshTokenWithStorage(ctx context.Context, refreshToken stri
 
 	// 4. 生成新的双 Token
 	_, newAccessToken, newRefreshTokenID, newRefreshToken, err := m.GenerateTokenPair(
-		userID, deviceID, AccessTokenTTL, RefreshTokenTTL,
+		accountID, deviceID, AccessTokenTTL, RefreshTokenTTL,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("generate new tokens failed: %w", err)
@@ -232,7 +245,7 @@ func (m *Manager) RefreshTokenWithStorage(ctx context.Context, refreshToken stri
 	m.redis.Del(ctx, key)
 
 	// 7. 更新用户 Token 列表（存储 tokenID）
-	userTokensKey := fmt.Sprintf("user:tokens:%s", userID)
+	userTokensKey := fmt.Sprintf("user:tokens:%s", accountID)
 	m.redis.Set(ctx, userTokensKey, newRefreshTokenID, RefreshTokenTTL)
 
 	return &TokenPair{
@@ -244,7 +257,7 @@ func (m *Manager) RefreshTokenWithStorage(ctx context.Context, refreshToken stri
 }
 
 // RevokeToken 撤销指定的 Token
-func (m *Manager) RevokeToken(ctx context.Context, tokenID string, userID string) error {
+func (m *Manager) RevokeToken(ctx context.Context, tokenID string, accountID string) error {
 	// 1. 删除 Redis 中的 token 记录
 	key := fmt.Sprintf("refresh:%s", tokenID)
 	if err := m.redis.Del(ctx, key).Err(); err != nil {
@@ -252,7 +265,7 @@ func (m *Manager) RevokeToken(ctx context.Context, tokenID string, userID string
 	}
 
 	// 2. 从用户 token 列表中移除
-	userTokensKey := fmt.Sprintf("user:tokens:%s", userID)
+	userTokensKey := fmt.Sprintf("user:tokens:%s", accountID)
 	m.redis.Del(ctx, userTokensKey)
 
 	return nil

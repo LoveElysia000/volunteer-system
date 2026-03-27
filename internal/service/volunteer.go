@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -109,21 +108,21 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 	}
 
 	// 获取当前操作者可管理的组织范围
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("查询志愿者列表失败: 获取当前用户ID失败: %v", err)
+		log.Error("查询志愿者列表失败: 获取当前账户ID失败: %v", err)
 		return nil, err
 	}
 
 	hasGlobalManage, err := s.hasPermissionByScope(
-		userID,
+		accountID,
 		model.RBACScopeGlobal,
 		0,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
 	)
 	if err != nil {
-		log.Error("查询志愿者列表失败: 查询全局权限异常: %v, user_id=%d", err, userID)
+		log.Error("查询志愿者列表失败: 查询全局权限异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -131,19 +130,19 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 	if !hasGlobalManage {
 		orgIDs, err = s.repo.ListOrgScopeIDsByPermission(
 			s.repo.DB,
-			userID,
+			accountID,
 			model.PermissionResourceOrganization,
 			model.PermissionActionManage,
 			0,
 		)
 		if err != nil {
-			log.Error("查询志愿者列表失败: 查询组织作用域异常: %v, user_id=%d", err, userID)
+			log.Error("查询志愿者列表失败: 查询组织作用域异常: %v, account_id=%d", err, accountID)
 			return nil, err
 		}
 	}
 
 	if !hasGlobalManage && len(orgIDs) == 0 {
-		log.Error("查询志愿者列表失败: 当前用户无组织管理权限, user_id=%d", userID)
+		log.Error("查询志愿者列表失败: 当前用户无组织管理权限, account_id=%d", accountID)
 		return nil, errors.New("当前用户无组织管理权限")
 	}
 
@@ -209,25 +208,25 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	if req.Id <= 0 {
+	if req.VolunteerId <= 0 {
 		return nil, errors.New("志愿者ID无效")
 	}
 	// 查询志愿者信息
-	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.Id)
+	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.VolunteerId)
 	if err != nil {
-		log.Error("查询志愿者信息失败: %v, ID=%d", err, req.Id)
+		log.Error("查询志愿者信息失败: %v, volunteer_id=%d", err, req.VolunteerId)
 		return nil, err
 	}
 
 	if volunteer == nil {
-		log.Error("查询志愿者信息失败: 志愿者不存在, id=%d", req.Id)
+		log.Error("查询志愿者信息失败: 志愿者不存在, volunteer_id=%d", req.VolunteerId)
 		return nil, errors.New("志愿者不存在")
 	}
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
-	allowed, err := s.hasVolunteerAccess(operatorID, volunteer)
+	allowed, err := s.hasVolunteerAccess(operatorAccountID, volunteer)
 	if err != nil {
 		return nil, err
 	}
@@ -267,40 +266,21 @@ func (s *VolunteerService) VolunteerDetail(req *api.VolunteerDetailRequest) (*ap
 
 // MyProfile 我的个人信息（志愿者端）
 func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileResponse, error) {
-	// 参数校验
-	if req == nil || req.Id <= 0 {
-		return nil, errors.New("志愿者ID无效")
+	if req == nil {
+		return nil, errors.New("请求不能为空")
 	}
 
 	// 权限校验：只能查询自己的档案
-	userID, err := middleware.GetUserIDInt(s.c)
+	volunteer, accountID, err := s.currentVolunteer()
 	if err != nil {
-		log.Error("查询我的个人信息失败: 获取当前用户ID失败: %v", err)
+		log.Error("查询我的个人信息失败: 查询志愿者信息异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
-	// 直接按当前账号查询本人志愿者档案，避免通过外部传入 ID 枚举他人信息。
-	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("志愿者不存在")
-		}
-		log.Error("查询我的个人信息失败: 查询志愿者信息异常: %v, user_id=%d", err, userID)
-		return nil, err
-	}
-	if volunteer == nil {
-		log.Error("查询我的个人信息失败: 志愿者不存在, user_id=%d", userID)
-		return nil, errors.New("志愿者不存在")
-	}
-	if req.Id != volunteer.ID {
-		log.Error("查询我的个人信息失败: 无权查看他人信息, user_id=%d, volunteer_id=%d", userID, req.Id)
-		return nil, errors.New("无权查看他人信息")
-	}
-
-	account, err := s.repo.FindByID(s.repo.DB, userID)
+	account, err := s.repo.FindByID(s.repo.DB, accountID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error("查询我的个人信息失败: 查询账户信息异常: %v, user_id=%d", err, userID)
+			log.Error("查询我的个人信息失败: 查询账户信息异常: %v, account_id=%d", err, accountID)
 			return nil, err
 		}
 		account = nil
@@ -308,7 +288,7 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 
 	resp, err := buildVolunteerMyProfileResponse(volunteer, account)
 	if err != nil {
-		log.Error("查询我的个人信息失败: 组装响应异常: %v, user_id=%d, volunteer_id=%d", err, userID, volunteer.ID)
+		log.Error("查询我的个人信息失败: 组装响应异常: %v, account_id=%d, volunteer_id=%d", err, accountID, volunteer.ID)
 		return nil, err
 	}
 	return resp, nil
@@ -316,29 +296,17 @@ func (s *VolunteerService) MyProfile(req *api.MyProfileRequest) (*api.MyProfileR
 
 // VolunteerHomeSummary 志愿者首页摘要（志愿者端）
 func (s *VolunteerService) VolunteerHomeSummary(_ *api.VolunteerHomeSummaryRequest) (*api.VolunteerHomeSummaryResponse, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	volunteer, accountID, err := s.currentVolunteer()
 	if err != nil {
-		log.Error("查询志愿者首页摘要失败: 获取当前用户ID失败: %v", err)
+		log.Error("查询志愿者首页摘要失败: 查询志愿者异常: %v", err)
 		return nil, err
-	}
-
-	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("志愿者信息不存在")
-		}
-		log.Error("查询志愿者首页摘要失败: 查询志愿者异常: %v, user_id=%d", err, userID)
-		return nil, err
-	}
-	if volunteer == nil {
-		return nil, errors.New("志愿者信息不存在")
 	}
 
 	nickname := volunteer.RealName
-	account, err := s.repo.FindByID(s.repo.DB, userID)
+	account, err := s.repo.FindByID(s.repo.DB, accountID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error("查询志愿者首页摘要失败: 查询账号异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteer.ID)
+			log.Error("查询志愿者首页摘要失败: 查询账号异常: %v, account_id=%d volunteer_id=%d", err, accountID, volunteer.ID)
 			return nil, err
 		}
 	} else if account != nil && account.UserName != "" {
@@ -350,14 +318,14 @@ func (s *VolunteerService) VolunteerHomeSummary(_ *api.VolunteerHomeSummaryReque
 	nextMonthStart := monthStart.AddDate(0, 1, 0)
 	monthlyGrowth, err := s.repo.SumRecordAmountByTypeAndTime(s.repo.DB, volunteer.ID, "HOUR", monthStart, nextMonthStart)
 	if err != nil {
-		log.Error("查询志愿者首页摘要失败: 查询月增长异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteer.ID)
+		log.Error("查询志愿者首页摘要失败: 查询月增长异常: %v, account_id=%d volunteer_id=%d", err, accountID, volunteer.ID)
 		return nil, err
 	}
 
 	needHoursToNextLevel := 0.0
 	nextLevelRule, err := s.repo.FindNextLevelRuleByTotalHours(s.repo.DB, volunteer.TotalHours)
 	if err != nil {
-		log.Error("查询志愿者首页摘要失败: 查询下一等级规则异常: %v, user_id=%d volunteer_id=%d total_hours=%.1f", err, userID, volunteer.ID, volunteer.TotalHours)
+		log.Error("查询志愿者首页摘要失败: 查询下一等级规则异常: %v, account_id=%d volunteer_id=%d total_hours=%.1f", err, accountID, volunteer.ID, volunteer.TotalHours)
 		return nil, err
 	}
 	if nextLevelRule != nil {
@@ -384,18 +352,13 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	// 参数校验 + 构建更新查询
-	if req.VolunteerId <= 0 {
-		log.Error("更新志愿者信息失败: 志愿者ID无效, volunteer_id=%d", req.VolunteerId)
-		return nil, errors.New("志愿者ID无效")
-	}
 
 	updateQuery := map[string]any{}
 
 	// 简化处理：gender=0 视为“不更新”，仅在传入非 0 时更新性别。
 	if req.Gender != 0 {
 		if req.Gender < 0 || req.Gender > 2 {
-			log.Error("更新志愿者信息失败: 性别值无效, volunteer_id=%d, gender=%d", req.VolunteerId, req.Gender)
+			log.Error("更新志愿者信息失败: 性别值无效, gender=%d", req.Gender)
 			return nil, errors.New("性别值无效，0-未知, 1-男, 2-女")
 		}
 		updateQuery["gender"] = req.Gender
@@ -406,7 +369,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	if req.Birthday != "" {
 		t, err := util.ParsePastDate(req.Birthday)
 		if err != nil {
-			log.Error("更新志愿者信息失败: 生日格式错误, volunteer_id=%d, birthday=%s, err=%v", req.VolunteerId, req.Birthday, err)
+			log.Error("更新志愿者信息失败: 生日格式错误, birthday=%s, err=%v", req.Birthday, err)
 			return nil, errors.New("生日格式错误，请使用 YYYY-MM-DD 格式")
 		}
 		birthday = &t
@@ -416,7 +379,7 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	// 校验头像URL
 	if req.AvatarUrl != "" {
 		if len(req.AvatarUrl) > 255 {
-			log.Error("更新志愿者信息失败: 头像URL长度超限, volunteer_id=%d, length=%d", req.VolunteerId, len(req.AvatarUrl))
+			log.Error("更新志愿者信息失败: 头像URL长度超限, length=%d", len(req.AvatarUrl))
 			return nil, errors.New("头像URL长度不能超过255个字符")
 		}
 		updateQuery["avatar_url"] = req.AvatarUrl
@@ -425,44 +388,27 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 	// 校验个人简介
 	if req.Introduction != "" {
 		if len(req.Introduction) > 2000 {
-			log.Error("更新志愿者信息失败: 个人简介长度超限, volunteer_id=%d, length=%d", req.VolunteerId, len(req.Introduction))
+			log.Error("更新志愿者信息失败: 个人简介长度超限, length=%d", len(req.Introduction))
 			return nil, errors.New("个人简介长度不能超过2000个字符")
 		}
 		updateQuery["introduction"] = req.Introduction
 	}
 
 	if len(updateQuery) == 0 {
-		log.Error("更新志愿者信息失败: 没有需要更新的字段, volunteer_id=%d", req.VolunteerId)
+		log.Error("更新志愿者信息失败: 没有需要更新的字段")
 		return nil, errors.New("没有需要更新的字段")
 	}
 
-	// 检查志愿者是否存在
-	volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, req.VolunteerId)
+	volunteer, accountID, err := s.currentVolunteer()
 	if err != nil {
-		log.Error("查询志愿者信息失败: %v, ID=%d", err, req.VolunteerId)
-		return nil, errors.New("查询志愿者信息失败")
-	}
-
-	if volunteer == nil {
-		log.Error("更新志愿者信息失败: 志愿者不存在, volunteer_id=%d", req.VolunteerId)
-		return nil, errors.New("志愿者不存在")
-	}
-	operatorID, err := middleware.GetUserIDInt(s.c)
-	if err != nil {
+		log.Error("更新志愿者信息失败: 查询本人志愿者信息异常: %v, account_id=%d", err, accountID)
 		return nil, err
-	}
-	allowed, err := s.hasVolunteerAccess(operatorID, volunteer)
-	if err != nil {
-		return nil, err
-	}
-	if !allowed {
-		return nil, errors.New("无权更新该志愿者信息")
 	}
 
 	// 调用 repository 层更新
-	err = s.repo.UpdateVolunteer(s.repo.DB, req.VolunteerId, updateQuery)
+	err = s.repo.UpdateVolunteer(s.repo.DB, volunteer.ID, updateQuery)
 	if err != nil {
-		log.Error("更新志愿者信息失败: %v, ID=%d", err, req.VolunteerId)
+		log.Error("更新志愿者信息失败: %v, volunteer_id=%d account_id=%d", err, volunteer.ID, accountID)
 		return nil, errors.New("更新志愿者信息失败")
 	}
 
@@ -471,17 +417,17 @@ func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*ap
 }
 
 func (s *VolunteerService) VolunteerAccountUpdate(req *api.VolunteerAccountUpdateRequest) (*api.VolunteerAccountUpdateResponse, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 
-	account, err := s.repo.FindByID(s.repo.DB, userID)
+	account, err := s.repo.FindByID(s.repo.DB, accountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("账户不存在")
 		}
-		log.Error("更新账户信息失败: 查询账户异常: %v, user_id=%d", err, userID)
+		log.Error("更新账户信息失败: 查询账户异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -493,7 +439,7 @@ func (s *VolunteerService) VolunteerAccountUpdate(req *api.VolunteerAccountUpdat
 	if email, ok := updates["email"].(string); ok && email != "" && email != account.Email {
 		exists, checkErr := s.repo.CheckEmailExists(s.repo.DB, email)
 		if checkErr != nil {
-			log.Error("更新账户信息失败: 检查邮箱异常: %v, user_id=%d", checkErr, userID)
+			log.Error("更新账户信息失败: 检查邮箱异常: %v, account_id=%d", checkErr, accountID)
 			return nil, errors.New("检查邮箱失败")
 		}
 		if exists {
@@ -504,7 +450,7 @@ func (s *VolunteerService) VolunteerAccountUpdate(req *api.VolunteerAccountUpdat
 	if mobileHash, ok := updates["mobile_hash"].(string); ok && mobileHash != "" && mobileHash != account.MobileHash {
 		exists, checkErr := s.repo.CheckMobileExists(s.repo.DB, mobileHash)
 		if checkErr != nil {
-			log.Error("更新账户信息失败: 检查手机号异常: %v, user_id=%d", checkErr, userID)
+			log.Error("更新账户信息失败: 检查手机号异常: %v, account_id=%d", checkErr, accountID)
 			return nil, errors.New("检查手机号失败")
 		}
 		if exists {
@@ -512,8 +458,8 @@ func (s *VolunteerService) VolunteerAccountUpdate(req *api.VolunteerAccountUpdat
 		}
 	}
 
-	if err := s.repo.UpdateAccountByID(s.repo.DB, userID, updates); err != nil {
-		log.Error("更新账户信息失败: %v, user_id=%d", err, userID)
+	if err := s.repo.UpdateAccountByID(s.repo.DB, accountID, updates); err != nil {
+		log.Error("更新账户信息失败: %v, account_id=%d", err, accountID)
 		return nil, errors.New("更新账户信息失败")
 	}
 
@@ -526,18 +472,9 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 		return nil, errors.New("请求不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	volunteer, accountID, err := s.currentVolunteer()
 	if err != nil {
-		log.Error("提交实名认证失败: 获取当前用户ID异常: %v", err)
-		return nil, err
-	}
-
-	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("志愿者信息不存在")
-		}
-		log.Error("提交实名认证失败: 查询志愿者信息异常: %v, user_id=%d", err, userID)
+		log.Error("提交实名认证失败: 获取当前志愿者失败: %v", err)
 		return nil, err
 	}
 
@@ -551,7 +488,7 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 			return lockErr
 		}
 
-		hasPending, pendingErr := s.hasPendingVolunteerUpdateAuditByScene(tx, lockedVolunteer.ID, userID, model.AuditSceneVolunteerRealNameVerify)
+		hasPending, pendingErr := s.hasPendingVolunteerUpdateAuditByScene(tx, lockedVolunteer.ID, accountID, model.AuditSceneVolunteerRealNameVerify)
 		if pendingErr != nil {
 			return pendingErr
 		}
@@ -566,7 +503,7 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 		record, recordErr := buildPendingUpdateAuditRecordByPatch(
 			model.AuditTargetVolunteer,
 			lockedVolunteer.ID,
-			userID,
+			accountID,
 			model.AuditSceneVolunteerRealNameVerify,
 			oldPayload,
 			newPayload,
@@ -591,7 +528,7 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 		return nil
 	})
 	if err != nil {
-		log.Error("提交实名认证失败: %v, volunteer_id=%d user_id=%d", err, volunteer.ID, userID)
+		log.Error("提交实名认证失败: %v, volunteer_id=%d account_id=%d", err, volunteer.ID, accountID)
 		return nil, err
 	}
 	return resp, nil

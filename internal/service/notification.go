@@ -8,7 +8,6 @@ import (
 	"time"
 	"volunteer-system/config"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/notify"
@@ -54,9 +53,9 @@ func (s *NotificationService) ListNotifications(req *api.NotificationListRequest
 		return nil, errors.New("请求上下文不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("通知列表查询失败: 获取当前用户ID异常: %v", err)
+		log.Error("通知列表查询失败: 获取当前账户ID异常: %v", err)
 		return nil, err
 	}
 
@@ -73,9 +72,9 @@ func (s *NotificationService) ListNotifications(req *api.NotificationListRequest
 	}
 	offset := (int(page) - 1) * int(pageSize)
 
-	rows, total, err := s.repo.ListNotificationInboxByReceiver(s.repo.DB, userID, req.UnreadOnly, int(pageSize), offset)
+	rows, total, err := s.repo.ListNotificationInboxByReceiver(s.repo.DB, accountID, req.UnreadOnly, int(pageSize), offset)
 	if err != nil {
-		log.Error("通知列表查询失败: 查询通知收件箱异常: %v, user_id=%d page=%d page_size=%d unread_only=%v", err, userID, page, pageSize, req.UnreadOnly)
+		log.Error("通知列表查询失败: 查询通知收件箱异常: %v, account_id=%d page=%d page_size=%d unread_only=%v", err, accountID, page, pageSize, req.UnreadOnly)
 		return nil, err
 	}
 
@@ -112,9 +111,9 @@ func (s *NotificationService) MarkNotificationsRead(req *api.NotificationReadReq
 		return nil, errors.New("请求上下文不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("通知批量已读失败: 获取当前用户ID异常: %v", err)
+		log.Error("通知批量已读失败: 获取当前账户ID异常: %v", err)
 		return nil, err
 	}
 
@@ -126,9 +125,9 @@ func (s *NotificationService) MarkNotificationsRead(req *api.NotificationReadReq
 		return nil, fmt.Errorf("单次最多标记%d条通知", maxNotificationReadBatchSize)
 	}
 
-	updated, err := s.repo.MarkNotificationInboxReadByIDs(s.repo.DB, userID, ids, time.Now())
+	updated, err := s.repo.MarkNotificationInboxReadByIDs(s.repo.DB, accountID, ids, time.Now())
 	if err != nil {
-		log.Error("通知批量已读失败: 更新通知异常: %v, user_id=%d id_count=%d", err, userID, len(ids))
+		log.Error("通知批量已读失败: 更新通知异常: %v, account_id=%d id_count=%d", err, accountID, len(ids))
 		return nil, err
 	}
 	return &api.NotificationReadResponse{Updated: int32(updated)}, nil

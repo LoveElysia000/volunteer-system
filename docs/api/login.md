@@ -70,7 +70,7 @@
 
 ### `UserInfo`
 
-- `userId:string`
+- `accountId:string`
 - `userName:string`
 - `email:string`
 - `phone:string`

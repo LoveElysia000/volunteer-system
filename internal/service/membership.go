@@ -82,7 +82,7 @@ func (s *MembershipService) ensureJoinVolunteerExists(tx *gorm.DB, volunteerID i
 	return nil
 }
 
-func (s *MembershipService) handleExistingJoinMembership(tx *gorm.DB, existing *model.OrgMember, userID int64) (*api.VolunteerJoinResponse, error) {
+func (s *MembershipService) handleExistingJoinMembership(tx *gorm.DB, existing *model.OrgMember, accountID int64) (*api.VolunteerJoinResponse, error) {
 	if existing == nil {
 		return nil, nil
 	}
@@ -90,10 +90,10 @@ func (s *MembershipService) handleExistingJoinMembership(tx *gorm.DB, existing *
 	if err := validateMemberTransition(flowJoinReapply, existing.Status, model.MemberStatusActive); err != nil {
 		return nil, err
 	}
-	return s.submitReapplyMembershipAudit(tx, existing, userID)
+	return s.submitReapplyMembershipAudit(tx, existing, accountID)
 }
 
-func (s *MembershipService) submitReapplyMembershipAudit(tx *gorm.DB, existing *model.OrgMember, userID int64) (*api.VolunteerJoinResponse, error) {
+func (s *MembershipService) submitReapplyMembershipAudit(tx *gorm.DB, existing *model.OrgMember, accountID int64) (*api.VolunteerJoinResponse, error) {
 	hasPendingMemberAudit, err := s.hasPendingMemberAuditByTargetID(tx, existing.ID)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (s *MembershipService) submitReapplyMembershipAudit(tx *gorm.DB, existing *
 		model.AuditTargetMember,
 		model.OperationTypeUpdate,
 		existing.ID,
-		userID,
+		accountID,
 		&oldMember,
 		&newMember,
 		now,
@@ -130,8 +130,8 @@ func (s *MembershipService) submitReapplyMembershipAudit(tx *gorm.DB, existing *
 	return buildPendingJoinResponse(), nil
 }
 
-func (s *MembershipService) submitCreateMembershipAudit(tx *gorm.DB, orgID, volunteerID, userID int64) (*api.VolunteerJoinResponse, error) {
-	hasPendingCreateAudit, err := s.hasPendingMemberCreateAudit(tx, orgID, volunteerID, userID)
+func (s *MembershipService) submitCreateMembershipAudit(tx *gorm.DB, orgID, volunteerID, accountID int64) (*api.VolunteerJoinResponse, error) {
+	hasPendingCreateAudit, err := s.hasPendingMemberCreateAudit(tx, orgID, volunteerID, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s *MembershipService) submitCreateMembershipAudit(tx *gorm.DB, orgID, volu
 	}
 	record, err := buildPendingCreateAuditRecordByModel(
 		model.AuditTargetMember,
-		userID,
+		accountID,
 		newMember,
 		now,
 	)
@@ -172,28 +172,23 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 	}
 
 	// 仅允许志愿者本人发起加入组织申请。
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := middleware.GetAccountIDInt(s.c)
 	if err != nil {
-		log.Error("提交加入组织申请失败: 获取当前用户失败: %v", err)
+		log.Error("提交加入组织申请失败: 获取当前账户失败: %v", err)
 		return nil, err
 	}
 
-	currentVolunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
+	currentVolunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, accountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("仅志愿者可执行该操作")
 		}
-		log.Error("提交加入组织申请失败: 查询当前志愿者异常: %v, user_id=%d", err, userID)
+		log.Error("提交加入组织申请失败: 查询当前志愿者异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
-	if req.VolunteerId > 0 && req.VolunteerId != currentVolunteer.ID {
-		return nil, errors.New("无权操作该志愿者")
-	}
-	req.VolunteerId = currentVolunteer.ID
-
 	orgID := req.OrganizationId
-	volunteerID := req.VolunteerId
+	volunteerID := currentVolunteer.ID
 	var resp *api.VolunteerJoinResponse
 
 	err = s.withTransaction(func(tx *gorm.DB) error {
@@ -205,7 +200,7 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 		if existingErr != nil {
 			return existingErr
 		}
-		existingResp, err := s.handleExistingJoinMembership(tx, existing, userID)
+		existingResp, err := s.handleExistingJoinMembership(tx, existing, accountID)
 		if err != nil {
 			return err
 		}
@@ -214,7 +209,7 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 			return nil
 		}
 
-		createResp, err := s.submitCreateMembershipAudit(tx, orgID, volunteerID, userID)
+		createResp, err := s.submitCreateMembershipAudit(tx, orgID, volunteerID, accountID)
 		if err != nil {
 			return err
 		}
@@ -222,7 +217,7 @@ func (s *MembershipService) VolunteerJoinOrganization(req *api.VolunteerJoinRequ
 		return nil
 	})
 	if err != nil {
-		log.Error("提交加入组织申请失败: %v, organization_id=%d volunteer_id=%d user_id=%d", err, orgID, volunteerID, userID)
+		log.Error("提交加入组织申请失败: %v, organization_id=%d volunteer_id=%d account_id=%d", err, orgID, volunteerID, accountID)
 		return nil, err
 	}
 	return resp, nil
@@ -244,7 +239,7 @@ func (s *MembershipService) hasPendingMemberAuditByTargetID(db *gorm.DB, targetI
 
 func (s *MembershipService) submitLeaveMembershipAudit(
 	tx *gorm.DB,
-	membershipID, currentVolunteerID, userID int64,
+	membershipID, currentVolunteerID, accountID int64,
 	leaveReason string,
 ) (*api.VolunteerLeaveResponse, error) {
 	member, err := s.repo.GetMembershipByIDForUpdate(tx, membershipID)
@@ -278,7 +273,7 @@ func (s *MembershipService) submitLeaveMembershipAudit(
 	record, err := buildPendingDeleteAuditRecordByModel(
 		model.AuditTargetMember,
 		member.ID,
-		userID,
+		accountID,
 		member,
 		&newMember,
 		now,
@@ -307,23 +302,15 @@ func (s *MembershipService) VolunteerLeaveOrganization(req *api.VolunteerLeaveRe
 	leaveReason := strings.TrimSpace(req.Reason)
 
 	// 仅允许志愿者本人发起退出组织申请。
-	userID, err := middleware.GetUserIDInt(s.c)
+	currentVolunteer, accountID, err := s.currentVolunteer()
 	if err != nil {
-		log.Error("提交退出组织申请失败: 获取当前用户失败: %v, membership_id=%d", err, req.MembershipId)
-		return nil, err
-	}
-	currentVolunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("仅志愿者可执行该操作")
-		}
-		log.Error("提交退出组织申请失败: 查询当前志愿者异常: %v, user_id=%d, membership_id=%d", err, userID, req.MembershipId)
+		log.Error("提交退出组织申请失败: 获取当前志愿者失败: %v, membership_id=%d", err, req.MembershipId)
 		return nil, err
 	}
 
 	var resp *api.VolunteerLeaveResponse
 	err = s.withTransaction(func(tx *gorm.DB) error {
-		txResp, txErr := s.submitLeaveMembershipAudit(tx, req.MembershipId, currentVolunteer.ID, userID, leaveReason)
+		txResp, txErr := s.submitLeaveMembershipAudit(tx, req.MembershipId, currentVolunteer.ID, accountID, leaveReason)
 		if txErr != nil {
 			return txErr
 		}
@@ -331,7 +318,7 @@ func (s *MembershipService) VolunteerLeaveOrganization(req *api.VolunteerLeaveRe
 		return nil
 	})
 	if err != nil {
-		log.Error("提交退出组织申请失败: %v, membership_id=%d user_id=%d", err, req.MembershipId, userID)
+		log.Error("提交退出组织申请失败: %v, membership_id=%d account_id=%d", err, req.MembershipId, accountID)
 		return nil, err
 	}
 	return resp, nil
@@ -342,9 +329,6 @@ func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganiza
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	if req.VolunteerId <= 0 {
-		return nil, errors.New("志愿者ID不能为空")
-	}
 
 	if req.Page <= 0 {
 		req.Page = 1
@@ -354,24 +338,17 @@ func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganiza
 	}
 
 	// Permission: volunteer can only access own memberships.
-	userID, err := middleware.GetUserIDInt(s.c)
+	volunteer, accountID, err := s.currentVolunteer()
 	if err != nil {
-		log.Error("查询志愿者组织列表失败: 获取当前用户失败: %v, volunteer_id=%d", err, req.VolunteerId)
-		return nil, err
-	}
-	volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, userID)
-	if err != nil || volunteer == nil || volunteer.ID != req.VolunteerId {
-		if err != nil {
-			log.Error("查询志愿者组织列表失败: 查询志愿者异常: %v, volunteer_id=%d user_id=%d", err, req.VolunteerId, userID)
-		}
+		log.Error("查询志愿者组织列表失败: 查询当前志愿者异常: %v, account_id=%d", err, accountID)
 		return nil, errors.New("无权操作该志愿者")
 	}
 
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
-	list, total, err := s.repo.GetVolunteerOrganizations(s.repo.DB, req.VolunteerId, req.Status, pageSize, offset)
+	list, total, err := s.repo.GetVolunteerOrganizations(s.repo.DB, volunteer.ID, req.Status, pageSize, offset)
 	if err != nil {
-		log.Error("查询志愿者组织列表失败: 查询成员关系异常: %v, volunteer_id=%d page=%d page_size=%d", err, req.VolunteerId, req.Page, req.PageSize)
+		log.Error("查询志愿者组织列表失败: 查询成员关系异常: %v, volunteer_id=%d page=%d page_size=%d", err, volunteer.ID, req.Page, req.PageSize)
 		return nil, err
 	}
 
@@ -388,7 +365,7 @@ func (s *MembershipService) GetVolunteerOrganizations(req *api.VolunteerOrganiza
 
 		organizations, err := s.repo.GetOrganizationsByIDs(s.repo.DB, orgIDs)
 		if err != nil {
-			log.Error("查询志愿者组织列表失败: 批量查询组织异常: %v, volunteer_id=%d org_count=%d", err, req.VolunteerId, len(orgIDs))
+			log.Error("查询志愿者组织列表失败: 批量查询组织异常: %v, volunteer_id=%d org_count=%d", err, volunteer.ID, len(orgIDs))
 			return nil, err
 		}
 		for _, org := range organizations {
@@ -451,13 +428,13 @@ func (s *MembershipService) GetOrganizationMembers(req *api.OrganizationMembersR
 	}
 
 	// Permission: only organization owner.
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("查询组织成员列表失败: 获取当前用户失败: %v, organization_id=%d", err, req.OrganizationId)
+		log.Error("查询组织成员列表失败: 获取当前账户失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, err
 	}
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		req.OrganizationId,
 		model.PermissionResourceMembership,
 		model.PermissionActionManage,
@@ -642,9 +619,9 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("更新成员状态失败: 获取当前用户失败: %v", err)
+		log.Error("更新成员状态失败: 获取当前账户失败: %v", err)
 		return nil, err
 	}
 	if req.MembershipId <= 0 {
@@ -669,7 +646,7 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 		log.Error("更新成员状态失败: 查询成员关系异常: %v, membership_id=%d", err, req.MembershipId)
 		return nil, err
 	}
-	if err := s.ensureMembershipManagePermission(operatorID, member.OrgID); err != nil {
+	if err := s.ensureMembershipManagePermission(operatorAccountID, member.OrgID); err != nil {
 		return nil, err
 	}
 
@@ -692,11 +669,11 @@ func (s *MembershipService) UpdateMemberStatus(req *api.MemberStatusUpdateReques
 	})
 	if err != nil {
 		log.Error("更新成员状态失败: %v, membership_id=%d operator_id=%d target_status=%d",
-			err, req.MembershipId, operatorID, req.Status)
+			err, req.MembershipId, operatorAccountID, req.Status)
 		return nil, err
 	}
 	if sideEffectMember != nil {
-		s.handleMemberStatusSideEffects(sideEffectMember, req.Status, operatorID)
+		s.handleMemberStatusSideEffects(sideEffectMember, req.Status, operatorAccountID)
 	}
 
 	return &api.MemberStatusUpdateResponse{
@@ -767,9 +744,9 @@ func (s *MembershipService) MembershipStats(req *api.MembershipStatsRequest) (*a
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("查询成员统计失败: 获取当前用户失败: %v", err)
+		log.Error("查询成员统计失败: 获取当前账户失败: %v", err)
 		return nil, err
 	}
 
@@ -778,18 +755,18 @@ func (s *MembershipService) MembershipStats(req *api.MembershipStatsRequest) (*a
 		// 在未显式传 organizationId 时，默认使用用户可管理的第一个组织作用域。
 		orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
 			s.repo.DB,
-			userID,
+			accountID,
 			model.PermissionResourceMembership,
 			model.PermissionActionManage,
 			1,
 		)
 		if err != nil {
-			log.Error("查询成员统计失败: 查询RBAC组织作用域异常: %v, user_id=%d", err, userID)
+			log.Error("查询成员统计失败: 查询RBAC组织作用域异常: %v, account_id=%d", err, accountID)
 			return nil, err
 		}
 		if len(orgIDs) == 0 {
 			hasGlobal, perr := s.hasPermissionByScope(
-				userID,
+				accountID,
 				model.RBACScopeGlobal,
 				0,
 				model.PermissionResourceMembership,
@@ -807,7 +784,7 @@ func (s *MembershipService) MembershipStats(req *api.MembershipStatsRequest) (*a
 	}
 
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		orgID,
 		model.PermissionResourceMembership,
 		model.PermissionActionManage,

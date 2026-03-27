@@ -90,14 +90,14 @@ func (s *LoginService) Login(req *api.LoginRequest) (*api.LoginResponse, error) 
 
 	// 6. 生成JWT令牌
 	jwtManager := util.GetJWTManager()
-	userID := fmt.Sprintf("%d", user.ID)
+	accountID := fmt.Sprintf("%d", user.ID)
 
 	// 获取设备信息（简化处理，实际可以从请求头获取）
 	deviceID := "web" // 简化处理
 	ipAddress := ""   // 可以从请求中获取
 	userAgent := ""   // 可以从请求中获取
 
-	tokenPair, err := jwtManager.GenerateTokenPairWithStorage(s.ctx, userID, deviceID, ipAddress, userAgent)
+	tokenPair, err := jwtManager.GenerateTokenPairWithStorage(s.ctx, accountID, deviceID, ipAddress, userAgent)
 	if err != nil {
 		log.Error("令牌生成失败: %v, 用户ID=%d", err, user.ID)
 		resp.Success = false
@@ -207,15 +207,15 @@ func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, erro
 	}
 
 	// 3. 撤销 token
-	if err := jwtManager.RevokeToken(s.ctx, claims.TokenID, claims.UserID); err != nil {
-		log.Error("撤销令牌失败: %v, 用户ID=%s, TokenID=%s", err, claims.UserID, claims.TokenID)
+	if err := jwtManager.RevokeToken(s.ctx, claims.TokenID, claims.GetAccountID()); err != nil {
+		log.Error("撤销令牌失败: %v, 账户ID=%s, TokenID=%s", err, claims.GetAccountID(), claims.TokenID)
 		resp.Success = false
 		resp.Message = "登出失败"
 		return &resp, err
 	}
 
 	// 4. 返回成功响应
-	log.Info("用户登出成功: 用户ID=%s", claims.UserID)
+	log.Info("用户登出成功: 账户ID=%s", claims.GetAccountID())
 	resp.Success = true
 	resp.Message = "登出成功"
 	return &resp, nil
@@ -250,13 +250,13 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 	}
 
 	// 3. 获取用户信息
-	var userID int64
+	var accountID int64
 	// 从新生成的刷新令牌中提取用户信息
 	claims, err := jwtManager.ValidateRefreshToken(tokenPair.RefreshToken)
 	if err == nil && claims != nil {
 		// 将字符串用户ID转换为int64
-		if id, err := strconv.ParseInt(claims.UserID, 10, 64); err == nil {
-			userID = id
+		if id, err := strconv.ParseInt(claims.GetAccountID(), 10, 64); err == nil {
+			accountID = id
 		}
 	}
 
@@ -268,16 +268,16 @@ func (s *LoginService) RefreshToken(req *api.RefreshTokenRequest) (*api.RefreshT
 	resp.ExpiresAt = time.Now().Add(24 * time.Hour).Unix() // 24小时过期（与 AccessTokenTTL 一致）
 
 	// 5. 获取用户信息（如果用户ID有效）
-	if userID != 0 {
-		user, err := s.repo.FindByID(s.repo.DB, userID)
+	if accountID != 0 {
+		user, err := s.repo.FindByID(s.repo.DB, accountID)
 		if err == nil && user != nil {
 			resp.UserInfo = util.ConvertSysAccountToUserInfo(user)
 		} else {
-			log.Warn("获取用户信息失败: %v, 用户ID=%d", err, userID)
+			log.Warn("获取用户信息失败: %v, 账户ID=%d", err, accountID)
 		}
 	}
 
-	log.Info("令牌刷新成功: 用户ID=%d", userID)
+	log.Info("令牌刷新成功: 账户ID=%d", accountID)
 	return &resp, nil
 }
 

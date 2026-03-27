@@ -286,8 +286,8 @@ func (x *VolunteerListItem) GetStatus() int32 {
 // VolunteerDetailRequest 志愿者详情请求
 type VolunteerDetailRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 志愿者ID 必填 @gotags: path:"id,required"
-	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 志愿者ID 必填 @gotags: path:"volunteerId,required"
+	VolunteerId   int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId" path:"volunteerId,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -322,9 +322,9 @@ func (*VolunteerDetailRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *VolunteerDetailRequest) GetId() int64 {
+func (x *VolunteerDetailRequest) GetVolunteerId() int64 {
 	if x != nil {
-		return x.Id
+		return x.VolunteerId
 	}
 	return 0
 }
@@ -377,9 +377,7 @@ func (x *VolunteerDetailResponse) GetVolunteer() *VolunteerInfo {
 
 // MyProfileRequest 我的个人信息请求（志愿者端）
 type MyProfileRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// 志愿者ID @gotags: path:"id,required"
-	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -412,13 +410,6 @@ func (x *MyProfileRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MyProfileRequest.ProtoReflect.Descriptor instead.
 func (*MyProfileRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *MyProfileRequest) GetId() int64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
 }
 
 // MyProfileResponse 我的个人信息响应（志愿者端）
@@ -1052,16 +1043,14 @@ func (x *VolunteerVerificationInfo) GetAuditStatus() int32 {
 // VolunteerUpdateRequest 更新志愿者请求
 type VolunteerUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 志愿者ID @gotags: path:"id,required"
-	VolunteerId int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId" path:"id,required"`
 	// 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
-	Gender int32 `protobuf:"varint,2,opt,name=gender,proto3" json:"gender"`
+	Gender int32 `protobuf:"varint,1,opt,name=gender,proto3" json:"gender"`
 	// 出生日期 可选 @gotags: json:"birthday"
-	Birthday string `protobuf:"bytes,3,opt,name=birthday,proto3" json:"birthday"`
+	Birthday string `protobuf:"bytes,2,opt,name=birthday,proto3" json:"birthday"`
 	// 头像URL 可选 @gotags: json:"avatarUrl"
-	AvatarUrl string `protobuf:"bytes,4,opt,name=avatarUrl,proto3" json:"avatarUrl"`
+	AvatarUrl string `protobuf:"bytes,3,opt,name=avatarUrl,proto3" json:"avatarUrl"`
 	// 个人简介 可选 @gotags: json:"introduction"
-	Introduction  string `protobuf:"bytes,5,opt,name=introduction,proto3" json:"introduction"`
+	Introduction  string `protobuf:"bytes,4,opt,name=introduction,proto3" json:"introduction"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1094,13 +1083,6 @@ func (x *VolunteerUpdateRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use VolunteerUpdateRequest.ProtoReflect.Descriptor instead.
 func (*VolunteerUpdateRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_volunteer_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *VolunteerUpdateRequest) GetVolunteerId() int64 {
-	if x != nil {
-		return x.VolunteerId
-	}
-	return 0
 }
 
 func (x *VolunteerUpdateRequest) GetGender() int32 {
@@ -1524,13 +1506,12 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\tcreatedAt\x18\n" +
 	" \x01(\tR\tcreatedAt\x12\x1c\n" +
 	"\tupdatedAt\x18\v \x01(\tR\tupdatedAt\x12\x16\n" +
-	"\x06status\x18\f \x01(\x05R\x06status\"(\n" +
-	"\x16VolunteerDetailRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"Q\n" +
+	"\x06status\x18\f \x01(\x05R\x06status\":\n" +
+	"\x16VolunteerDetailRequest\x12 \n" +
+	"\vvolunteerId\x18\x01 \x01(\x03R\vvolunteerId\"Q\n" +
 	"\x17VolunteerDetailResponse\x126\n" +
-	"\tvolunteer\x18\x01 \x01(\v2\x18.volunteer.VolunteerInfoR\tvolunteer\"\"\n" +
-	"\x10MyProfileRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"\x93\x02\n" +
+	"\tvolunteer\x18\x01 \x01(\v2\x18.volunteer.VolunteerInfoR\tvolunteer\"\x12\n" +
+	"\x10MyProfileRequest\"\x93\x02\n" +
 	"\x11MyProfileResponse\x126\n" +
 	"\tvolunteer\x18\x01 \x01(\v2\x18.volunteer.VolunteerInfoR\tvolunteer\x12A\n" +
 	"\vaccountInfo\x18\x02 \x01(\v2\x1f.volunteer.VolunteerAccountInfoR\vaccountInfo\x129\n" +
@@ -1578,13 +1559,12 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\x19VolunteerVerificationInfo\x12\x1a\n" +
 	"\brealName\x18\x01 \x01(\tR\brealName\x12\x16\n" +
 	"\x06idCard\x18\x02 \x01(\tR\x06idCard\x12 \n" +
-	"\vauditStatus\x18\x03 \x01(\x05R\vauditStatus\"\xb0\x01\n" +
-	"\x16VolunteerUpdateRequest\x12 \n" +
-	"\vvolunteerId\x18\x01 \x01(\x03R\vvolunteerId\x12\x16\n" +
-	"\x06gender\x18\x02 \x01(\x05R\x06gender\x12\x1a\n" +
-	"\bbirthday\x18\x03 \x01(\tR\bbirthday\x12\x1c\n" +
-	"\tavatarUrl\x18\x04 \x01(\tR\tavatarUrl\x12\"\n" +
-	"\fintroduction\x18\x05 \x01(\tR\fintroduction\"\x19\n" +
+	"\vauditStatus\x18\x03 \x01(\x05R\vauditStatus\"\x8e\x01\n" +
+	"\x16VolunteerUpdateRequest\x12\x16\n" +
+	"\x06gender\x18\x01 \x01(\x05R\x06gender\x12\x1a\n" +
+	"\bbirthday\x18\x02 \x01(\tR\bbirthday\x12\x1c\n" +
+	"\tavatarUrl\x18\x03 \x01(\tR\tavatarUrl\x12\"\n" +
+	"\fintroduction\x18\x04 \x01(\tR\fintroduction\"\x19\n" +
 	"\x17VolunteerUpdateResponse\"g\n" +
 	"\x1dVolunteerAccountUpdateRequest\x12\x1a\n" +
 	"\buserName\x18\x01 \x01(\tR\buserName\x12\x14\n" +
@@ -1608,14 +1588,14 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"statusName\x18\a \x01(\tR\n" +
 	"statusName\x12\x1a\n" +
 	"\bjoinDate\x18\b \x01(\tR\bjoinDate\x12\x1c\n" +
-	"\tleaveDate\x18\t \x01(\tR\tleaveDate2\xc4\a\n" +
+	"\tleaveDate\x18\t \x01(\tR\tleaveDate2\xb6\a\n" +
 	"\x10VolunteerService\x12s\n" +
-	"\rVolunteerList\x12\x1f.volunteer.VolunteerListRequest\x1a .volunteer.VolunteerListResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/volunteers/list\x12|\n" +
-	"\x0fVolunteerDetail\x12!.volunteer.VolunteerDetailRequest\x1a\".volunteer.VolunteerDetailResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/volunteers/detail/:id\x12n\n" +
-	"\tMyProfile\x12\x1b.volunteer.MyProfileRequest\x1a\x1c.volunteer.MyProfileResponse\"&\x82\xd3\xe4\x93\x02 \x12\x1e/api/volunteers/my/profile/:id\x12\x8d\x01\n" +
-	"\x14VolunteerHomeSummary\x12&.volunteer.VolunteerHomeSummaryRequest\x1a'.volunteer.VolunteerHomeSummaryResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/volunteers/home/summary\x12x\n" +
-	"\x0fVolunteerUpdate\x12!.volunteer.VolunteerUpdateRequest\x1a\".volunteer.VolunteerUpdateResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\x1a\x13/api/volunteers/:id\x12\x91\x01\n" +
-	"\x16VolunteerAccountUpdate\x12(.volunteer.VolunteerAccountUpdateRequest\x1a).volunteer.VolunteerAccountUpdateResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\x1a\x17/api/volunteers/account\x12\x9d\x01\n" +
+	"\rVolunteerList\x12\x1f.volunteer.VolunteerListRequest\x1a .volunteer.VolunteerListResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/volunteers/list\x12\x7f\n" +
+	"\x0fVolunteerDetail\x12!.volunteer.VolunteerDetailRequest\x1a\".volunteer.VolunteerDetailResponse\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/volunteers/{volunteerId}\x12_\n" +
+	"\tMyProfile\x12\x1b.volunteer.MyProfileRequest\x1a\x1c.volunteer.MyProfileResponse\"\x17\x82\xd3\xe4\x93\x02\x11\x12\x0f/api/me/profile\x12\x8d\x01\n" +
+	"\x14VolunteerHomeSummary\x12&.volunteer.VolunteerHomeSummaryRequest\x1a'.volunteer.VolunteerHomeSummaryResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/volunteers/home/summary\x12~\n" +
+	"\x0fVolunteerUpdate\x12!.volunteer.VolunteerUpdateRequest\x1a\".volunteer.VolunteerUpdateResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\x1a\x19/api/me/volunteer-profile\x12\x89\x01\n" +
+	"\x16VolunteerAccountUpdate\x12(.volunteer.VolunteerAccountUpdateRequest\x1a).volunteer.VolunteerAccountUpdateResponse\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\x1a\x0f/api/me/account\x12\x9d\x01\n" +
 	"\x17VolunteerRealNameSubmit\x12).volunteer.VolunteerRealNameSubmitRequest\x1a*.volunteer.VolunteerRealNameSubmitResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/volunteers/real-name/submit\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 
 var (

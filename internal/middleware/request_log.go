@@ -42,8 +42,8 @@ func RequestLog() app.HandlerFunc {
 		if route := strings.TrimSpace(c.FullPath()); route != "" {
 			logger.SetCurrentRequestField("route", route)
 		}
-		if userID, err := GetUserID(c); err == nil && strings.TrimSpace(userID) != "" {
-			logger.SetCurrentRequestField("user_id", userID)
+		if accountID, err := GetAccountID(c); err == nil && strings.TrimSpace(accountID) != "" {
+			logger.SetCurrentRequestField("account_id", accountID)
 		}
 		logger.SetCurrentRequestField("status", strconv.Itoa(c.Response.StatusCode()))
 		logger.SetCurrentRequestField("latency_ms", strconv.FormatInt(time.Since(start).Milliseconds(), 10))

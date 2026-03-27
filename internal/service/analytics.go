@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -68,12 +67,12 @@ func (s *AnalyticsService) OrgFunnelSummary(req *api.OrgFunnelSummaryRequest) (*
 		return nil, errors.New("结束时间不能早于开始时间")
 	}
 
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 	if err := s.requireOrgPermission(
-		operatorID,
+		operatorAccountID,
 		req.OrgId,
 		model.PermissionResourceAnalytics,
 		model.PermissionActionOrgRead,
@@ -137,12 +136,12 @@ func (s *AnalyticsService) OpsDashboardSummary(req *api.OpsDashboardSummaryReque
 		return nil, errors.New("结束时间不能早于开始时间")
 	}
 
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 	if err := s.requireOrgPermission(
-		operatorID,
+		operatorAccountID,
 		req.OrgId,
 		model.PermissionResourceAnalytics,
 		model.PermissionActionOrgRead,

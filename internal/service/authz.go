@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -69,18 +68,18 @@ func validateSuperAdminGrantConstraints(roleCode, scopeType string, scopeID int6
 }
 
 func (s *AuthzService) requireRBACManageOperator() (int64, error) {
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return 0, errUnauthorized("未登录或认证无效")
 	}
 	if err := s.requireGlobalPermission(
-		operatorID,
+		operatorAccountID,
 		model.PermissionResourceRBAC,
 		model.PermissionActionManage,
 	); err != nil {
 		return 0, err
 	}
-	return operatorID, nil
+	return operatorAccountID, nil
 }
 
 func (s *AuthzService) ListRoles(req *api.RoleListRequest) (*api.RoleListResponse, error) {
@@ -582,10 +581,10 @@ func (s *AuthzService) RevokeRole(req *api.AccountRoleRevokeRequest) (*api.Accou
 			if err != nil {
 				return err
 			}
-				if activeSuperCount <= 1 {
-					return errBadRequest("不能撤销最后一个 super_admin")
-				}
+			if activeSuperCount <= 1 {
+				return errBadRequest("不能撤销最后一个 super_admin")
 			}
+		}
 
 		before := *binding
 		if binding.Status == 1 {
@@ -659,7 +658,7 @@ func (s *AuthzService) ListAccountRoleBindings(req *api.AccountRoleBindingListRe
 
 func (s *AuthzService) MyAuthorization(req *api.MyAuthorizationRequest) (*api.MyAuthorizationResponse, error) {
 	_ = req
-	accountID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, errUnauthorized("未登录或认证无效")
 	}

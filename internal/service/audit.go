@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -757,23 +756,23 @@ func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*ap
 
 // getAuditOperatorID 获取审核操作人 ID 并校验其审核权限。
 func (s *AuditService) getAuditOperatorID() (int64, error) {
-	auditorID, err := middleware.GetUserIDInt(s.c)
+	auditorAccountID, err := s.currentAccountID()
 	if err != nil {
-		log.Warn("获取审核人失败: 无法从上下文获取用户ID, err=%v", err)
+		log.Warn("获取审核人失败: 无法从上下文获取账户ID, err=%v", err)
 		return 0, err
 	}
-	if auditorID <= 0 {
-		log.Warn("获取审核人失败: 用户ID无效, user_id=%d", auditorID)
+	if auditorAccountID <= 0 {
+		log.Warn("获取审核人失败: 账户ID无效, account_id=%d", auditorAccountID)
 		return 0, errors.New("审核人无效")
 	}
 
-	account, err := s.repo.FindByID(s.repo.DB, auditorID)
+	account, err := s.repo.FindByID(s.repo.DB, auditorAccountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn("获取审核人失败: 账号不存在, user_id=%d", auditorID)
+			log.Warn("获取审核人失败: 账号不存在, account_id=%d", auditorAccountID)
 			return 0, errors.New("账号不存在")
 		}
-		log.Error("获取审核人失败: 查询账号异常, user_id=%d err=%v", auditorID, err)
+		log.Error("获取审核人失败: 查询账号异常, account_id=%d err=%v", auditorAccountID, err)
 		return 0, err
 	}
 	if account.Status != model.SysAccountNormal {
@@ -781,7 +780,7 @@ func (s *AuditService) getAuditOperatorID() (int64, error) {
 	}
 
 	hasGlobal, err := s.hasPermissionByScope(
-		auditorID,
+		auditorAccountID,
 		model.RBACScopeGlobal,
 		0,
 		model.PermissionResourceAudit,
@@ -791,12 +790,12 @@ func (s *AuditService) getAuditOperatorID() (int64, error) {
 		return 0, err
 	}
 	if hasGlobal {
-		return auditorID, nil
+		return auditorAccountID, nil
 	}
 
 	hasAnyOrg, err := s.repo.HasAnyOrgPermission(
 		s.repo.DB,
-		auditorID,
+		auditorAccountID,
 		model.PermissionResourceAudit,
 		model.PermissionActionReview,
 	)
@@ -807,7 +806,7 @@ func (s *AuditService) getAuditOperatorID() (int64, error) {
 		return 0, errors.New("无权限执行审核")
 	}
 
-	return auditorID, nil
+	return auditorAccountID, nil
 }
 
 func (s *AuditService) requireAuditReviewPermission(operatorID int64, record *model.AuditRecord) error {

@@ -22,14 +22,14 @@ service VolunteerService {
   // 志愿者详情（管理员端）
   rpc VolunteerDetail(VolunteerDetailRequest) returns (VolunteerDetailResponse) {
     option (google.api.http) = {
-      get: "/api/volunteers/detail/:id"
+      get: "/api/volunteers/{volunteerId}"
     };
   }
 
   // 我的个人信息（志愿者端）
   rpc MyProfile(MyProfileRequest) returns (MyProfileResponse) {
     option (google.api.http) = {
-      get: "/api/volunteers/my/profile/:id"
+      get: "/api/me/profile"
     };
   }
 
@@ -43,7 +43,7 @@ service VolunteerService {
   // 更新志愿者信息（志愿者端）
   rpc VolunteerUpdate(VolunteerUpdateRequest) returns (VolunteerUpdateResponse) {
     option (google.api.http) = {
-      put : "/api/volunteers/:id"
+      put : "/api/me/volunteer-profile"
       body: "*"
     };
   }
@@ -51,7 +51,7 @@ service VolunteerService {
   // 更新志愿者账户信息（志愿者端）
   rpc VolunteerAccountUpdate(VolunteerAccountUpdateRequest) returns (VolunteerAccountUpdateResponse) {
     option (google.api.http) = {
-      put : "/api/volunteers/account"
+      put : "/api/me/account"
       body: "*"
     };
   }
@@ -110,8 +110,8 @@ message VolunteerListItem {
 
 // VolunteerDetailRequest 志愿者详情请求
 message VolunteerDetailRequest {
-  // 志愿者ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 志愿者ID 必填 @gotags: path:"volunteerId,required"
+  int64 volunteerId = 1;
 }
 
 // VolunteerDetailResponse 志愿者详情响应（管理员端）
@@ -121,10 +121,7 @@ message VolunteerDetailResponse {
 }
 
 // MyProfileRequest 我的个人信息请求（志愿者端）
-message MyProfileRequest {
-  // 志愿者ID @gotags: path:"id,required"
-  int64 id = 1;
-}
+message MyProfileRequest {}
 
 // MyProfileResponse 我的个人信息响应（志愿者端）
 message MyProfileResponse {
@@ -232,16 +229,14 @@ message VolunteerVerificationInfo {
 
 // VolunteerUpdateRequest 更新志愿者请求
 message VolunteerUpdateRequest {
-  // 志愿者ID @gotags: path:"id,required"
-  int64 volunteerId = 1;
   // 性别: 0-未知, 1-男, 2-女 可选 @gotags: json:"gender"
-  int32 gender = 2;
+  int32 gender = 1;
   // 出生日期 可选 @gotags: json:"birthday"
-  string birthday = 3;
+  string birthday = 2;
   // 头像URL 可选 @gotags: json:"avatarUrl"
-  string avatarUrl = 4;
+  string avatarUrl = 3;
   // 个人简介 可选 @gotags: json:"introduction"
-  string introduction = 5;
+  string introduction = 4;
 }
 
 // VolunteerUpdateResponse 更新志愿者响应

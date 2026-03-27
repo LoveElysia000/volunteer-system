@@ -12,19 +12,19 @@ func RegisterOrganizationRouter(r *route.RouterGroup) {
 	// 公开组织列表（志愿者端浏览）
 	r.POST("/organizations/public-list", handler.PublicOrganizationList)
 	// 组织详情
-	r.GET("/organizations/:id", handler.OrganizationDetail)
+	r.GET("/organizations/:organizationId", handler.OrganizationDetail)
 	// 创建组织
 	r.POST("/organizations/create", handler.CreateOrganization)
 	// 更新组织
-	r.PUT("/organizations/:id", handler.UpdateOrganization)
+	r.PUT("/organizations/:organizationId", handler.UpdateOrganization)
 	// 更新组织管理者账户信息
 	r.PUT("/organizations/account", handler.OrganizationAccountUpdate)
 	// 删除组织
-	r.DELETE("/organizations/:id", handler.DeleteOrganization)
+	r.DELETE("/organizations/:organizationId", handler.DeleteOrganization)
 	// 停用组织
-	r.POST("/organizations/:id/disable", handler.DisableOrganization)
+	r.POST("/organizations/:organizationId/disable", handler.DisableOrganization)
 	// 启用组织
-	r.POST("/organizations/:id/enable", handler.EnableOrganization)
+	r.POST("/organizations/:organizationId/enable", handler.EnableOrganization)
 	// 搜索组织
 	r.POST("/organizations/search", handler.SearchOrganizations)
 	// 批量删除组织

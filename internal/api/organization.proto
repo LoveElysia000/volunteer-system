@@ -22,7 +22,7 @@ service OrganizationService {
   // 组织详情
   rpc OrganizationDetail(OrganizationDetailRequest) returns (OrganizationDetailResponse) {
     option (google.api.http) = {
-      get: "/api/organizations/:id"
+      get: "/api/organizations/{organizationId}"
     };
   }
 
@@ -37,7 +37,7 @@ service OrganizationService {
   // 更新组织信息
   rpc UpdateOrganization(OrganizationUpdateRequest) returns (OrganizationUpdateResponse) {
     option (google.api.http) = {
-      put : "/api/organizations/:id"
+      put : "/api/organizations/{organizationId}"
       body: "*"
     };
   }
@@ -53,14 +53,14 @@ service OrganizationService {
   // 删除组织
   rpc DeleteOrganization(DeleteOrganizationRequest) returns (DeleteOrganizationResponse) {
     option (google.api.http) = {
-      delete: "/api/organizations/:id"
+      delete: "/api/organizations/{organizationId}"
     };
   }
 
   // 停用组织
   rpc DisableOrganization(DisableOrganizationRequest) returns (DisableOrganizationResponse) {
     option (google.api.http) = {
-      post: "/api/organizations/:id/disable"
+      post: "/api/organizations/{organizationId}/disable"
       body: "*"
     };
   }
@@ -68,7 +68,7 @@ service OrganizationService {
   // 启用组织
   rpc EnableOrganization(EnableOrganizationRequest) returns (EnableOrganizationResponse) {
     option (google.api.http) = {
-      post: "/api/organizations/:id/enable"
+      post: "/api/organizations/{organizationId}/enable"
       body: "*"
     };
   }
@@ -156,8 +156,8 @@ message OrganizationListItem {
 
 // OrganizationDetailRequest 组织详情请求
 message OrganizationDetailRequest {
-  // 组织ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 组织ID 必填 @gotags: path:"organizationId,required"
+  int64 organizationId = 1;
 }
 
 // OrganizationDetailResponse 组织详情响应
@@ -276,8 +276,8 @@ message OrganizationCreateResponse {
 
 // OrganizationUpdateRequest 更新组织请求
 message OrganizationUpdateRequest {
-  // 组织ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 组织ID 必填 @gotags: path:"organizationId,required"
+  int64 organizationId = 1;
   // 组织名称 可选 @gotags: json:"name"
   string name = 2;
   // 组织代码 可选 @gotags: json:"organizationCode"
@@ -321,8 +321,8 @@ message OrganizationAccountUpdateResponse {}
 
 // DeleteOrganizationRequest 删除组织请求
 message DeleteOrganizationRequest {
-  // 组织ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 组织ID 必填 @gotags: path:"organizationId,required"
+  int64 organizationId = 1;
 }
 
 // DeleteOrganizationResponse 删除组织响应
@@ -412,8 +412,8 @@ message BatchEnableOrganizationResponse {
 
 // DisableOrganizationRequest 停用组织请求
 message DisableOrganizationRequest {
-  // 组织ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 组织ID 必填 @gotags: path:"organizationId,required"
+  int64 organizationId = 1;
   // 停用原因 可选 @gotags: json:"reason"
   string reason = 2;
 }
@@ -426,8 +426,8 @@ message DisableOrganizationResponse {
 
 // EnableOrganizationRequest 启用组织请求
 message EnableOrganizationRequest {
-  // 组织ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 组织ID 必填 @gotags: path:"organizationId,required"
+  int64 organizationId = 1;
   // 启用原因 可选 @gotags: json:"reason"
   string reason = 2;
 }

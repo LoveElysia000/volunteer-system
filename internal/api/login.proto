@@ -69,8 +69,8 @@ message LoginResponse {
 
 // UserInfo 用户信息
 message UserInfo {
-  // 用户ID
-  string userId = 1;
+  // 账号ID
+  string accountId = 1;
   // 用户名
   string userName = 2;
   // 邮箱

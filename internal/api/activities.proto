@@ -54,7 +54,7 @@ service ActivityService {
   // 获取活动详情
   rpc ActivityDetail(ActivityDetailRequest) returns (ActivityDetailResponse) {
     option (google.api.http) = {
-      get: "/api/activities/:id"
+      get: "/api/activities/{activityId}"
     };
   }
 
@@ -71,7 +71,7 @@ service ActivityService {
   // 更新活动
   rpc UpdateActivity(UpdateActivityRequest) returns (UpdateActivityResponse) {
     option (google.api.http) = {
-      put: "/api/activities/:id"
+      put: "/api/activities/{activityId}"
       body: "*"
     };
   }
@@ -79,14 +79,14 @@ service ActivityService {
   // 删除活动
   rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityResponse) {
     option (google.api.http) = {
-      delete: "/api/activities/:id"
+      delete: "/api/activities/{activityId}"
     };
   }
 
   // 取消活动
   rpc CancelActivity(CancelActivityRequest) returns (CancelActivityResponse) {
     option (google.api.http) = {
-      post: "/api/activities/cancel/:id"
+      post: "/api/activities/{activityId}/cancel"
       body: "*"
     };
   }
@@ -94,7 +94,7 @@ service ActivityService {
   // 完结活动
   rpc FinishActivity(FinishActivityRequest) returns (FinishActivityResponse) {
     option (google.api.http) = {
-      post: "/api/activities/finish/:id"
+      post: "/api/activities/{activityId}/finish"
       body: "*"
     };
   }
@@ -102,7 +102,7 @@ service ActivityService {
   // 生成签到码/签退码（组织侧）
   rpc GenerateAttendanceCodes(GenerateAttendanceCodesRequest) returns (GenerateAttendanceCodesResponse) {
     option (google.api.http) = {
-      post: "/api/activities/attendance-codes/generate/:id"
+      post: "/api/activities/{activityId}/attendance-codes/generate"
       body: "*"
     };
   }
@@ -110,7 +110,7 @@ service ActivityService {
   // 重置签到码/签退码（组织侧）
   rpc ResetAttendanceCode(ResetAttendanceCodeRequest) returns (ResetAttendanceCodeResponse) {
     option (google.api.http) = {
-      post: "/api/activities/attendance-codes/reset/:id"
+      post: "/api/activities/{activityId}/attendance-codes/reset"
       body: "*"
     };
   }
@@ -118,7 +118,7 @@ service ActivityService {
   // 查询活动签到码/签退码（组织侧）
   rpc GetActivityAttendanceCodes(GetActivityAttendanceCodesRequest) returns (GetActivityAttendanceCodesResponse) {
     option (google.api.http) = {
-      get: "/api/activities/attendance-codes/:id"
+      get: "/api/activities/{activityId}/attendance-codes"
     };
   }
 
@@ -270,8 +270,8 @@ message ActivitySupplementAttendanceResponse {
 // ========== 活动详情 ==========
 
 message ActivityDetailRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
 }
 
 message ActivityDetailResponse {
@@ -360,8 +360,8 @@ message CreateActivityResponse {
 
 // UpdateActivityRequest 更新活动请求
 message UpdateActivityRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
   // 活动标题 可选 @gotags: json:"title"
   string title = 2;
   // 活动描述 可选 @gotags: json:"description"
@@ -390,8 +390,8 @@ message UpdateActivityResponse {
 
 // DeleteActivityRequest 删除活动请求
 message DeleteActivityRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
 }
 
 // DeleteActivityResponse 删除活动响应
@@ -402,8 +402,8 @@ message DeleteActivityResponse {
 
 // CancelActivityRequest 取消活动请求
 message CancelActivityRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
   // 取消原因 可选 @gotags: json:"reason"
   string reason = 2;
 }
@@ -416,8 +416,8 @@ message CancelActivityResponse {
 
 // FinishActivityRequest 完结活动请求
 message FinishActivityRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
 }
 
 // FinishActivityResponse 完结活动响应
@@ -428,8 +428,8 @@ message FinishActivityResponse {
 
 // GenerateAttendanceCodesRequest 生成签到码/签退码请求
 message GenerateAttendanceCodesRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
   // 签到码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkInValidMinutes"
   int32 checkInValidMinutes = 2;
   // 签退码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"checkOutValidMinutes"
@@ -456,8 +456,8 @@ message GenerateAttendanceCodesResponse {
 
 // ResetAttendanceCodeRequest 重置签到码/签退码请求
 message ResetAttendanceCodeRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
   // 重置码类型（1-签到码，2-签退码）必填 @gotags: json:"codeType,required"
   int32 codeType = 2;
   // 码有效时长（分钟）可选，<=0 表示不过期 @gotags: json:"validMinutes"
@@ -482,8 +482,8 @@ message ResetAttendanceCodeResponse {
 
 // GetActivityAttendanceCodesRequest 查询活动签到码/签退码请求
 message GetActivityAttendanceCodesRequest {
-  // 活动ID 必填 @gotags: path:"id,required"
-  int64 id = 1;
+  // 活动ID 必填 @gotags: path:"activityId,required"
+  int64 activityId = 1;
 }
 
 // GetActivityAttendanceCodesResponse 查询活动签到码/签退码响应

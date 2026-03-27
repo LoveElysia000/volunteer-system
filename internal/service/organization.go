@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -39,30 +38,30 @@ func NewOrganizationService(ctx context.Context, c *app.RequestContext) *Organiz
 // ----- 组织端私有能力：鉴权与基础工具 -----
 
 func (s *OrganizationService) requireOrganizationManagePermission(orgID int64) (int64, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return 0, err
 	}
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		orgID,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
 	); err != nil {
 		return 0, err
 	}
-	return userID, nil
+	return accountID, nil
 }
 
 func (s *OrganizationService) resolveManageableOrganizationScope() (bool, []int64, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
-	if err != nil || userID <= 0 {
+	accountID, err := s.currentAccountID()
+	if err != nil || accountID <= 0 {
 		return false, nil, errUnauthorized("未登录或认证无效")
 	}
 
 	hasGlobalManage, err := s.repo.HasPermissionByScope(
 		s.repo.DB,
-		userID,
+		accountID,
 		model.RBACScopeGlobal,
 		0,
 		model.PermissionResourceOrganization,
@@ -77,7 +76,7 @@ func (s *OrganizationService) resolveManageableOrganizationScope() (bool, []int6
 
 	scopedOrgIDs, err := s.repo.ListOrgScopeIDsByPermission(
 		s.repo.DB,
-		userID,
+		accountID,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
 		0,
@@ -238,13 +237,27 @@ func (s *OrganizationService) PublicOrganizationList(req *api.OrganizationListRe
 		req.PageSize = 20
 	}
 
+	accountID, err := s.currentAccountID()
+	if err != nil {
+		log.Error("查询公开组织列表失败: 获取当前账户ID异常: %v, page=%d page_size=%d", err, req.Page, req.PageSize)
+		return nil, err
+	}
+	if _, err := s.repo.FindByID(s.repo.DB, accountID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn("查询公开组织列表失败: 账号不存在, account_id=%d", accountID)
+			return nil, errors.New("账号不存在")
+		}
+		log.Error("查询公开组织列表失败: 查询账号异常: %v, account_id=%d", err, accountID)
+		return nil, err
+	}
+
 	queryMap := buildPublicOrganizationQueryMap(req)
 
 	trimmedKeyword := strings.TrimSpace(req.Keyword)
 	if trimmedKeyword != "" {
 		ids, err := s.repo.FindOrganizationIDsByKeyword(s.repo.DB, trimmedKeyword)
 		if err != nil {
-			log.Error("构建公开组织查询条件失败: %v", err)
+			log.Error("构建公开组织查询条件失败: %v, account_id=%d", err, accountID)
 			return nil, err
 		}
 		if len(ids) == 0 {
@@ -260,7 +273,7 @@ func (s *OrganizationService) PublicOrganizationList(req *api.OrganizationListRe
 	offset := (int(req.Page) - 1) * pageSize
 	organizations, total, err := s.repo.GetOrganizationList(s.repo.DB, queryMap, pageSize, offset)
 	if err != nil {
-		log.Error("查询公开组织列表失败: %v", err)
+		log.Error("查询公开组织列表失败: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -271,7 +284,7 @@ func (s *OrganizationService) PublicOrganizationList(req *api.OrganizationListRe
 		}
 		item, buildErr := buildPublicOrganizationListItem(org)
 		if buildErr != nil {
-			log.Error("组装公开组织列表项失败: %v, org_id=%d", buildErr, org.ID)
+			log.Error("组装公开组织列表项失败: %v, account_id=%d org_id=%d", buildErr, accountID, org.ID)
 			return nil, buildErr
 		}
 		list = append(list, item)
@@ -287,10 +300,10 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	if req.Id <= 0 {
+	if req.OrganizationId <= 0 {
 		return nil, errors.New("组织ID无效")
 	}
-	organization, _, err := s.getManageableOrganization(req.Id)
+	organization, _, err := s.getManageableOrganization(req.OrganizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -316,10 +329,10 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	// 获取当前登录用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前登录账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Warn("获取当前用户ID失败: %v", err)
+		log.Warn("获取当前账户ID失败: %v", err)
 		return nil, err
 	}
 
@@ -333,8 +346,8 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 	if req.ContactPhone == "" {
 		return nil, errors.New("联系电话不能为空")
 	}
-	if userID <= 0 {
-		return nil, errors.New("用户ID无效")
+	if accountID <= 0 {
+		return nil, errors.New("账户ID无效")
 	}
 
 	var createdOrgID int64
@@ -348,7 +361,7 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 			contactPhone = pair.Encrypted
 		}
 		org := &model.Organization{
-			AccountID:     userID,
+			AccountID:     accountID,
 			OrgName:       req.Name,
 			LicenseCode:   req.OrganizationCode,
 			ContactPerson: req.ContactPerson,
@@ -362,14 +375,14 @@ func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequ
 		if err := s.repo.CreateOrganization(tx, org); err != nil {
 			return err
 		}
-		if err := s.bindOrganizationOwnerRole(tx, userID, org.ID); err != nil {
+		if err := s.bindOrganizationOwnerRole(tx, accountID, org.ID); err != nil {
 			return err
 		}
 		createdOrgID = org.ID
 		return nil
 	})
 	if err != nil {
-		log.Error("创建组织失败: %v, user_id=%d", err, userID)
+		log.Error("创建组织失败: %v, account_id=%d", err, accountID)
 		return nil, errors.New("创建组织失败")
 	}
 
@@ -408,7 +421,7 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	_, _, err := s.getManageableOrganization(req.Id)
+	_, _, err := s.getManageableOrganization(req.OrganizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -446,13 +459,13 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 		return nil, errors.New("没有需要更新的字段")
 	}
 
-	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, updateQuery)
+	err = s.repo.UpdateOrganization(s.repo.DB, req.OrganizationId, updateQuery)
 	if err != nil {
-		log.Error("更新组织信息失败: %v, ID=%d", err, req.Id)
+		log.Error("更新组织信息失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, errors.New("更新组织信息失败")
 	}
 
-	log.Info("组织信息更新成功: ID=%d", req.Id)
+	log.Info("组织信息更新成功: organization_id=%d", req.OrganizationId)
 
 	return &api.OrganizationUpdateResponse{
 		Message: "更新成功",
@@ -460,17 +473,17 @@ func (s *OrganizationService) UpdateOrganization(req *api.OrganizationUpdateRequ
 }
 
 func (s *OrganizationService) OrganizationAccountUpdate(req *api.OrganizationAccountUpdateRequest) (*api.OrganizationAccountUpdateResponse, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 
-	account, err := s.repo.FindByID(s.repo.DB, userID)
+	account, err := s.repo.FindByID(s.repo.DB, accountID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("账户不存在")
 		}
-		log.Error("更新组织账户信息失败: 查询账户异常: %v, user_id=%d", err, userID)
+		log.Error("更新组织账户信息失败: 查询账户异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -482,7 +495,7 @@ func (s *OrganizationService) OrganizationAccountUpdate(req *api.OrganizationAcc
 	if email, ok := updates["email"].(string); ok && email != "" && email != account.Email {
 		exists, checkErr := s.repo.CheckEmailExists(s.repo.DB, email)
 		if checkErr != nil {
-			log.Error("更新组织账户信息失败: 检查邮箱异常: %v, user_id=%d", checkErr, userID)
+			log.Error("更新组织账户信息失败: 检查邮箱异常: %v, account_id=%d", checkErr, accountID)
 			return nil, errors.New("检查邮箱失败")
 		}
 		if exists {
@@ -493,7 +506,7 @@ func (s *OrganizationService) OrganizationAccountUpdate(req *api.OrganizationAcc
 	if mobileHash, ok := updates["mobile_hash"].(string); ok && mobileHash != "" && mobileHash != account.MobileHash {
 		exists, checkErr := s.repo.CheckMobileExists(s.repo.DB, mobileHash)
 		if checkErr != nil {
-			log.Error("更新组织账户信息失败: 检查手机号异常: %v, user_id=%d", checkErr, userID)
+			log.Error("更新组织账户信息失败: 检查手机号异常: %v, account_id=%d", checkErr, accountID)
 			return nil, errors.New("检查手机号失败")
 		}
 		if exists {
@@ -501,8 +514,8 @@ func (s *OrganizationService) OrganizationAccountUpdate(req *api.OrganizationAcc
 		}
 	}
 
-	if err := s.repo.UpdateAccountByID(s.repo.DB, userID, updates); err != nil {
-		log.Error("更新组织账户信息失败: %v, user_id=%d", err, userID)
+	if err := s.repo.UpdateAccountByID(s.repo.DB, accountID, updates); err != nil {
+		log.Error("更新组织账户信息失败: %v, account_id=%d", err, accountID)
 		return nil, errors.New("更新组织账户信息失败")
 	}
 
@@ -553,19 +566,19 @@ func (s *OrganizationService) DeleteOrganization(req *api.DeleteOrganizationRequ
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	_, _, err := s.getManageableOrganization(req.Id)
+	_, _, err := s.getManageableOrganization(req.OrganizationId)
 	if err != nil {
 		return nil, err
 	}
 
 	// 删除组织
-	err = s.repo.DeleteOrganization(s.repo.DB, req.Id)
+	err = s.repo.DeleteOrganization(s.repo.DB, req.OrganizationId)
 	if err != nil {
-		log.Error("删除组织失败: %v, ID=%d", err, req.Id)
+		log.Error("删除组织失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, errors.New("删除组织失败")
 	}
 
-	log.Info("组织删除成功: ID=%d", req.Id)
+	log.Info("组织删除成功: organization_id=%d", req.OrganizationId)
 
 	return &api.DeleteOrganizationResponse{
 		Message: "删除成功",
@@ -576,7 +589,7 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	organization, _, err := s.getManageableOrganization(req.Id)
+	organization, _, err := s.getManageableOrganization(req.OrganizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -584,13 +597,13 @@ func (s *OrganizationService) DisableOrganization(req *api.DisableOrganizationRe
 		return nil, errors.New("组织账号信息异常")
 	}
 
-	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationDisabled})
+	err = s.repo.UpdateOrganization(s.repo.DB, req.OrganizationId, map[string]any{"status": model.OrganizationDisabled})
 	if err != nil {
-		log.Error("停用组织失败: %v, ID=%d", err, req.Id)
+		log.Error("停用组织失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, errors.New("停用组织失败")
 	}
 
-	log.Info("组织停用成功: ID=%d, 原因=%s", req.Id, req.Reason)
+	log.Info("组织停用成功: organization_id=%d, 原因=%s", req.OrganizationId, req.Reason)
 
 	return &api.DisableOrganizationResponse{
 		Message: "停用成功",
@@ -601,7 +614,7 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 	if req == nil {
 		return nil, errors.New("请求不能为空")
 	}
-	organization, _, err := s.getManageableOrganization(req.Id)
+	organization, _, err := s.getManageableOrganization(req.OrganizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -609,13 +622,13 @@ func (s *OrganizationService) EnableOrganization(req *api.EnableOrganizationRequ
 		return nil, errors.New("组织账号信息异常")
 	}
 
-	err = s.repo.UpdateOrganization(s.repo.DB, req.Id, map[string]any{"status": model.OrganizationNormal})
+	err = s.repo.UpdateOrganization(s.repo.DB, req.OrganizationId, map[string]any{"status": model.OrganizationNormal})
 	if err != nil {
-		log.Error("启用组织失败: %v, ID=%d", err, req.Id)
+		log.Error("启用组织失败: %v, organization_id=%d", err, req.OrganizationId)
 		return nil, errors.New("启用组织失败")
 	}
 
-	log.Info("组织启用成功: ID=%d, 原因=%s", req.Id, req.Reason)
+	log.Info("组织启用成功: organization_id=%d, 原因=%s", req.OrganizationId, req.Reason)
 
 	return &api.EnableOrganizationResponse{
 		Message: "启用成功",
@@ -780,15 +793,15 @@ func (s *OrganizationService) BatchEnableOrganizations(req *api.BatchEnableOrgan
 // ----- 组织端私有能力：批量流程 -----
 
 func (s *OrganizationService) resolveOrgBatchOperatorID() (int64, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Warn("组织批量停启失败: 获取当前用户失败: %v", err)
+		log.Warn("组织批量停启失败: 获取当前账户失败: %v", err)
 		return 0, err
 	}
-	if userID <= 0 {
-		return 0, errors.New("用户ID无效")
+	if accountID <= 0 {
+		return 0, errors.New("账户ID无效")
 	}
-	return userID, nil
+	return accountID, nil
 }
 
 func (s *OrganizationService) batchChangeOrganizationStatus(

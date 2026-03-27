@@ -25,10 +25,8 @@ const (
 // VolunteerJoinRequest 志愿者加入组织请求
 type VolunteerJoinRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 志愿者ID 必填 @gotags: json:"volunteerId,required"
-	VolunteerId int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId,required"`
 	// 组织ID 必填 @gotags: json:"organizationId,required"
-	OrganizationId int64 `protobuf:"varint,2,opt,name=organizationId,proto3" json:"organizationId,required"`
+	OrganizationId int64 `protobuf:"varint,1,opt,name=organizationId,proto3" json:"organizationId,required"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -61,13 +59,6 @@ func (x *VolunteerJoinRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use VolunteerJoinRequest.ProtoReflect.Descriptor instead.
 func (*VolunteerJoinRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_membership_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *VolunteerJoinRequest) GetVolunteerId() int64 {
-	if x != nil {
-		return x.VolunteerId
-	}
-	return 0
 }
 
 func (x *VolunteerJoinRequest) GetOrganizationId() int64 {
@@ -386,17 +377,15 @@ func (x *OrganizationMembersResponse) GetList() []*MemberInfo {
 	return nil
 }
 
-// VolunteerOrganizationsRequest 查询志愿者加入的组织请求
+// VolunteerOrganizationsRequest 查询当前志愿者加入的组织请求
 type VolunteerOrganizationsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 志愿者ID 必填 @gotags: path:"volunteerId,required"
-	VolunteerId int64 `protobuf:"varint,1,opt,name=volunteerId,proto3" json:"volunteerId" path:"volunteerId,required"`
 	// 状态筛选 可选 @gotags: query:"status"
-	Status int32 `protobuf:"varint,2,opt,name=status,proto3" json:"status" query:"status"`
+	Status int32 `protobuf:"varint,1,opt,name=status,proto3" json:"status" query:"status"`
 	// 页码 必填 @gotags: query:"page,required"
-	Page int32 `protobuf:"varint,3,opt,name=page,proto3" json:"page" query:"page,required"`
+	Page int32 `protobuf:"varint,2,opt,name=page,proto3" json:"page" query:"page,required"`
 	// 页大小 必填 @gotags: query:"pageSize,required"
-	PageSize      int32 `protobuf:"varint,4,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize,required"`
+	PageSize      int32 `protobuf:"varint,3,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -429,13 +418,6 @@ func (x *VolunteerOrganizationsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use VolunteerOrganizationsRequest.ProtoReflect.Descriptor instead.
 func (*VolunteerOrganizationsRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_membership_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *VolunteerOrganizationsRequest) GetVolunteerId() int64 {
-	if x != nil {
-		return x.VolunteerId
-	}
-	return 0
 }
 
 func (x *VolunteerOrganizationsRequest) GetStatus() int32 {
@@ -1099,10 +1081,9 @@ var File_internal_api_membership_proto protoreflect.FileDescriptor
 const file_internal_api_membership_proto_rawDesc = "" +
 	"\n" +
 	"\x1dinternal/api/membership.proto\x12\n" +
-	"membership\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"`\n" +
-	"\x14VolunteerJoinRequest\x12 \n" +
-	"\vvolunteerId\x18\x01 \x01(\x03R\vvolunteerId\x12&\n" +
-	"\x0eorganizationId\x18\x02 \x01(\x03R\x0eorganizationId\"m\n" +
+	"membership\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\">\n" +
+	"\x14VolunteerJoinRequest\x12&\n" +
+	"\x0eorganizationId\x18\x01 \x01(\x03R\x0eorganizationId\"m\n" +
 	"\x15VolunteerJoinResponse\x12\"\n" +
 	"\fmembershipId\x18\x01 \x01(\x03R\fmembershipId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\x05R\x06status\x12\x18\n" +
@@ -1121,12 +1102,11 @@ const file_internal_api_membership_proto_rawDesc = "" +
 	"\bpageSize\x18\x06 \x01(\x05R\bpageSize\"_\n" +
 	"\x1bOrganizationMembersResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12*\n" +
-	"\x04list\x18\x02 \x03(\v2\x16.membership.MemberInfoR\x04list\"\x89\x01\n" +
-	"\x1dVolunteerOrganizationsRequest\x12 \n" +
-	"\vvolunteerId\x18\x01 \x01(\x03R\vvolunteerId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\x05R\x06status\x12\x12\n" +
-	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x1a\n" +
-	"\bpageSize\x18\x04 \x01(\x05R\bpageSize\"n\n" +
+	"\x04list\x18\x02 \x03(\v2\x16.membership.MemberInfoR\x04list\"g\n" +
+	"\x1dVolunteerOrganizationsRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\x05R\x06status\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1a\n" +
+	"\bpageSize\x18\x03 \x01(\x05R\bpageSize\"n\n" +
 	"\x1eVolunteerOrganizationsResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x126\n" +
 	"\x04list\x18\x02 \x03(\v2\".membership.OrganizationMemberInfoR\x04list\"}\n" +
@@ -1186,12 +1166,12 @@ const file_internal_api_membership_proto_rawDesc = "" +
 	"\rreviewComment\x18\n" +
 	" \x01(\tR\rreviewComment\x12\x1c\n" +
 	"\tcreatedAt\x18\v \x01(\tR\tcreatedAt\x12\x1c\n" +
-	"\tupdatedAt\x18\f \x01(\tR\tupdatedAt2\x8a\a\n" +
+	"\tupdatedAt\x18\f \x01(\tR\tupdatedAt2\xf4\x06\n" +
 	"\x11MembershipService\x12\x82\x01\n" +
 	"\x19VolunteerJoinOrganization\x12 .membership.VolunteerJoinRequest\x1a!.membership.VolunteerJoinResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/memberships/join\x12\x86\x01\n" +
 	"\x1aVolunteerLeaveOrganization\x12!.membership.VolunteerLeaveRequest\x1a\".membership.VolunteerLeaveResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/memberships/leave\x12\x9e\x01\n" +
-	"\x16GetOrganizationMembers\x12&.membership.OrganizationMembersRequest\x1a'.membership.OrganizationMembersResponse\"3\x82\xd3\xe4\x93\x02-\x12+/api/organizations/{organizationId}/members\x12\xa7\x01\n" +
-	"\x19GetVolunteerOrganizations\x12).membership.VolunteerOrganizationsRequest\x1a*.membership.VolunteerOrganizationsResponse\"3\x82\xd3\xe4\x93\x02-\x12+/api/volunteers/{volunteerId}/organizations\x12\x8e\x01\n" +
+	"\x16GetOrganizationMembers\x12&.membership.OrganizationMembersRequest\x1a'.membership.OrganizationMembersResponse\"3\x82\xd3\xe4\x93\x02-\x12+/api/organizations/{organizationId}/members\x12\x91\x01\n" +
+	"\x19GetVolunteerOrganizations\x12).membership.VolunteerOrganizationsRequest\x1a*.membership.VolunteerOrganizationsResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/me/organizations\x12\x8e\x01\n" +
 	"\x12UpdateMemberStatus\x12%.membership.MemberStatusUpdateRequest\x1a&.membership.MemberStatusUpdateResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/memberships/status/update\x12z\n" +
 	"\x0fMembershipStats\x12\".membership.MembershipStatsRequest\x1a#.membership.MembershipStatsResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/memberships/stats\x1a\x0f\xcaA\f0.0.0.0:8080B#Z!volunteer-system/internal/api;apib\x06proto3"
 

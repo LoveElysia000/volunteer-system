@@ -75,7 +75,7 @@ func (c *einoToolCollector) Snapshot() []runtimeToolCall {
 }
 
 // buildEinoTools 将业务工具声明为 Eino 可调用工具集合。
-func (s *AssistantService) buildEinoTools(userID int64, collector *einoToolCollector) ([]tool.BaseTool, error) {
+func (s *AssistantService) buildEinoTools(accountID int64, collector *einoToolCollector) ([]tool.BaseTool, error) {
 	searchTool, err := etoolutils.InferTool(assistantToolActivitySearch, einoToolDescActivitySearch,
 		func(ctx context.Context, input einoActivitySearchInput) (map[string]any, error) {
 			// 仅透传非零值字段，减少无意义参数噪音。
@@ -89,7 +89,7 @@ func (s *AssistantService) buildEinoTools(userID int64, collector *einoToolColle
 			if input.Limit > 0 {
 				planInput["limit"] = input.Limit
 			}
-			return s.executeEinoTool(ctx, userID, collector, assistantToolPlan{
+			return s.executeEinoTool(ctx, accountID, collector, assistantToolPlan{
 				ToolName: assistantToolActivitySearch,
 				Input:    planInput,
 			})
@@ -104,7 +104,7 @@ func (s *AssistantService) buildEinoTools(userID int64, collector *einoToolColle
 			if input.OrgID > 0 {
 				planInput["org_id"] = input.OrgID
 			}
-			return s.executeEinoTool(ctx, userID, collector, assistantToolPlan{
+			return s.executeEinoTool(ctx, accountID, collector, assistantToolPlan{
 				ToolName: assistantToolActivityStats,
 				Input:    planInput,
 			})
@@ -129,7 +129,7 @@ func (s *AssistantService) buildEinoTools(userID int64, collector *einoToolColle
 				planInput["location"] = location
 			}
 
-			return s.executeEinoTool(ctx, userID, collector, assistantToolPlan{
+			return s.executeEinoTool(ctx, accountID, collector, assistantToolPlan{
 				ToolName: assistantToolActivityDraftGenerate,
 				Input:    planInput,
 			})
@@ -143,9 +143,9 @@ func (s *AssistantService) buildEinoTools(userID int64, collector *einoToolColle
 
 // executeEinoTool 执行业务工具并转换为 Eino 期望的 map 输出。
 // 执行失败时返回 error 让模型感知失败状态，执行结果同时写入 collector。
-func (s *AssistantService) executeEinoTool(ctx context.Context, userID int64, collector *einoToolCollector, plan assistantToolPlan) (map[string]any, error) {
+func (s *AssistantService) executeEinoTool(ctx context.Context, accountID int64, collector *einoToolCollector, plan assistantToolPlan) (map[string]any, error) {
 	// 工具实际执行交给业务工具服务，适配层只做结果格式转换。
-	result := s.toolService.Execute(ctx, userID, plan)
+	result := s.toolService.Execute(ctx, accountID, plan)
 	collector.Add(result)
 
 	if result == nil {

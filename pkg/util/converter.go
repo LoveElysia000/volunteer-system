@@ -31,7 +31,7 @@ func ConvertSysAccountToUserInfo(account *model.SysAccount) *api.UserInfo {
 	}
 
 	return &api.UserInfo{
-		UserId:      strconv.FormatInt(account.ID, 10),
+		AccountId:   strconv.FormatInt(account.ID, 10),
 		UserName:    account.UserName,
 		Email:       account.Email,
 		Phone:       phone,

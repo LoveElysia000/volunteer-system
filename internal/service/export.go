@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/util"
@@ -210,12 +209,12 @@ func (s *ExportService) ExportOpsReport(req *api.ExportOpsReportRequest) (*model
 		return nil, err
 	}
 
-	operatorID, err := middleware.GetUserIDInt(s.c)
+	operatorAccountID, err := s.currentAccountID()
 	if err != nil {
 		return nil, err
 	}
 	if err := s.requireOrgPermission(
-		operatorID,
+		operatorAccountID,
 		req.OrgId,
 		model.PermissionResourceExport,
 		model.PermissionActionManage,
@@ -286,15 +285,15 @@ func resolveOpsReportRange(periodType, rawStart, rawEnd string) (time.Time, time
 }
 
 func (s *ExportService) getCurrentOrgID() (int64, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
 		return 0, err
 	}
 
-	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, userID)
+	org, err := s.repo.GetOrganizationByAccountID(s.repo.DB, accountID)
 	if err == nil && org != nil {
 		if err := s.requireOrgPermission(
-			userID,
+			accountID,
 			org.ID,
 			model.PermissionResourceExport,
 			model.PermissionActionManage,
@@ -309,7 +308,7 @@ func (s *ExportService) getCurrentOrgID() (int64, error) {
 
 	orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
 		s.repo.DB,
-		userID,
+		accountID,
 		model.PermissionResourceExport,
 		model.PermissionActionManage,
 		2,
@@ -325,7 +324,7 @@ func (s *ExportService) getCurrentOrgID() (int64, error) {
 	}
 
 	if err := s.requireGlobalPermission(
-		userID,
+		accountID,
 		model.PermissionResourceExport,
 		model.PermissionActionManage,
 	); err == nil {

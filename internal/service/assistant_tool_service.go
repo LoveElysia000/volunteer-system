@@ -114,7 +114,7 @@ func (t *AssistantToolService) PlanTools(scene, message string) []assistantToolP
 }
 
 // Execute 执行单个工具，包含超时与重试
-func (t *AssistantToolService) Execute(ctx context.Context, userID int64, plan assistantToolPlan) *assistantToolResult {
+func (t *AssistantToolService) Execute(ctx context.Context, accountID int64, plan assistantToolPlan) *assistantToolResult {
 	result := &assistantToolResult{
 		ToolName: plan.ToolName,
 	}
@@ -140,7 +140,7 @@ func (t *AssistantToolService) Execute(ctx context.Context, userID int64, plan a
 	for attempt := 1; attempt <= assistantToolMaxAttempts; attempt++ {
 		// 每次尝试都基于同一个父上下文派生独立超时，确保可被上层取消信号中断。
 		attemptCtx, cancel := context.WithTimeout(baseCtx, toolTimeout)
-		output, err = t.executeOnce(attemptCtx, userID, plan)
+		output, err = t.executeOnce(attemptCtx, accountID, plan)
 		cancel()
 		if err == nil {
 			break
@@ -194,14 +194,14 @@ func resolveEinoToolTimeout(cfg *config.AIConfig) time.Duration {
 }
 
 // executeOnce 仅负责路由到具体工具实现，不承担重试与超时控制。
-func (t *AssistantToolService) executeOnce(ctx context.Context, userID int64, plan assistantToolPlan) (any, error) {
+func (t *AssistantToolService) executeOnce(ctx context.Context, accountID int64, plan assistantToolPlan) (any, error) {
 	switch plan.ToolName {
 	case assistantToolActivitySearch:
 		return t.executeActivitySearch(ctx, plan.Input)
 	case assistantToolActivityStats:
-		return t.executeActivityStats(ctx, userID, plan.Input)
+		return t.executeActivityStats(ctx, accountID, plan.Input)
 	case assistantToolActivityDraftGenerate:
-		return t.executeActivityDraftGenerate(ctx, userID, plan.Input)
+		return t.executeActivityDraftGenerate(ctx, accountID, plan.Input)
 	default:
 		return nil, fmt.Errorf("%w: 未知工具 %s", errToolInvalidInput, plan.ToolName)
 	}
@@ -246,8 +246,8 @@ func (t *AssistantToolService) executeActivitySearch(ctx context.Context, input 
 }
 
 // executeActivityStats 面向运营分析，含组织权限校验与统计聚合。
-func (t *AssistantToolService) executeActivityStats(ctx context.Context, userID int64, input map[string]any) (any, error) {
-	manageableOrgIDs, err := t.repo.GetAssistantAccessibleOrgIDs(t.repo.DB, ctx, userID, model.MemberRoleManager)
+func (t *AssistantToolService) executeActivityStats(ctx context.Context, accountID int64, input map[string]any) (any, error) {
+	manageableOrgIDs, err := t.repo.GetAssistantAccessibleOrgIDs(t.repo.DB, ctx, accountID, model.MemberRoleManager)
 	if err != nil {
 		return nil, err
 	}
@@ -320,8 +320,8 @@ func (t *AssistantToolService) executeActivityStats(ctx context.Context, userID 
 }
 
 // executeActivityDraftGenerate 先生成稳定草案骨架，再交给模型在上下文中润色。
-func (t *AssistantToolService) executeActivityDraftGenerate(ctx context.Context, userID int64, input map[string]any) (any, error) {
-	accessibleOrgIDs, err := t.repo.GetAssistantAccessibleOrgIDs(t.repo.DB, ctx, userID, model.MemberRoleMember)
+func (t *AssistantToolService) executeActivityDraftGenerate(ctx context.Context, accountID int64, input map[string]any) (any, error) {
+	accessibleOrgIDs, err := t.repo.GetAssistantAccessibleOrgIDs(t.repo.DB, ctx, accountID, model.MemberRoleMember)
 	if err != nil {
 		return nil, err
 	}

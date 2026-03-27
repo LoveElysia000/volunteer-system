@@ -304,10 +304,10 @@ func (x *OrganizationListItem) GetCreatedAt() string {
 // OrganizationDetailRequest 组织详情请求
 type OrganizationDetailRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID 必填 @gotags: path:"id,required"
-	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// 组织ID 必填 @gotags: path:"organizationId,required"
+	OrganizationId int64 `protobuf:"varint,1,opt,name=organizationId,proto3" json:"organizationId" path:"organizationId,required"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *OrganizationDetailRequest) Reset() {
@@ -340,9 +340,9 @@ func (*OrganizationDetailRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_organization_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *OrganizationDetailRequest) GetId() int64 {
+func (x *OrganizationDetailRequest) GetOrganizationId() int64 {
 	if x != nil {
-		return x.Id
+		return x.OrganizationId
 	}
 	return 0
 }
@@ -995,8 +995,8 @@ func (x *OrganizationCreateResponse) GetMessage() string {
 // OrganizationUpdateRequest 更新组织请求
 type OrganizationUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID 必填 @gotags: path:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 组织ID 必填 @gotags: path:"organizationId,required"
+	OrganizationId int64 `protobuf:"varint,1,opt,name=organizationId,proto3" json:"organizationId" path:"organizationId,required"`
 	// 组织名称 可选 @gotags: json:"name"
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
 	// 组织代码 可选 @gotags: json:"organizationCode"
@@ -1051,9 +1051,9 @@ func (*OrganizationUpdateRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_organization_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *OrganizationUpdateRequest) GetId() int64 {
+func (x *OrganizationUpdateRequest) GetOrganizationId() int64 {
 	if x != nil {
-		return x.Id
+		return x.OrganizationId
 	}
 	return 0
 }
@@ -1278,10 +1278,10 @@ func (*OrganizationAccountUpdateResponse) Descriptor() ([]byte, []int) {
 // DeleteOrganizationRequest 删除组织请求
 type DeleteOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID 必填 @gotags: path:"id,required"
-	Id            int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// 组织ID 必填 @gotags: path:"organizationId,required"
+	OrganizationId int64 `protobuf:"varint,1,opt,name=organizationId,proto3" json:"organizationId" path:"organizationId,required"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *DeleteOrganizationRequest) Reset() {
@@ -1314,9 +1314,9 @@ func (*DeleteOrganizationRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_organization_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *DeleteOrganizationRequest) GetId() int64 {
+func (x *DeleteOrganizationRequest) GetOrganizationId() int64 {
 	if x != nil {
-		return x.Id
+		return x.OrganizationId
 	}
 	return 0
 }
@@ -1880,8 +1880,8 @@ func (x *BatchEnableOrganizationResponse) GetMessage() string {
 // DisableOrganizationRequest 停用组织请求
 type DisableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID 必填 @gotags: path:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 组织ID 必填 @gotags: path:"organizationId,required"
+	OrganizationId int64 `protobuf:"varint,1,opt,name=organizationId,proto3" json:"organizationId" path:"organizationId,required"`
 	// 停用原因 可选 @gotags: json:"reason"
 	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
@@ -1918,9 +1918,9 @@ func (*DisableOrganizationRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_organization_proto_rawDescGZIP(), []int{25}
 }
 
-func (x *DisableOrganizationRequest) GetId() int64 {
+func (x *DisableOrganizationRequest) GetOrganizationId() int64 {
 	if x != nil {
-		return x.Id
+		return x.OrganizationId
 	}
 	return 0
 }
@@ -1981,8 +1981,8 @@ func (x *DisableOrganizationResponse) GetMessage() string {
 // EnableOrganizationRequest 启用组织请求
 type EnableOrganizationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 组织ID 必填 @gotags: path:"id,required"
-	Id int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id" path:"id,required"`
+	// 组织ID 必填 @gotags: path:"organizationId,required"
+	OrganizationId int64 `protobuf:"varint,1,opt,name=organizationId,proto3" json:"organizationId" path:"organizationId,required"`
 	// 启用原因 可选 @gotags: json:"reason"
 	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason"`
 	unknownFields protoimpl.UnknownFields
@@ -2019,9 +2019,9 @@ func (*EnableOrganizationRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_organization_proto_rawDescGZIP(), []int{27}
 }
 
-func (x *EnableOrganizationRequest) GetId() int64 {
+func (x *EnableOrganizationRequest) GetOrganizationId() int64 {
 	if x != nil {
-		return x.Id
+		return x.OrganizationId
 	}
 	return 0
 }
@@ -2106,9 +2106,9 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x10organizationType\x18\t \x01(\tR\x10organizationType\x12\x16\n" +
 	"\x06region\x18\n" +
 	" \x01(\tR\x06region\x12\x1c\n" +
-	"\tcreatedAt\x18\f \x01(\tR\tcreatedAtJ\x04\b\v\x10\f\"+\n" +
-	"\x19OrganizationDetailRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"\xed\x02\n" +
+	"\tcreatedAt\x18\f \x01(\tR\tcreatedAtJ\x04\b\v\x10\f\"C\n" +
+	"\x19OrganizationDetailRequest\x12&\n" +
+	"\x0eorganizationId\x18\x01 \x01(\x03R\x0eorganizationId\"\xed\x02\n" +
 	"\x1aOrganizationDetailResponse\x12B\n" +
 	"\forganization\x18\x01 \x01(\v2\x1e.organization.OrganizationInfoR\forganization\x12G\n" +
 	"\vaccountInfo\x18\x02 \x01(\v2%.organization.OrganizationAccountInfoR\vaccountInfo\x12W\n" +
@@ -2164,9 +2164,9 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\alogoUrl\x18\v \x01(\tR\alogoUrl\"F\n" +
 	"\x1aOrganizationCreateResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xef\x02\n" +
-	"\x19OrganizationUpdateRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x87\x03\n" +
+	"\x19OrganizationUpdateRequest\x12&\n" +
+	"\x0eorganizationId\x18\x01 \x01(\x03R\x0eorganizationId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12*\n" +
 	"\x10organizationCode\x18\x03 \x01(\tR\x10organizationCode\x12$\n" +
 	"\rcontactPerson\x18\x04 \x01(\tR\rcontactPerson\x12\"\n" +
@@ -2186,9 +2186,9 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\buserName\x18\x01 \x01(\tR\buserName\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +
 	"\x05phone\x18\x03 \x01(\tR\x05phone\"#\n" +
-	"!OrganizationAccountUpdateResponse\"+\n" +
-	"\x19DeleteOrganizationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"6\n" +
+	"!OrganizationAccountUpdateResponse\"C\n" +
+	"\x19DeleteOrganizationRequest\x12&\n" +
+	"\x0eorganizationId\x18\x01 \x01(\x03R\x0eorganizationId\"6\n" +
 	"\x1aDeleteOrganizationResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"\xff\x01\n" +
 	"\x19OrganizationSearchRequest\x12\x18\n" +
@@ -2222,26 +2222,26 @@ const file_internal_api_organization_proto_rawDesc = "" +
 	"\x1fBatchEnableOrganizationResponse\x12\"\n" +
 	"\fsuccessCount\x18\x01 \x01(\x05R\fsuccessCount\x12\x1c\n" +
 	"\tfailedIds\x18\x02 \x03(\x03R\tfailedIds\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"D\n" +
-	"\x1aDisableOrganizationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"\\\n" +
+	"\x1aDisableOrganizationRequest\x12&\n" +
+	"\x0eorganizationId\x18\x01 \x01(\x03R\x0eorganizationId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"7\n" +
 	"\x1bDisableOrganizationResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\"C\n" +
-	"\x19EnableOrganizationRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"[\n" +
+	"\x19EnableOrganizationRequest\x12&\n" +
+	"\x0eorganizationId\x18\x01 \x01(\x03R\x0eorganizationId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"6\n" +
 	"\x1aEnableOrganizationResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xb4\x0e\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xf5\x0e\n" +
 	"\x13OrganizationService\x12\x85\x01\n" +
-	"\x10OrganizationList\x12%.organization.OrganizationListRequest\x1a&.organization.OrganizationListResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/organizations/list\x12\x87\x01\n" +
-	"\x12OrganizationDetail\x12'.organization.OrganizationDetailRequest\x1a(.organization.OrganizationDetailResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/organizations/:id\x12\x8d\x01\n" +
-	"\x12CreateOrganization\x12'.organization.OrganizationCreateRequest\x1a(.organization.OrganizationCreateResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/organizations/create\x12\x8a\x01\n" +
-	"\x12UpdateOrganization\x12'.organization.OrganizationUpdateRequest\x1a(.organization.OrganizationUpdateResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\x1a\x16/api/organizations/:id\x12\xa3\x01\n" +
-	"\x19OrganizationAccountUpdate\x12..organization.OrganizationAccountUpdateRequest\x1a/.organization.OrganizationAccountUpdateResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\x1a\x1a/api/organizations/account\x12\x87\x01\n" +
-	"\x12DeleteOrganization\x12'.organization.DeleteOrganizationRequest\x1a(.organization.DeleteOrganizationResponse\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/api/organizations/:id\x12\x95\x01\n" +
-	"\x13DisableOrganization\x12(.organization.DisableOrganizationRequest\x1a).organization.DisableOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/:id/disable\x12\x91\x01\n" +
-	"\x12EnableOrganization\x12'.organization.EnableOrganizationRequest\x1a(.organization.EnableOrganizationResponse\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/api/organizations/:id/enable\x12\x8e\x01\n" +
+	"\x10OrganizationList\x12%.organization.OrganizationListRequest\x1a&.organization.OrganizationListResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/organizations/list\x12\x94\x01\n" +
+	"\x12OrganizationDetail\x12'.organization.OrganizationDetailRequest\x1a(.organization.OrganizationDetailResponse\"+\x82\xd3\xe4\x93\x02%\x12#/api/organizations/{organizationId}\x12\x8d\x01\n" +
+	"\x12CreateOrganization\x12'.organization.OrganizationCreateRequest\x1a(.organization.OrganizationCreateResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/organizations/create\x12\x97\x01\n" +
+	"\x12UpdateOrganization\x12'.organization.OrganizationUpdateRequest\x1a(.organization.OrganizationUpdateResponse\".\x82\xd3\xe4\x93\x02(:\x01*\x1a#/api/organizations/{organizationId}\x12\xa3\x01\n" +
+	"\x19OrganizationAccountUpdate\x12..organization.OrganizationAccountUpdateRequest\x1a/.organization.OrganizationAccountUpdateResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\x1a\x1a/api/organizations/account\x12\x94\x01\n" +
+	"\x12DeleteOrganization\x12'.organization.DeleteOrganizationRequest\x1a(.organization.DeleteOrganizationResponse\"+\x82\xd3\xe4\x93\x02%*#/api/organizations/{organizationId}\x12\xa2\x01\n" +
+	"\x13DisableOrganization\x12(.organization.DisableOrganizationRequest\x1a).organization.DisableOrganizationResponse\"6\x82\xd3\xe4\x93\x020:\x01*\"+/api/organizations/{organizationId}/disable\x12\x9e\x01\n" +
+	"\x12EnableOrganization\x12'.organization.EnableOrganizationRequest\x1a(.organization.EnableOrganizationResponse\"5\x82\xd3\xe4\x93\x02/:\x01*\"*/api/organizations/{organizationId}/enable\x12\x8e\x01\n" +
 	"\x13SearchOrganizations\x12'.organization.OrganizationSearchRequest\x1a(.organization.OrganizationSearchResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/organizations/search\x12\x9f\x01\n" +
 	"\x17BulkDeleteOrganizations\x12+.organization.BulkDeleteOrganizationRequest\x1a,.organization.BulkDeleteOrganizationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/organizations/bulk-delete\x12\xa7\x01\n" +
 	"\x19BatchDisableOrganizations\x12-.organization.BatchDisableOrganizationRequest\x1a..organization.BatchDisableOrganizationResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/organizations/batch-disable\x12\xa3\x01\n" +

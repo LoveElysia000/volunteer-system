@@ -17,7 +17,7 @@ import (
 
 // 上下文中的用户信息键
 const (
-	UserIDKey    = "user_id"
+	AccountIDKey = "account_id"
 	TokenTypeKey = "token_type"
 	DeviceIDKey  = "device_id"
 )
@@ -58,10 +58,10 @@ func Auth() app.HandlerFunc {
 			return
 		}
 
-		c.Set(UserIDKey, claims.UserID)
+		c.Set(AccountIDKey, claims.GetAccountID())
 		c.Set(TokenTypeKey, claims.TokenType)
 		c.Set(DeviceIDKey, claims.DeviceID)
-		logger.SetCurrentRequestField("user_id", claims.UserID)
+		logger.SetCurrentRequestField("account_id", claims.GetAccountID())
 
 		c.Next(ctx)
 	}
@@ -90,35 +90,45 @@ func Optional() app.HandlerFunc {
 			return
 		}
 
-		c.Set(UserIDKey, claims.UserID)
+		c.Set(AccountIDKey, claims.GetAccountID())
 		c.Set(TokenTypeKey, claims.TokenType)
 		c.Set(DeviceIDKey, claims.DeviceID)
-		logger.SetCurrentRequestField("user_id", claims.UserID)
+		logger.SetCurrentRequestField("account_id", claims.GetAccountID())
 
 		c.Next(ctx)
 	}
 }
 
-// GetUserID 从上下文获取用户ID
-func GetUserID(c *app.RequestContext) (string, error) {
-	userID, exists := c.Get(UserIDKey)
+// GetAccountID 从上下文获取账户ID
+func GetAccountID(c *app.RequestContext) (string, error) {
+	accountID, exists := c.Get(AccountIDKey)
 	if !exists {
-		return "", errors.New("用户ID未找到")
+		return "", errors.New("账户ID未找到")
 	}
-	userIDStr, ok := userID.(string)
+	accountIDStr, ok := accountID.(string)
 	if !ok {
-		return "", errors.New("用户ID类型错误")
+		return "", errors.New("账户ID类型错误")
 	}
-	return userIDStr, nil
+	return accountIDStr, nil
 }
 
-// GetUserIDInt 从上下文获取用户ID（int64）
-func GetUserIDInt(c *app.RequestContext) (int64, error) {
-	userID, err := GetUserID(c)
+// GetAccountIDInt 从上下文获取账户ID（int64）
+func GetAccountIDInt(c *app.RequestContext) (int64, error) {
+	accountID, err := GetAccountID(c)
 	if err != nil {
 		return 0, err
 	}
-	return strconv.ParseInt(userID, 10, 64)
+	return strconv.ParseInt(accountID, 10, 64)
+}
+
+// GetUserID keeps backward compatibility while the codebase migrates to account terminology.
+func GetUserID(c *app.RequestContext) (string, error) {
+	return GetAccountID(c)
+}
+
+// GetUserIDInt keeps backward compatibility while the codebase migrates to account terminology.
+func GetUserIDInt(c *app.RequestContext) (int64, error) {
+	return GetAccountIDInt(c)
 }
 
 // GetDeviceID 从上下文获取设备ID

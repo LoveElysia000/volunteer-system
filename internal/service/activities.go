@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
-	"volunteer-system/internal/middleware"
 	"volunteer-system/internal/model"
 	"volunteer-system/internal/repository"
 	"volunteer-system/pkg/logger"
@@ -57,20 +56,20 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 		req.PageSize = 50
 	}
 
-	// 先校验当前用户上下文与账号存在性，避免被后续“空结果快速返回”分支绕过。
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 先校验当前账号上下文与账号存在性，避免被后续“空结果快速返回”分支绕过。
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("活动列表查询失败: 获取当前用户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
+		log.Error("活动列表查询失败: 获取当前账户ID异常: %v, status=%d page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
 		return nil, err
 	}
 
-	account, findErr := s.repo.FindByID(s.repo.DB, userID)
+	account, findErr := s.repo.FindByID(s.repo.DB, accountID)
 	if findErr != nil {
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
-			log.Warn("活动列表查询失败: 账号不存在, user_id=%d", userID)
+			log.Warn("活动列表查询失败: 账号不存在, account_id=%d", accountID)
 			return nil, errors.New("账号不存在")
 		}
-		log.Error("活动列表查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
+		log.Error("活动列表查询失败: 查询账号信息异常: %v, account_id=%d", findErr, accountID)
 		return nil, findErr
 	}
 
@@ -80,9 +79,9 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 		return nil, err
 	}
 
-	volunteerID, isVolunteer, err := s.resolveActivityListVolunteerID(userID, account)
+	volunteerID, isVolunteer, err := s.resolveActivityListVolunteerID(accountID, account)
 	if err != nil {
-		log.Error("活动列表查询失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
+		log.Error("活动列表查询失败: 查询志愿者身份异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 	if req.RegisteredOnly && !isVolunteer {
@@ -92,7 +91,7 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 		}, nil
 	}
 
-	if ok, filterErr := s.applyActivityListScopeFilters(req, userID, volunteerID, actMap); filterErr != nil {
+	if ok, filterErr := s.applyActivityListScopeFilters(req, accountID, volunteerID, actMap); filterErr != nil {
 		return nil, filterErr
 	} else if !ok {
 		return &api.ActivityListResponse{
@@ -113,7 +112,7 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	signupMap := make(map[int64]*model.ActivitySignup)
 	// 仅志愿者账号需要计算报名态；组织账号统一返回 false。
 	if isVolunteer && len(activities) > 0 {
-		signupMap, err = s.loadActivitySignupMap(userID, volunteerID, activities)
+		signupMap, err = s.loadActivitySignupMap(accountID, volunteerID, activities)
 		if err != nil {
 			return nil, err
 		}
@@ -150,12 +149,12 @@ func (s *ActivityService) ActivityList(req *api.ActivityListRequest) (*api.Activ
 	return resp, nil
 }
 
-func (s *ActivityService) resolveActivityListVolunteerID(userID int64, account *model.SysAccount) (int64, bool, error) {
+func (s *ActivityService) resolveActivityListVolunteerID(accountID int64, account *model.SysAccount) (int64, bool, error) {
 	if account == nil || account.IdentityType != model.RegisterTypeVolunteerCode {
 		return 0, false, nil
 	}
 
-	volunteerID, err := s.getVolunteerIDByAccountID(userID)
+	volunteerID, err := s.getVolunteerIDByAccountID(accountID)
 	if err != nil {
 		return 0, false, err
 	}
@@ -164,13 +163,13 @@ func (s *ActivityService) resolveActivityListVolunteerID(userID int64, account *
 
 func (s *ActivityService) applyActivityListScopeFilters(
 	req *api.ActivityListRequest,
-	userID, volunteerID int64,
+	accountID, volunteerID int64,
 	actMap map[string]any,
 ) (bool, error) {
 	if req.RegisteredOnly {
 		signups, err := s.repo.ListVisibleSignupsByVolunteer(s.repo.DB, volunteerID)
 		if err != nil {
-			log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteerID)
+			log.Error("活动列表查询失败: 查询用户报名记录异常: %v, account_id=%d volunteer_id=%d", err, accountID, volunteerID)
 			return false, err
 		}
 		if ok := mergeActivityIDConstraint(actMap, collectRegisteredActivityIDs(signups)); !ok {
@@ -195,7 +194,7 @@ func (s *ActivityService) applyActivityListScopeFilters(
 }
 
 func (s *ActivityService) loadActivitySignupMap(
-	userID, volunteerID int64,
+	accountID, volunteerID int64,
 	activities []*model.Activity,
 ) (map[int64]*model.ActivitySignup, error) {
 	activityIDs := make([]int64, 0, len(activities))
@@ -208,7 +207,7 @@ func (s *ActivityService) loadActivitySignupMap(
 
 	signups, err := s.repo.ListUserSignupsByActivityIDs(s.repo.DB, volunteerID, activityIDs)
 	if err != nil {
-		log.Error("活动列表查询失败: 查询用户报名记录异常: %v, user_id=%d volunteer_id=%d", err, userID, volunteerID)
+		log.Error("活动列表查询失败: 查询用户报名记录异常: %v, account_id=%d volunteer_id=%d", err, accountID, volunteerID)
 		return nil, err
 	}
 
@@ -224,15 +223,15 @@ func (s *ActivityService) loadActivitySignupMap(
 
 // ActivitySignup 活动报名
 func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.ActivitySignupResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("活动报名失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
+		log.Error("活动报名失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
-	volunteerID, err := s.getVolunteerIDByAccountID(userID)
+	volunteerID, err := s.getVolunteerIDByAccountID(accountID)
 	if err != nil {
-		log.Error("活动报名失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
+		log.Error("活动报名失败: 查询志愿者身份异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -252,7 +251,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 			return signupErr
 		}
 
-		hasPendingAudit, pendingErr := s.hasPendingSignupCreateAudit(tx, req.ActivityId, volunteerID, userID)
+		hasPendingAudit, pendingErr := s.hasPendingSignupCreateAudit(tx, req.ActivityId, volunteerID, accountID)
 		if pendingErr != nil {
 			return pendingErr
 		}
@@ -267,7 +266,7 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		}
 		record, buildErr := buildPendingCreateAuditRecordByModel(
 			model.AuditTargetSignup,
-			userID,
+			accountID,
 			signupSnapshot,
 			time.Now(),
 		)
@@ -281,25 +280,25 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 		return nil
 	})
 	if err != nil {
-		log.Error("活动报名失败: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		log.Error("活动报名失败: %v, activity_id=%d account_id=%d volunteer_id=%d", err, req.ActivityId, accountID, volunteerID)
 		return nil, err
 	}
 
-	log.Info("活动报名申请已提交: activity_id=%d user_id=%d volunteer_id=%d record_id=%d", req.ActivityId, userID, volunteerID, recordID)
+	log.Info("活动报名申请已提交: activity_id=%d account_id=%d volunteer_id=%d record_id=%d", req.ActivityId, accountID, volunteerID, recordID)
 	return &api.ActivitySignupResponse{Success: true}, nil
 }
 
 // ActivityCancel 取消报名
 func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.ActivityCancelResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("取消报名失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
+		log.Error("取消报名失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
-	volunteerID, err := s.getVolunteerIDByAccountID(userID)
+	volunteerID, err := s.getVolunteerIDByAccountID(accountID)
 	if err != nil {
-		log.Error("取消报名失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
+		log.Error("取消报名失败: 查询志愿者身份异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -320,13 +319,13 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 			return nil
 		}
 		if err := s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, decision.toStatus); err != nil {
-			log.Error("取消报名失败: 更新报名状态异常: %v, activity_id=%d user_id=%d volunteer_id=%d signup_id=%d", err, req.ActivityId, userID, volunteerID, signup.ID)
+			log.Error("取消报名失败: 更新报名状态异常: %v, activity_id=%d account_id=%d volunteer_id=%d signup_id=%d", err, req.ActivityId, accountID, volunteerID, signup.ID)
 			return err
 		}
 
 		if decision.peopleDelta < 0 {
 			if err := s.repo.DecrementActivityPeople(tx, req.ActivityId); err != nil {
-				log.Error("取消报名失败: 减少活动人数异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+				log.Error("取消报名失败: 减少活动人数异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 				return err
 			}
 		}
@@ -335,38 +334,38 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 	})
 
 	if err != nil {
-		log.Error("取消报名失败: 事务执行失败: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+		log.Error("取消报名失败: 事务执行失败: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
-	log.Info("取消报名成功: activity_id=%d user_id=%d volunteer_id=%d signup_id=%d", req.ActivityId, userID, volunteerID, signupID)
+	log.Info("取消报名成功: activity_id=%d account_id=%d volunteer_id=%d signup_id=%d", req.ActivityId, accountID, volunteerID, signupID)
 	return &api.ActivityCancelResponse{Success: true}, nil
 }
 
 // ActivityDetail 获取活动详情
 func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.ActivityDetailResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("活动详情查询失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("活动详情查询失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
-	account, findErr := s.repo.FindByID(s.repo.DB, userID)
+	account, findErr := s.repo.FindByID(s.repo.DB, accountID)
 	if findErr != nil {
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
-			log.Warn("活动详情查询失败: 账号不存在, user_id=%d", userID)
+			log.Warn("活动详情查询失败: 账号不存在, account_id=%d", accountID)
 			return nil, errors.New("账号不存在")
 		}
-		log.Error("活动详情查询失败: 查询账号信息异常: %v, user_id=%d", findErr, userID)
+		log.Error("活动详情查询失败: 查询账号信息异常: %v, account_id=%d", findErr, accountID)
 		return nil, findErr
 	}
 	// 查询活动信息及组织名称
-	activity, orgName, err := s.repo.GetActivityWithOrg(s.repo.DB, req.Id)
+	activity, orgName, err := s.repo.GetActivityWithOrg(s.repo.DB, req.ActivityId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
-		log.Error("活动详情查询失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("活动详情查询失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
@@ -379,14 +378,14 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 	grantedHours := float64(0)
 
 	if account.IdentityType == model.RegisterTypeVolunteerCode {
-		volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(userID)
+		volunteerID, getVolunteerErr := s.getVolunteerIDByAccountID(accountID)
 		if getVolunteerErr != nil {
-			log.Error("活动详情查询失败: 查询志愿者身份异常: %v, user_id=%d", getVolunteerErr, userID)
+			log.Error("活动详情查询失败: 查询志愿者身份异常: %v, account_id=%d", getVolunteerErr, accountID)
 			return nil, getVolunteerErr
 		}
-		signup, signupErr := s.repo.GetSignup(s.repo.DB, req.Id, volunteerID)
+		signup, signupErr := s.repo.GetSignup(s.repo.DB, req.ActivityId, volunteerID)
 		if signupErr != nil {
-			log.Error("活动详情查询失败: 查询报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", signupErr, req.Id, userID, volunteerID)
+			log.Error("活动详情查询失败: 查询报名记录异常: %v, activity_id=%d account_id=%d volunteer_id=%d", signupErr, req.ActivityId, accountID, volunteerID)
 			return nil, signupErr
 		}
 		if signup != nil {
@@ -401,9 +400,9 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 			}
 		}
 		if !isRegistered {
-			pendingAudit, auditErr := s.hasPendingSignupCreateAudit(s.repo.DB, req.Id, volunteerID, userID)
+			pendingAudit, auditErr := s.hasPendingSignupCreateAudit(s.repo.DB, req.ActivityId, volunteerID, accountID)
 			if auditErr != nil {
-				log.Error("活动详情查询失败: 查询待审核报名异常: %v, activity_id=%d user_id=%d volunteer_id=%d", auditErr, req.Id, userID, volunteerID)
+				log.Error("活动详情查询失败: 查询待审核报名异常: %v, activity_id=%d account_id=%d volunteer_id=%d", auditErr, req.ActivityId, accountID, volunteerID)
 				return nil, auditErr
 			}
 			isRegistered = pendingAudit
@@ -445,10 +444,10 @@ func (s *ActivityService) ActivityDetail(req *api.ActivityDetailRequest) (*api.A
 
 // CreateActivity 创建活动
 func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.CreateActivityResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("创建活动失败: 获取当前用户ID异常: %v, org_id=%d", err, req.OrgId)
+		log.Error("创建活动失败: 获取当前账户ID异常: %v, org_id=%d", err, req.OrgId)
 		return nil, err
 	}
 
@@ -462,12 +461,12 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("组织不存在")
 		}
-		log.Error("创建活动失败: 查询组织异常: %v, org_id=%d user_id=%d", err, req.OrgId, userID)
+		log.Error("创建活动失败: 查询组织异常: %v, org_id=%d account_id=%d", err, req.OrgId, accountID)
 		return nil, err
 	}
 
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		req.OrgId,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
@@ -478,12 +477,12 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	// 解析时间
 	startTime, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
 	if err != nil {
-		log.Error("创建活动失败: 解析开始时间异常: %v, org_id=%d user_id=%d start_time=%s", err, req.OrgId, userID, req.StartTime)
+		log.Error("创建活动失败: 解析开始时间异常: %v, org_id=%d account_id=%d start_time=%s", err, req.OrgId, accountID, req.StartTime)
 		return nil, errors.New("开始时间格式错误")
 	}
 	endTime, err := time.Parse("2006-01-02 15:04:05", req.EndTime)
 	if err != nil {
-		log.Error("创建活动失败: 解析结束时间异常: %v, org_id=%d user_id=%d end_time=%s", err, req.OrgId, userID, req.EndTime)
+		log.Error("创建活动失败: 解析结束时间异常: %v, org_id=%d account_id=%d end_time=%s", err, req.OrgId, accountID, req.EndTime)
 		return nil, errors.New("结束时间格式错误")
 	}
 
@@ -512,7 +511,7 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 	}
 
 	if err := s.repo.CreateActivity(s.repo.DB, activity); err != nil {
-		log.Error("创建活动失败: 写入活动异常: %v, org_id=%d user_id=%d", err, req.OrgId, userID)
+		log.Error("创建活动失败: 写入活动异常: %v, org_id=%d account_id=%d", err, req.OrgId, accountID)
 		return nil, err
 	}
 
@@ -521,7 +520,7 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		BizType:     model.NotificationBizTypeActivity,
 		BizID:       activity.ID,
 		SourceOrgID: activity.OrgID,
-		ActorID:     userID,
+		ActorID:     accountID,
 		CreatedAt:   time.Now(),
 		Payload: map[string]any{
 			"activityTitle": activity.Title,
@@ -531,7 +530,7 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		DedupeKey: fmt.Sprintf("activity.created:%d", activity.ID),
 	})
 
-	log.Info("创建活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, req.OrgId, userID)
+	log.Info("创建活动成功: activity_id=%d org_id=%d account_id=%d", activity.ID, req.OrgId, accountID)
 	return &api.CreateActivityResponse{
 		Id:      activity.ID,
 		Message: "创建活动成功",
@@ -540,25 +539,25 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 
 // UpdateActivity 更新活动
 func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.UpdateActivityResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("更新活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("更新活动失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
 	// 查询活动信息
-	activity, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
+	activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
-		log.Error("更新活动失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("更新活动失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		activity.OrgID,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
@@ -574,7 +573,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.StartTime != "" {
 		startTime, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
 		if err != nil {
-			log.Error("更新活动失败: 解析开始时间异常: %v, activity_id=%d user_id=%d start_time=%s", err, req.Id, userID, req.StartTime)
+			log.Error("更新活动失败: 解析开始时间异常: %v, activity_id=%d account_id=%d start_time=%s", err, req.ActivityId, accountID, req.StartTime)
 			return nil, errors.New("开始时间格式错误")
 		}
 		activity.StartTime = startTime
@@ -582,7 +581,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	if req.EndTime != "" {
 		endTime, err := time.Parse("2006-01-02 15:04:05", req.EndTime)
 		if err != nil {
-			log.Error("更新活动失败: 解析结束时间异常: %v, activity_id=%d user_id=%d end_time=%s", err, req.Id, userID, req.EndTime)
+			log.Error("更新活动失败: 解析结束时间异常: %v, activity_id=%d account_id=%d end_time=%s", err, req.ActivityId, accountID, req.EndTime)
 			return nil, errors.New("结束时间格式错误")
 		}
 		activity.EndTime = endTime
@@ -624,7 +623,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 	}
 
 	if err := s.repo.UpdateActivity(s.repo.DB, activity); err != nil {
-		log.Error("更新活动失败: 更新活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("更新活动失败: 更新活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	updatedAt := activity.UpdatedAt
@@ -637,7 +636,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		BizType:     model.NotificationBizTypeActivity,
 		BizID:       activity.ID,
 		SourceOrgID: activity.OrgID,
-		ActorID:     userID,
+		ActorID:     accountID,
 		CreatedAt:   time.Now(),
 		Payload: map[string]any{
 			"activityTitle": activity.Title,
@@ -649,7 +648,7 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 		DedupeKey: fmt.Sprintf("activity.updated:%d:%d", activity.ID, updatedAt.UnixNano()),
 	})
 
-	log.Info("更新活动成功: activity_id=%d org_id=%d user_id=%d", activity.ID, activity.OrgID, userID)
+	log.Info("更新活动成功: activity_id=%d org_id=%d account_id=%d", activity.ID, activity.OrgID, accountID)
 	return &api.UpdateActivityResponse{
 		Message: "更新活动成功",
 	}, nil
@@ -657,25 +656,25 @@ func (s *ActivityService) UpdateActivity(req *api.UpdateActivityRequest) (*api.U
 
 // DeleteActivity 删除活动
 func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.DeleteActivityResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("删除活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("删除活动失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
 	// 查询活动信息
-	activity, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
+	activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
-		log.Error("删除活动失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("删除活动失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		activity.OrgID,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
@@ -694,12 +693,12 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 		// 这里选择允许删除，记录日志
 	}
 
-	if err := s.repo.DeleteActivity(s.repo.DB, req.Id); err != nil {
-		log.Error("删除活动失败: 删除活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+	if err := s.repo.DeleteActivity(s.repo.DB, req.ActivityId); err != nil {
+		log.Error("删除活动失败: 删除活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
-	log.Info("删除活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, activity.OrgID, userID)
+	log.Info("删除活动成功: activity_id=%d org_id=%d account_id=%d", req.ActivityId, activity.OrgID, accountID)
 	return &api.DeleteActivityResponse{
 		Message: "删除活动成功",
 	}, nil
@@ -707,25 +706,25 @@ func (s *ActivityService) DeleteActivity(req *api.DeleteActivityRequest) (*api.D
 
 // CancelActivity 取消活动
 func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.CancelActivityResponse, error) {
-	// 获取当前用户ID
-	userID, err := middleware.GetUserIDInt(s.c)
+	// 获取当前账号ID
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("取消活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("取消活动失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
 	// 查询活动信息
-	activity, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
+	activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
-		log.Error("取消活动失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("取消活动失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
 	if err := s.requireOrgPermission(
-		userID,
+		accountID,
 		activity.OrgID,
 		model.PermissionResourceOrganization,
 		model.PermissionActionManage,
@@ -737,8 +736,8 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		return nil, canErr
 	}
 
-	if err := s.repo.CancelActivity(s.repo.DB, req.Id); err != nil {
-		log.Error("取消活动失败: 更新活动状态异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+	if err := s.repo.CancelActivity(s.repo.DB, req.ActivityId); err != nil {
+		log.Error("取消活动失败: 更新活动状态异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
@@ -747,7 +746,7 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		BizType:     model.NotificationBizTypeActivity,
 		BizID:       activity.ID,
 		SourceOrgID: activity.OrgID,
-		ActorID:     userID,
+		ActorID:     accountID,
 		CreatedAt:   time.Now(),
 		Payload: map[string]any{
 			"activityTitle": activity.Title,
@@ -755,7 +754,7 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 		DedupeKey: fmt.Sprintf("activity.canceled:%d", activity.ID),
 	})
 
-	log.Info("取消活动成功: activity_id=%d org_id=%d user_id=%d", req.Id, activity.OrgID, userID)
+	log.Info("取消活动成功: activity_id=%d org_id=%d account_id=%d", req.ActivityId, activity.OrgID, accountID)
 	return &api.CancelActivityResponse{
 		Message: "取消活动成功",
 	}, nil
@@ -763,27 +762,27 @@ func (s *ActivityService) CancelActivity(req *api.CancelActivityRequest) (*api.C
 
 // FinishActivity 完结活动
 func (s *ActivityService) FinishActivity(req *api.FinishActivityRequest) (*api.FinishActivityResponse, error) {
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("完结活动失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("完结活动失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
-	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, accountID)
 	if err != nil {
-		log.Error("完结活动失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("完结活动失败: 校验活动归属异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	if canErr := canFinishActivity(activity); canErr != nil {
 		return nil, canErr
 	}
 
-	if err := s.repo.FinishActivity(s.repo.DB, req.Id); err != nil {
-		log.Error("完结活动失败: 更新活动状态异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+	if err := s.repo.FinishActivity(s.repo.DB, req.ActivityId); err != nil {
+		log.Error("完结活动失败: 更新活动状态异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
-	log.Info("完结活动成功: activity_id=%d user_id=%d", req.Id, userID)
+	log.Info("完结活动成功: activity_id=%d account_id=%d", req.ActivityId, accountID)
 	return &api.FinishActivityResponse{Message: "完结活动成功"}, nil
 }
 
@@ -791,22 +790,22 @@ func (s *ActivityService) FinishActivity(req *api.FinishActivityRequest) (*api.F
 
 // GenerateAttendanceCodes 生成签到码/签退码（组织侧，初次生成同时生成两个码）
 func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCodesRequest) (*api.GenerateAttendanceCodesResponse, error) {
-	if req.Id <= 0 {
+	if req.ActivityId <= 0 {
 		return nil, errors.New("活动ID不能为空")
 	}
 	if req.CheckInValidMinutes < 0 || req.CheckOutValidMinutes < 0 {
 		return nil, errors.New("有效时长不能为负数")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("生成签到签退码失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("生成签到签退码失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
-	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, accountID)
 	if err != nil {
-		log.Error("生成签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("生成签到签退码失败: 校验活动归属异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusCanceled {
@@ -819,12 +818,12 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 	now := time.Now()
 	checkInCode, checkInCodeHash, checkInExpireAt, err := generateAttendanceCodeForWrite(now, req.CheckInValidMinutes)
 	if err != nil {
-		log.Error("生成签到签退码失败: 生成签到码异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("生成签到签退码失败: 生成签到码异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	checkOutCode, checkOutCodeHash, checkOutExpireAt, err := generateAttendanceCodeForWrite(now, req.CheckOutValidMinutes)
 	if err != nil {
-		log.Error("生成签到签退码失败: 生成签退码异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("生成签到签退码失败: 生成签退码异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	// 初次生成会同时刷新两个码及对应过期时间，并统一推进版本号。
@@ -838,14 +837,14 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 		"attendance_code_version":    gorm.Expr("attendance_code_version + 1"),
 		"attendance_code_updated_at": now,
 	}
-	if err := s.repo.UpdateActivityAttendanceCodeByID(s.repo.DB, req.Id, updates); err != nil {
-		log.Error("生成签到签退码失败: 更新活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+	if err := s.repo.UpdateActivityAttendanceCodeByID(s.repo.DB, req.ActivityId, updates); err != nil {
+		log.Error("生成签到签退码失败: 更新活动码字段异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
-	codeInfo, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
+	codeInfo, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 	if err != nil {
-		log.Error("生成签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("生成签到签退码失败: 查询活动码字段异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
@@ -859,13 +858,13 @@ func (s *ActivityService) GenerateAttendanceCodes(req *api.GenerateAttendanceCod
 		CheckOutExpireAt:        util.FormatDateTimePtr(codeInfo.CheckOutCodeExpireAt),
 	}
 
-	log.Info("生成签到签退码成功: activity_id=%d user_id=%d version=%d", req.Id, userID, resp.AttendanceCodeVersion)
+	log.Info("生成签到签退码成功: activity_id=%d account_id=%d version=%d", req.ActivityId, accountID, resp.AttendanceCodeVersion)
 	return resp, nil
 }
 
 // ResetAttendanceCode 重置签到码/签退码（组织侧，单次仅重置一种码）
 func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeRequest) (*api.ResetAttendanceCodeResponse, error) {
-	if req.Id <= 0 {
+	if req.ActivityId <= 0 {
 		return nil, errors.New("活动ID不能为空")
 	}
 	if !model.IsValidAttendanceCodeType(req.CodeType) {
@@ -875,15 +874,15 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 		return nil, errors.New("有效时长不能为负数")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("重置签到签退码失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("重置签到签退码失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
-	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, accountID)
 	if err != nil {
-		log.Error("重置签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("重置签到签退码失败: 校验活动归属异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusCanceled {
@@ -896,7 +895,7 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 	now := time.Now()
 	code, codeHash, expireAt, err := generateAttendanceCodeForWrite(now, req.ValidMinutes)
 	if err != nil {
-		log.Error("重置签到签退码失败: 生成随机码异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+		log.Error("重置签到签退码失败: 生成随机码异常: %v, activity_id=%d account_id=%d code_type=%d", err, req.ActivityId, accountID, req.CodeType)
 		return nil, err
 	}
 
@@ -918,14 +917,14 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 		return nil, errors.New("重置码类型不合法")
 	}
 
-	if err := s.repo.UpdateActivityAttendanceCodeByID(s.repo.DB, req.Id, updates); err != nil {
-		log.Error("重置签到签退码失败: 更新活动码字段异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+	if err := s.repo.UpdateActivityAttendanceCodeByID(s.repo.DB, req.ActivityId, updates); err != nil {
+		log.Error("重置签到签退码失败: 更新活动码字段异常: %v, activity_id=%d account_id=%d code_type=%d", err, req.ActivityId, accountID, req.CodeType)
 		return nil, err
 	}
 
-	codeInfo, err := s.repo.GetActivityByID(s.repo.DB, req.Id)
+	codeInfo, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 	if err != nil {
-		log.Error("重置签到签退码失败: 查询活动码字段异常: %v, activity_id=%d user_id=%d code_type=%d", err, req.Id, userID, req.CodeType)
+		log.Error("重置签到签退码失败: 查询活动码字段异常: %v, activity_id=%d account_id=%d code_type=%d", err, req.ActivityId, accountID, req.CodeType)
 		return nil, err
 	}
 
@@ -943,25 +942,25 @@ func (s *ActivityService) ResetAttendanceCode(req *api.ResetAttendanceCodeReques
 		resp.ExpireAt = util.FormatDateTimePtr(codeInfo.CheckOutCodeExpireAt)
 	}
 
-	log.Info("重置签到签退码成功: activity_id=%d user_id=%d code_type=%d version=%d", req.Id, userID, req.CodeType, resp.AttendanceCodeVersion)
+	log.Info("重置签到签退码成功: activity_id=%d account_id=%d code_type=%d version=%d", req.ActivityId, accountID, req.CodeType, resp.AttendanceCodeVersion)
 	return resp, nil
 }
 
 // GetActivityAttendanceCodes 查询活动签到码/签退码（组织侧）
 func (s *ActivityService) GetActivityAttendanceCodes(req *api.GetActivityAttendanceCodesRequest) (*api.GetActivityAttendanceCodesResponse, error) {
-	if req.Id <= 0 {
+	if req.ActivityId <= 0 {
 		return nil, errors.New("活动ID不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("查询活动签到签退码失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.Id)
+		log.Error("查询活动签到签退码失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
 
-	activity, err := s.ensureActivityOperableByCurrentOrg(req.Id, userID)
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, accountID)
 	if err != nil {
-		log.Error("查询活动签到签退码失败: 校验活动归属异常: %v, activity_id=%d user_id=%d", err, req.Id, userID)
+		log.Error("查询活动签到签退码失败: 校验活动归属异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 
@@ -988,14 +987,14 @@ func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api
 		return nil, errors.New("签到码不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("活动签到失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
+		log.Error("活动签到失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
-	volunteerID, err := s.getVolunteerIDByAccountID(userID)
+	volunteerID, err := s.getVolunteerIDByAccountID(accountID)
 	if err != nil {
-		log.Error("活动签到失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
+		log.Error("活动签到失败: 查询志愿者身份异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -1037,11 +1036,11 @@ func (s *ActivityService) ActivityCheckIn(req *api.ActivityCheckInRequest) (*api
 		})
 	})
 	if err != nil {
-		log.Error("活动签到失败: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, volunteerID, userID)
+		log.Error("活动签到失败: %v, activity_id=%d volunteer_id=%d account_id=%d", err, req.ActivityId, volunteerID, accountID)
 		return nil, err
 	}
 
-	log.Info("活动签到成功: activity_id=%d volunteer_id=%d user_id=%d", req.ActivityId, volunteerID, userID)
+	log.Info("活动签到成功: activity_id=%d volunteer_id=%d account_id=%d", req.ActivityId, volunteerID, accountID)
 	return &api.ActivityCheckInResponse{
 		Success:     true,
 		CheckInTime: util.FormatDateTimeOrEmpty(checkInTime),
@@ -1057,14 +1056,14 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		return nil, errors.New("签退码不能为空")
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("活动签退失败: 获取当前用户ID异常: %v, activity_id=%d", err, req.ActivityId)
+		log.Error("活动签退失败: 获取当前账户ID异常: %v, activity_id=%d", err, req.ActivityId)
 		return nil, err
 	}
-	volunteerID, err := s.getVolunteerIDByAccountID(userID)
+	volunteerID, err := s.getVolunteerIDByAccountID(accountID)
 	if err != nil {
-		log.Error("活动签退失败: 查询志愿者身份异常: %v, user_id=%d", err, userID)
+		log.Error("活动签退失败: 查询志愿者身份异常: %v, account_id=%d", err, accountID)
 		return nil, err
 	}
 
@@ -1073,14 +1072,14 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("活动不存在")
 		}
-		log.Error("活动签退失败: 查询活动异常: %v, activity_id=%d user_id=%d", err, req.ActivityId, userID)
+		log.Error("活动签退失败: 查询活动异常: %v, activity_id=%d account_id=%d", err, req.ActivityId, accountID)
 		return nil, err
 	}
 	if activity.Status == model.ActivityStatusCanceled {
 		return nil, errors.New("已取消活动不允许签退")
 	}
 	if err := validateAttendanceCodeForActivity(activity, req.CheckOutCode, model.AttendanceCodeTypeCheckOut); err != nil {
-		log.Error("活动签退失败: 校验签退码异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		log.Error("活动签退失败: 校验签退码异常: %v, activity_id=%d account_id=%d volunteer_id=%d", err, req.ActivityId, accountID, volunteerID)
 		return nil, err
 	}
 
@@ -1090,7 +1089,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 	// Fast-fail before entering transaction to shorten lock hold time.
 	preSignup, err := s.repo.GetSignup(s.repo.DB, req.ActivityId, volunteerID)
 	if err != nil {
-		log.Error("活动签退失败: 预检查报名记录异常: %v, activity_id=%d user_id=%d volunteer_id=%d", err, req.ActivityId, userID, volunteerID)
+		log.Error("活动签退失败: 预检查报名记录异常: %v, activity_id=%d account_id=%d volunteer_id=%d", err, req.ActivityId, accountID, volunteerID)
 		return nil, err
 	}
 	now := time.Now()
@@ -1145,7 +1144,7 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 			signup,
 			*signup.CheckInTime,
 			checkOutTime,
-			userID,
+			accountID,
 			idempotencyKey,
 			"签到签退自动结算",
 			false,
@@ -1153,11 +1152,11 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		return err
 	})
 	if err != nil {
-		log.Error("活动签退失败: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, volunteerID, userID)
+		log.Error("活动签退失败: %v, activity_id=%d volunteer_id=%d account_id=%d", err, req.ActivityId, volunteerID, accountID)
 		return nil, err
 	}
 
-	log.Info("活动签退成功: activity_id=%d volunteer_id=%d user_id=%d granted_hours=%.2f", req.ActivityId, volunteerID, userID, grantedHours)
+	log.Info("活动签退成功: activity_id=%d volunteer_id=%d account_id=%d granted_hours=%.2f", req.ActivityId, volunteerID, accountID, grantedHours)
 	return &api.ActivityCheckOutResponse{
 		Success:      true,
 		CheckOutTime: util.FormatDateTimeOrEmpty(checkOutTime),
@@ -1195,15 +1194,15 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 		hasCheckInInput = true
 	}
 
-	userID, err := middleware.GetUserIDInt(s.c)
+	accountID, err := s.currentAccountID()
 	if err != nil {
-		log.Error("活动补录失败: 获取当前用户ID异常: %v, activity_id=%d volunteer_id=%d", err, req.ActivityId, req.VolunteerId)
+		log.Error("活动补录失败: 获取当前账户ID异常: %v, activity_id=%d volunteer_id=%d", err, req.ActivityId, req.VolunteerId)
 		return nil, err
 	}
 
-	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, userID)
+	activity, err := s.ensureActivityOperableByCurrentOrg(req.ActivityId, accountID)
 	if err != nil {
-		log.Error("活动补录失败: 校验活动归属异常: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, req.VolunteerId, userID)
+		log.Error("活动补录失败: 校验活动归属异常: %v, activity_id=%d volunteer_id=%d account_id=%d", err, req.ActivityId, req.VolunteerId, accountID)
 		return nil, err
 	}
 	if canErr := canSupplementAttendance(activity, nil); canErr != nil {
@@ -1277,7 +1276,7 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 			signup,
 			finalCheckIn,
 			finalCheckOut,
-			userID,
+			accountID,
 			idempotencyKey,
 			reason,
 			true,
@@ -1285,11 +1284,11 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 		return err
 	})
 	if err != nil {
-		log.Error("活动补录失败: %v, activity_id=%d volunteer_id=%d user_id=%d", err, req.ActivityId, req.VolunteerId, userID)
+		log.Error("活动补录失败: %v, activity_id=%d volunteer_id=%d account_id=%d", err, req.ActivityId, req.VolunteerId, accountID)
 		return nil, err
 	}
 
-	log.Info("活动补录成功: activity_id=%d volunteer_id=%d user_id=%d granted_hours=%.2f", req.ActivityId, req.VolunteerId, userID, grantedHours)
+	log.Info("活动补录成功: activity_id=%d volunteer_id=%d account_id=%d granted_hours=%.2f", req.ActivityId, req.VolunteerId, accountID, grantedHours)
 	return &api.ActivitySupplementAttendanceResponse{
 		Success:      true,
 		CheckInTime:  util.FormatDateTimeOrEmpty(finalCheckIn),
