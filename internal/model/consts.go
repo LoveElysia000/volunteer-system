@@ -169,3 +169,13 @@ func IsValidAuditResult(auditResult int32) bool {
 func IsValidAttendanceCodeType(codeType int32) bool {
 	return codeType == AttendanceCodeTypeCheckIn || codeType == AttendanceCodeTypeCheckOut
 }
+
+// IsValidActivityStatus 返回活动状态是否合法。
+func IsValidActivityStatus(status int32) bool {
+	switch status {
+	case ActivityStatusRecruiting, ActivityStatusFinished, ActivityStatusCanceled:
+		return true
+	default:
+		return false
+	}
+}

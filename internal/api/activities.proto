@@ -19,6 +19,14 @@ service ActivityService {
     };
   }
 
+  // 获取当前志愿者的活动列表
+  rpc MyActivityList(MyActivityListRequest) returns (ActivityListResponse) {
+    option (google.api.http) = {
+      post: "/api/activities/my"
+      body: "*"
+    };
+  }
+
   // 活动报名
   rpc ActivitySignup(ActivitySignupRequest) returns (ActivitySignupResponse) {
     option (google.api.http) = {
@@ -138,8 +146,8 @@ message ActivityListRequest {
   int32 page = 1;
   // 页大小 可选 @gotags: json:"pageSize"
   int32 pageSize = 2;
-  // 状态筛选 可选 @gotags: json:"status"
-  int32 status = 3;
+  // 状态筛选 可选，支持传多个状态 @gotags: json:"status"
+  repeated int32 status = 3;
   // 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
   string keyword = 4;
   // 开始时间起始 可选 @gotags: json:"startFrom"
@@ -157,6 +165,25 @@ message ActivityListRequest {
 message ActivityListResponse {
   int32 total = 1;
   repeated ActivityItem list = 2;
+}
+
+message MyActivityListRequest {
+  // 页码 可选 @gotags: json:"page"
+  int32 page = 1;
+  // 页大小 可选 @gotags: json:"pageSize"
+  int32 pageSize = 2;
+  // 状态筛选 可选，支持传多个状态 @gotags: json:"status"
+  repeated int32 status = 3;
+  // 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
+  string keyword = 4;
+  // 开始时间起始 可选 @gotags: json:"startFrom"
+  string startFrom = 5;
+  // 开始时间结束 可选 @gotags: json:"startTo"
+  string startTo = 6;
+  // 排序字段：start_time/created_at 可选 @gotags: json:"sortBy"
+  string sortBy = 7;
+  // 排序方向：asc/desc 可选 @gotags: json:"sortOrder"
+  string sortOrder = 8;
 }
 
 message ActivityItem {

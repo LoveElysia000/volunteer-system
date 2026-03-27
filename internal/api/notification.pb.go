@@ -26,11 +26,13 @@ const (
 type NotificationListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 页码 可选 @gotags: query:"page"
-	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page" query:"page"`
+	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page"`
 	// 页大小 可选 @gotags: query:"pageSize"
-	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
+	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize"`
 	// 仅未读 可选 @gotags: query:"unreadOnly"
-	UnreadOnly    bool `protobuf:"varint,3,opt,name=unreadOnly,proto3" json:"unreadOnly" query:"unreadOnly"`
+	UnreadOnly bool `protobuf:"varint,3,opt,name=unreadOnly,proto3" json:"unreadOnly"`
+	// 关键词（标题/内容/业务类型/事件类型） 可选 @gotags: query:"keyword"
+	Keyword       string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -84,6 +86,13 @@ func (x *NotificationListRequest) GetUnreadOnly() bool {
 		return x.UnreadOnly
 	}
 	return false
+}
+
+func (x *NotificationListRequest) GetKeyword() string {
+	if x != nil {
+		return x.Keyword
+	}
+	return ""
 }
 
 // NotificationListResponse 获取通知列表响应
@@ -272,7 +281,7 @@ func (x *NotificationItem) GetCreatedAt() string {
 type NotificationReadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 收件箱ID列表 @gotags: json:"ids,required"
-	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
+	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -364,13 +373,14 @@ var File_internal_api_notification_proto protoreflect.FileDescriptor
 
 const file_internal_api_notification_proto_rawDesc = "" +
 	"\n" +
-	"\x1finternal/api/notification.proto\x12\fnotification\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"i\n" +
+	"\x1finternal/api/notification.proto\x12\fnotification\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\x83\x01\n" +
 	"\x17NotificationListRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1a\n" +
 	"\bpageSize\x18\x02 \x01(\x05R\bpageSize\x12\x1e\n" +
 	"\n" +
 	"unreadOnly\x18\x03 \x01(\bR\n" +
-	"unreadOnly\"d\n" +
+	"unreadOnly\x12\x18\n" +
+	"\akeyword\x18\x04 \x01(\tR\akeyword\"d\n" +
 	"\x18NotificationListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x122\n" +
 	"\x04list\x18\x02 \x03(\v2\x1e.notification.NotificationItemR\x04list\"\xa8\x02\n" +

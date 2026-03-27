@@ -25,6 +25,21 @@ func ActivityList(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+// MyActivityList 获取当前志愿者的活动列表
+func MyActivityList(ctx context.Context, c *app.RequestContext) {
+	var req api.MyActivityListRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewActivityService(ctx, c).MyActivityList(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 // ActivitySignup 活动报名
 func ActivitySignup(ctx context.Context, c *app.RequestContext) {
 	var req api.ActivitySignupRequest

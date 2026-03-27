@@ -10,6 +10,7 @@ import (
 func RegisterActivityRouter(r *route.RouterGroup) {
 	// 志愿者端 - 活动浏览和报名
 	r.POST("/activities", handler.ActivityList)
+	r.POST("/activities/my", handler.MyActivityList)
 	r.POST("/activities/signup", handler.ActivitySignup)
 	r.POST("/activities/cancel", handler.ActivityCancel)
 	r.GET("/activities/:activityId", handler.ActivityDetail)

@@ -35,6 +35,8 @@ message NotificationListRequest {
   int32 pageSize = 2;
   // 仅未读 可选 @gotags: query:"unreadOnly"
   bool unreadOnly = 3;
+  // 关键词（标题/内容/业务类型/事件类型） 可选 @gotags: query:"keyword"
+  string keyword = 4;
 }
 
 // NotificationListResponse 获取通知列表响应
@@ -80,4 +82,3 @@ message NotificationReadResponse {
   // 成功更新的行数
   int32 updated = 1;
 }
-

@@ -77,8 +77,12 @@ func buildActivityListFilterMap(req *api.ActivityListRequest) (map[string]any, e
 	}
 
 	filters := map[string]any{}
-	if req.Status > 0 {
-		filters["act.status = ?"] = req.Status
+	statuses, err := normalizeActivityStatuses(req.Status)
+	if err != nil {
+		return nil, err
+	}
+	if len(statuses) > 0 {
+		filters["act.status IN ?"] = statuses
 	}
 
 	var startFrom *time.Time
@@ -105,6 +109,26 @@ func buildActivityListFilterMap(req *api.ActivityListRequest) (map[string]any, e
 		return nil, errors.New("结束时间不能早于开始时间")
 	}
 	return filters, nil
+}
+
+func normalizeActivityStatuses(input []int32) ([]int32, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
+	result := make([]int32, 0, len(input))
+	seen := make(map[int32]struct{}, len(input))
+	for _, status := range input {
+		if !model.IsValidActivityStatus(status) {
+			return nil, errors.New("活动状态不合法")
+		}
+		if _, ok := seen[status]; ok {
+			continue
+		}
+		seen[status] = struct{}{}
+		result = append(result, status)
+	}
+	return result, nil
 }
 
 // hasPendingSignupCreateAudit 检查当前用户是否已有同活动同志愿者的待审核报名创建记录。

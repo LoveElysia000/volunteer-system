@@ -79,7 +79,6 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 	if slaHours <= 0 {
 		slaHours = defaultAuditSLAHours
 	}
-
 	queryMap := map[string]any{
 		"target_type IN ?": targetTypes,
 		"status in (?)":    statuses,

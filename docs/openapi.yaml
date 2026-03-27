@@ -101,6 +101,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/activity.CreateActivityResponse'
+    /api/activities/my:
+        post:
+            tags:
+                - ActivityService
+            description: 获取当前志愿者的活动列表
+            operationId: ActivityService_MyActivityList
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/activity.MyActivityListRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/activity.ActivityListResponse'
     /api/activities/signup:
         post:
             tags:
@@ -1159,6 +1178,11 @@ paths:
                   description: '仅未读 可选 @gotags: query:"unreadOnly"'
                   schema:
                     type: boolean
+                - name: keyword
+                  in: query
+                  description: '关键词（标题/内容/业务类型/事件类型） 可选 @gotags: query:"keyword"'
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK
@@ -1860,9 +1884,11 @@ components:
                     description: '页大小 可选 @gotags: json:"pageSize"'
                     format: int32
                 status:
-                    type: integer
-                    description: '状态筛选 可选 @gotags: json:"status"'
-                    format: int32
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '状态筛选 可选，支持传多个状态 @gotags: json:"status"'
                 keyword:
                     type: string
                     description: '关键词（标题/描述/地点） 可选 @gotags: json:"keyword"'
@@ -2086,6 +2112,38 @@ components:
                     type: string
                     description: 码更新时间
             description: GetActivityAttendanceCodesResponse 查询活动签到码/签退码响应
+        activity.MyActivityListRequest:
+            type: object
+            properties:
+                page:
+                    type: integer
+                    description: '页码 可选 @gotags: json:"page"'
+                    format: int32
+                pageSize:
+                    type: integer
+                    description: '页大小 可选 @gotags: json:"pageSize"'
+                    format: int32
+                status:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '状态筛选 可选，支持传多个状态 @gotags: json:"status"'
+                keyword:
+                    type: string
+                    description: '关键词（标题/描述/地点） 可选 @gotags: json:"keyword"'
+                startFrom:
+                    type: string
+                    description: '开始时间起始 可选 @gotags: json:"startFrom"'
+                startTo:
+                    type: string
+                    description: '开始时间结束 可选 @gotags: json:"startTo"'
+                sortBy:
+                    type: string
+                    description: '排序字段：start_time/created_at 可选 @gotags: json:"sortBy"'
+                sortOrder:
+                    type: string
+                    description: '排序方向：asc/desc 可选 @gotags: json:"sortOrder"'
         activity.ResetAttendanceCodeRequest:
             type: object
             properties:

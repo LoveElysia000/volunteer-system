@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strings"
 	"time"
 	"volunteer-system/internal/model"
 
@@ -72,7 +73,7 @@ func (r *Repository) CreateNotificationInboxInBatches(db *gorm.DB, inboxes []*mo
 }
 
 // ListNotificationInboxByReceiver 查询当前用户通知列表。
-func (r *Repository) ListNotificationInboxByReceiver(db *gorm.DB, receiverID int64, unreadOnly bool, limit, offset int) ([]*NotificationInboxWithContent, int64, error) {
+func (r *Repository) ListNotificationInboxByReceiver(db *gorm.DB, receiverID int64, unreadOnly bool, keyword string, limit, offset int) ([]*NotificationInboxWithContent, int64, error) {
 	rows := make([]*NotificationInboxWithContent, 0)
 	if receiverID <= 0 {
 		return rows, 0, nil
@@ -80,11 +81,19 @@ func (r *Repository) ListNotificationInboxByReceiver(db *gorm.DB, receiverID int
 
 	base := db.WithContext(r.ctx).
 		Table("notification_inbox AS ni").
+		Joins("INNER JOIN notifications AS n ON n.id = ni.notification_id").
 		Where("ni.receiver_id = ?", receiverID).
 		Where("ni.inbox_status = ?", model.NotificationInboxStatusNormal)
 
 	if unreadOnly {
 		base = base.Where("ni.read_status = ?", model.NotificationReadStatusUnread)
+	}
+	if trimmedKeyword := strings.TrimSpace(keyword); trimmedKeyword != "" {
+		like := "%" + trimmedKeyword + "%"
+		base = base.Where(
+			"(n.title LIKE ? OR n.content LIKE ? OR n.biz_type LIKE ? OR n.event_type LIKE ?)",
+			like, like, like, like,
+		)
 	}
 
 	var total int64
@@ -97,7 +106,6 @@ func (r *Repository) ListNotificationInboxByReceiver(db *gorm.DB, receiverID int
 
 	query := base.
 		Select("ni.id AS inbox_id, ni.notification_id, ni.read_status, ni.read_at, ni.created_at AS created_at, n.event_type, n.biz_type, n.biz_id, n.title, n.content").
-		Joins("INNER JOIN notifications AS n ON n.id = ni.notification_id").
 		Order("ni.created_at DESC, ni.id DESC")
 
 	if limit > 0 {

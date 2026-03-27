@@ -72,9 +72,16 @@ func (s *NotificationService) ListNotifications(req *api.NotificationListRequest
 	}
 	offset := (int(page) - 1) * int(pageSize)
 
-	rows, total, err := s.repo.ListNotificationInboxByReceiver(s.repo.DB, accountID, req.UnreadOnly, int(pageSize), offset)
+	rows, total, err := s.repo.ListNotificationInboxByReceiver(
+		s.repo.DB,
+		accountID,
+		req.UnreadOnly,
+		req.Keyword,
+		int(pageSize),
+		offset,
+	)
 	if err != nil {
-		log.Error("通知列表查询失败: 查询通知收件箱异常: %v, account_id=%d page=%d page_size=%d unread_only=%v", err, accountID, page, pageSize, req.UnreadOnly)
+		log.Error("通知列表查询失败: 查询通知收件箱异常: %v, account_id=%d page=%d page_size=%d unread_only=%v keyword=%s", err, accountID, page, pageSize, req.UnreadOnly, strings.TrimSpace(req.Keyword))
 		return nil, err
 	}
 
