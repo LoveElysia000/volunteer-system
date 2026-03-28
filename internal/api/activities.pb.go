@@ -197,7 +197,7 @@ type MyActivityListRequest struct {
 	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page"`
 	// 页大小 可选 @gotags: json:"pageSize"
 	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize"`
-	// 状态筛选 可选，支持传多个状态 @gotags: json:"status"
+	// 报名状态筛选 可选，支持传多个状态（1-待审核, 2-报名成功, 3-报名驳回, 4-已取消） @gotags: json:"status"
 	Status []int32 `protobuf:"varint,3,rep,packed,name=status,proto3" json:"status"`
 	// 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
 	Keyword string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword"`
@@ -324,8 +324,10 @@ type ActivityItem struct {
 	Status int32 `protobuf:"varint,11,opt,name=status,proto3" json:"status"`
 	// 是否已报名 (当前用户)
 	IsRegistered bool `protobuf:"varint,12,opt,name=isRegistered,proto3" json:"isRegistered"`
+	// 当前用户报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消
+	SignupStatus int32 `protobuf:"varint,13,opt,name=signupStatus,proto3" json:"signupStatus"`
 	// 是否已满员
-	IsFull        bool `protobuf:"varint,13,opt,name=isFull,proto3" json:"isFull"`
+	IsFull        bool `protobuf:"varint,14,opt,name=isFull,proto3" json:"isFull"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -442,6 +444,13 @@ func (x *ActivityItem) GetIsRegistered() bool {
 		return x.IsRegistered
 	}
 	return false
+}
+
+func (x *ActivityItem) GetSignupStatus() int32 {
+	if x != nil {
+		return x.SignupStatus
+	}
+	return 0
 }
 
 func (x *ActivityItem) GetIsFull() bool {
@@ -2462,7 +2471,7 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"\tstartFrom\x18\x05 \x01(\tR\tstartFrom\x12\x18\n" +
 	"\astartTo\x18\x06 \x01(\tR\astartTo\x12\x16\n" +
 	"\x06sortBy\x18\a \x01(\tR\x06sortBy\x12\x1c\n" +
-	"\tsortOrder\x18\b \x01(\tR\tsortOrder\"\xfa\x02\n" +
+	"\tsortOrder\x18\b \x01(\tR\tsortOrder\"\x9e\x03\n" +
 	"\fActivityItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -2476,8 +2485,9 @@ const file_internal_api_activities_proto_rawDesc = "" +
 	"\rcurrentPeople\x18\n" +
 	" \x01(\x05R\rcurrentPeople\x12\x16\n" +
 	"\x06status\x18\v \x01(\x05R\x06status\x12\"\n" +
-	"\fisRegistered\x18\f \x01(\bR\fisRegistered\x12\x16\n" +
-	"\x06isFull\x18\r \x01(\bR\x06isFull\"7\n" +
+	"\fisRegistered\x18\f \x01(\bR\fisRegistered\x12\"\n" +
+	"\fsignupStatus\x18\r \x01(\x05R\fsignupStatus\x12\x16\n" +
+	"\x06isFull\x18\x0e \x01(\bR\x06isFull\"7\n" +
 	"\x15ActivitySignupRequest\x12\x1e\n" +
 	"\n" +
 	"activityId\x18\x01 \x01(\x03R\n" +

@@ -8,6 +8,18 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+func applyActivityFilters(baseSession *gorm.DB, filters map[string]any) *gorm.DB {
+	for query, value := range filters {
+		switch typed := value.(type) {
+		case []any:
+			baseSession = baseSession.Where(query, typed...)
+		default:
+			baseSession = baseSession.Where(query, value)
+		}
+	}
+	return baseSession
+}
+
 // GetActivitiesByStatus 根据状态查询活动列表
 func (r *Repository) GetActivitiesByStatus(db *gorm.DB, status int32, limit, offset int) ([]*model.Activity, int64, error) {
 	var activities []*model.Activity
@@ -52,10 +64,7 @@ func (r *Repository) GetActivitiesByFilters(db *gorm.DB, filters map[string]any,
 
 	baseSession := db.WithContext(r.ctx).
 		Table("activities as act")
-
-	for query, value := range filters {
-		baseSession = baseSession.Where(query, value)
-	}
+	baseSession = applyActivityFilters(baseSession, filters)
 
 	if err := baseSession.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -74,6 +83,68 @@ func (r *Repository) GetActivitiesByFilters(db *gorm.DB, filters map[string]any,
 	}
 
 	return activities, total, nil
+}
+
+// GetMyActivitiesByFilters queries a volunteer's visible activities together with signup statuses.
+func (r *Repository) GetMyActivitiesByFilters(
+	db *gorm.DB,
+	volunteerID int64,
+	activityFilters map[string]any,
+	signupStatuses []int32,
+	limit, offset int,
+) ([]*model.Activity, map[int64]int32, int64, error) {
+	type myActivityRow struct {
+		model.Activity
+		SignupStatus int32 `gorm:"column:signup_status"`
+	}
+
+	visibleSignupStatuses := []int32{
+		model.ActivitySignupStatusPending,
+		model.ActivitySignupStatusSuccess,
+		model.ActivitySignupStatusRejected,
+		model.ActivitySignupStatusCanceled,
+	}
+	if len(signupStatuses) > 0 {
+		visibleSignupStatuses = signupStatuses
+	}
+
+	baseSession := db.WithContext(r.ctx).
+		Table("activity_signups as s").
+		Joins("JOIN activities as act ON act.id = s.activity_id").
+		Where("s.volunteer_id = ? AND s.status IN ?", volunteerID, visibleSignupStatuses)
+	baseSession = applyActivityFilters(baseSession, activityFilters)
+
+	var total int64
+	if err := baseSession.Count(&total).Error; err != nil {
+		return nil, nil, 0, err
+	}
+	if total == 0 {
+		return []*model.Activity{}, map[int64]int32{}, 0, nil
+	}
+
+	rows := make([]*myActivityRow, 0)
+	err := baseSession.
+		Select("act.*, s.status as signup_status").
+		Offset(offset).
+		Limit(limit).
+		Order("act.created_at DESC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	activities := make([]*model.Activity, 0, len(rows))
+	signupStatusMap := make(map[int64]int32, len(rows))
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+		activity := row.Activity
+		activities = append(activities, &activity)
+		signupStatusMap[row.ID] = row.SignupStatus
+	}
+
+	return activities, signupStatusMap, total, nil
 }
 
 // ListActivityIDsByKeyword returns activity ids matched by keyword in title/description/location.

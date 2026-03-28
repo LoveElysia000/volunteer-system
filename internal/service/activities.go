@@ -191,21 +191,22 @@ func (s *ActivityService) MyActivityList(req *api.MyActivityListRequest) (*api.A
 
 	actMap := map[string]any{}
 	if len(req.Status) > 0 {
-		statuses := make([]int32, 0, len(req.Status))
+		signupStatuses := make([]int32, 0, len(req.Status))
 		seenStatuses := make(map[int32]struct{}, len(req.Status))
 		for _, status := range req.Status {
-			if !model.IsValidActivityStatus(status) {
-				return nil, errors.New("活动状态不合法")
+			if status != model.ActivitySignupStatusPending &&
+				status != model.ActivitySignupStatusSuccess &&
+				status != model.ActivitySignupStatusRejected &&
+				status != model.ActivitySignupStatusCanceled {
+				return nil, errors.New("报名状态不合法")
 			}
 			if _, ok := seenStatuses[status]; ok {
 				continue
 			}
 			seenStatuses[status] = struct{}{}
-			statuses = append(statuses, status)
+			signupStatuses = append(signupStatuses, status)
 		}
-		if len(statuses) > 0 {
-			actMap["act.status IN ?"] = statuses
-		}
+		req.Status = signupStatuses
 	}
 
 	var startFrom *time.Time
@@ -231,47 +232,18 @@ func (s *ActivityService) MyActivityList(req *api.MyActivityListRequest) (*api.A
 		return nil, errors.New("结束时间不能早于开始时间")
 	}
 
-	signups, err := s.repo.ListVisibleSignupsByVolunteer(s.repo.DB, volunteerID)
-	if err != nil {
-		log.Error("我的活动列表查询失败: 查询用户报名记录异常: %v, account_id=%d volunteer_id=%d", err, accountID, volunteerID)
-		return nil, err
-	}
-	if ok := mergeActivityIDConstraint(actMap, collectRegisteredActivityIDs(signups)); !ok {
-		return &api.ActivityListResponse{
-			Total: 0,
-			List:  []*api.ActivityItem{},
-		}, nil
-	}
-
 	keyword := strings.TrimSpace(req.Keyword)
 	if keyword != "" {
-		activityIDs, err := s.repo.ListActivityIDsByKeyword(s.repo.DB, keyword)
-		if err != nil {
-			log.Error("我的活动列表查询失败: 关键字查询活动ID异常: %v, keyword=%s", err, keyword)
-			return nil, err
-		}
-		if ok := mergeActivityIDConstraint(actMap, activityIDs); !ok {
-			return &api.ActivityListResponse{
-				Total: 0,
-				List:  []*api.ActivityItem{},
-			}, nil
-		}
+		like := "%" + keyword + "%"
+		actMap["(act.title LIKE ? OR act.description LIKE ? OR act.location LIKE ?)"] = []any{like, like, like}
 	}
 
 	pageSize := int(req.PageSize)
 	offset := (int(req.Page) - 1) * pageSize
-	activities, total, err := s.repo.GetActivitiesByFilters(s.repo.DB, actMap, pageSize, offset)
+	activities, signupStatusMap, total, err := s.repo.GetMyActivitiesByFilters(s.repo.DB, volunteerID, actMap, req.Status, pageSize, offset)
 	if err != nil {
 		log.Error("我的活动列表查询失败: %v, status=%v page=%d page_size=%d", err, req.Status, req.Page, req.PageSize)
 		return nil, err
-	}
-
-	signupMap := make(map[int64]*model.ActivitySignup)
-	if len(activities) > 0 {
-		signupMap, err = s.loadActivitySignupMap(accountID, volunteerID, activities)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	resp := &api.ActivityListResponse{
@@ -294,7 +266,8 @@ func (s *ActivityService) MyActivityList(req *api.MyActivityListRequest) (*api.A
 			MaxPeople:     act.MaxPeople,
 			CurrentPeople: act.CurrentPeople,
 			Status:        act.Status,
-			IsRegistered:  signupMap[act.ID] != nil,
+			IsRegistered:  true,
+			SignupStatus:  signupStatusMap[act.ID],
 			IsFull:        act.MaxPeople > 0 && act.CurrentPeople >= act.MaxPeople,
 		})
 	}

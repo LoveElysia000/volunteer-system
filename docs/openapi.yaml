@@ -1869,6 +1869,10 @@ components:
                 isRegistered:
                     type: boolean
                     description: 是否已报名 (当前用户)
+                signupStatus:
+                    type: integer
+                    description: '当前用户报名状态: 1-待审核, 2-报名成功, 3-报名驳回, 4-已取消'
+                    format: int32
                 isFull:
                     type: boolean
                     description: 是否已满员
@@ -2128,7 +2132,7 @@ components:
                     items:
                         type: integer
                         format: int32
-                    description: '状态筛选 可选，支持传多个状态 @gotags: json:"status"'
+                    description: '报名状态筛选 可选，支持传多个状态（1-待审核, 2-报名成功, 3-报名驳回, 4-已取消） @gotags: json:"status"'
                 keyword:
                     type: string
                     description: '关键词（标题/描述/地点） 可选 @gotags: json:"keyword"'
