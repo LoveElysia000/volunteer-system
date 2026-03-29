@@ -40,6 +40,14 @@ service VolunteerService {
     };
   }
 
+  // 志愿者工时流水（志愿者端）
+  rpc VolunteerWorkHourList(VolunteerWorkHourListRequest) returns (VolunteerWorkHourListResponse) {
+    option (google.api.http) = {
+      post: "/api/volunteers/work-hours"
+      body: "*"
+    };
+  }
+
   // 更新志愿者信息（志愿者端）
   rpc VolunteerUpdate(VolunteerUpdateRequest) returns (VolunteerUpdateResponse) {
     option (google.api.http) = {
@@ -160,6 +168,46 @@ message VolunteerHomeSummaryStats {
   double hours = 2;
   // 活动参与次数
   int32 activityCount = 3;
+}
+
+// VolunteerWorkHourListRequest 志愿者工时流水请求（志愿者端）
+message VolunteerWorkHourListRequest {
+  // 页码 可选 @gotags: json:"page"
+  int32 page = 1;
+  // 页大小 可选 @gotags: json:"pageSize"
+  int32 pageSize = 2;
+  // 活动ID 可选 @gotags: json:"activityId"
+  int64 activityId = 3;
+  // 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
+  int32 operationType = 4;
+}
+
+// VolunteerWorkHourListResponse 志愿者工时流水响应（志愿者端）
+message VolunteerWorkHourListResponse {
+  int32 total = 1;
+  repeated VolunteerWorkHourItem list = 2;
+}
+
+// VolunteerWorkHourItem 志愿者工时流水项（志愿者端）
+message VolunteerWorkHourItem {
+  // 工时流水ID
+  int64 id = 1;
+  // 活动ID
+  int64 activityId = 2;
+  // 报名ID
+  int64 signupId = 3;
+  // 操作类型: 1-发放,2-作废,3-重发
+  int32 operationType = 4;
+  // 工时增量（作废时为负数）
+  double hoursDelta = 5;
+  // 变更前累计工时
+  double beforeTotalHours = 6;
+  // 变更后累计工时
+  double afterTotalHours = 7;
+  // 备注原因
+  string reason = 8;
+  // 创建时间
+  string createdAt = 9;
 }
 
 // VolunteerInfo 志愿者信息

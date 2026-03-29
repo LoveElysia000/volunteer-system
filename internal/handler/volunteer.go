@@ -66,6 +66,20 @@ func VolunteerHomeSummary(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+func VolunteerWorkHourList(ctx context.Context, c *app.RequestContext) {
+	var req api.VolunteerWorkHourListRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewVolunteerService(ctx, c).VolunteerWorkHourList(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func VolunteerUpdate(ctx context.Context, c *app.RequestContext) {
 	var req api.VolunteerUpdateRequest
 	if err := c.BindAndValidate(&req); err != nil {

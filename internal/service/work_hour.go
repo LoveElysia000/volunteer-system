@@ -243,7 +243,7 @@ func NewWorkHourService(ctx context.Context, c *app.RequestContext) *WorkHourSer
 	}
 }
 
-// WorkHourLogList 工时流水查询（志愿者查自己的流水；组织查本组织活动的流水）
+// WorkHourLogList 工时流水查询（组织端）
 func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api.WorkHourLogListResponse, error) {
 	if req == nil {
 		return nil, errors.New("请求不能为空")
@@ -285,73 +285,56 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 	queryMap := make(map[string]any)
 	activityFilterLocked := false
 
-	switch account.IdentityType {
-	case model.RegisterTypeVolunteerCode:
-		// 志愿者：只能看自己的流水
-		volunteer, err := s.repo.FindVolunteerByAccountID(s.repo.DB, accountID)
+	if account.IdentityType != model.RegisterTypeOrganizationCode {
+		return nil, errors.New("该接口仅支持组织账号查询工时流水")
+	}
+
+	// 组织账号：按 RBAC 作用域读取有权限的组织流水。
+	if req.ActivityId > 0 {
+		activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, errors.New("志愿者信息不存在")
+				return nil, errors.New("活动不存在")
 			}
-			log.Error("工时流水查询失败: 查询志愿者信息异常: %v, account_id=%d", err, accountID)
 			return nil, err
 		}
-		if volunteer == nil {
-			return nil, errors.New("志愿者信息不存在")
+		if err := s.requireOrgPermission(
+			accountID,
+			activity.OrgID,
+			model.PermissionResourceOrganization,
+			model.PermissionActionManage,
+		); err != nil {
+			return nil, errors.New("无权查看该活动工时流水")
 		}
-		queryMap["volunteer_id = ?"] = volunteer.ID
-
-	case model.RegisterTypeOrganizationCode:
-		// 组织账号：按 RBAC 作用域读取有权限的组织流水。
-		if req.ActivityId > 0 {
-			activity, err := s.repo.GetActivityByID(s.repo.DB, req.ActivityId)
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return nil, errors.New("活动不存在")
-				}
-				return nil, err
-			}
-			if err := s.requireOrgPermission(
+		queryMap["activity_id = ?"] = req.ActivityId
+		activityFilterLocked = true
+	} else {
+		hasGlobalManage, err := s.hasPermissionByScope(
+			accountID,
+			model.RBACScopeGlobal,
+			0,
+			model.PermissionResourceOrganization,
+			model.PermissionActionManage,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if !hasGlobalManage {
+			orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
+				s.repo.DB,
 				accountID,
-				activity.OrgID,
 				model.PermissionResourceOrganization,
 				model.PermissionActionManage,
-			); err != nil {
-				return nil, errors.New("无权查看该活动工时流水")
-			}
-			queryMap["activity_id = ?"] = req.ActivityId
-			activityFilterLocked = true
-		} else {
-			hasGlobalManage, err := s.hasPermissionByScope(
-				accountID,
-				model.RBACScopeGlobal,
 				0,
-				model.PermissionResourceOrganization,
-				model.PermissionActionManage,
 			)
 			if err != nil {
 				return nil, err
 			}
-			if !hasGlobalManage {
-				orgIDs, err := s.repo.ListOrgScopeIDsByPermission(
-					s.repo.DB,
-					accountID,
-					model.PermissionResourceOrganization,
-					model.PermissionActionManage,
-					0,
-				)
-				if err != nil {
-					return nil, err
-				}
-				if len(orgIDs) == 0 {
-					return nil, errors.New("无权查看工时流水")
-				}
-				queryMap["activity_id IN (SELECT id FROM activities WHERE org_id IN ?)"] = orgIDs
+			if len(orgIDs) == 0 {
+				return nil, errors.New("无权查看工时流水")
 			}
+			queryMap["activity_id IN (SELECT id FROM activities WHERE org_id IN ?)"] = orgIDs
 		}
-
-	default:
-		return nil, errors.New("账号身份无效")
 	}
 
 	if req.ActivityId > 0 && !activityFilterLocked {
@@ -571,6 +554,7 @@ func (s *WorkHourService) VoidWorkHour(req *api.VoidWorkHourRequest) (*api.VoidW
 		}
 		return nil, err
 	}
+	s.publishWorkHourNotification(model.NotificationEventWorkHourVoided, req.SignupId, accountID, 0, reason)
 
 	return &api.VoidWorkHourResponse{
 		Success:       true,
@@ -795,6 +779,7 @@ func (s *WorkHourService) RecalculateWorkHour(req *api.RecalculateWorkHourReques
 		}
 		return nil, err
 	}
+	s.publishWorkHourNotification(model.NotificationEventWorkHourRegranted, req.SignupId, accountID, grantedHours, reason)
 
 	return &api.RecalculateWorkHourResponse{
 		Success:       true,

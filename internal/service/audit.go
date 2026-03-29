@@ -590,7 +590,18 @@ func (s *AuditService) applySignupAuditApproval(tx *gorm.DB, record *model.Audit
 }
 
 func (s *AuditService) handleAuditApprovedSideEffects(record *model.AuditRecord, auditorID int64) {
-	if record == nil || record.TargetType != model.AuditTargetMember || record.TargetID <= 0 {
+	if record == nil || record.TargetID <= 0 {
+		return
+	}
+	if record.TargetType == model.AuditTargetSignup {
+		signup, err := s.repo.GetActivitySignupByID(s.repo.DB, record.TargetID)
+		if err != nil || signup == nil || signup.Status != model.ActivitySignupStatusSuccess {
+			return
+		}
+		s.publishSignupApprovedNotification(signup.ID, auditorID)
+		return
+	}
+	if record.TargetType != model.AuditTargetMember {
 		return
 	}
 

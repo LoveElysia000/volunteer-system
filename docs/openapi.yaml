@@ -1615,6 +1615,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/volunteer.VolunteerRealNameSubmitResponse'
+    /api/volunteers/work-hours:
+        post:
+            tags:
+                - VolunteerService
+            description: 志愿者工时流水（志愿者端）
+            operationId: VolunteerService_VolunteerWorkHourList
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/volunteer.VolunteerWorkHourListRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/volunteer.VolunteerWorkHourListResponse'
     /api/volunteers/{volunteerId}:
         get:
             tags:
@@ -4167,6 +4186,71 @@ components:
                     description: '实名认证状态: 0-未认证, 1-审核中, 2-已通过, 3-驳回'
                     format: int32
             description: VolunteerVerificationInfo 志愿者实名认证信息
+        volunteer.VolunteerWorkHourItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 工时流水ID
+                activityId:
+                    type: string
+                    description: 活动ID
+                signupId:
+                    type: string
+                    description: 报名ID
+                operationType:
+                    type: integer
+                    description: '操作类型: 1-发放,2-作废,3-重发'
+                    format: int32
+                hoursDelta:
+                    type: number
+                    description: 工时增量（作废时为负数）
+                    format: double
+                beforeTotalHours:
+                    type: number
+                    description: 变更前累计工时
+                    format: double
+                afterTotalHours:
+                    type: number
+                    description: 变更后累计工时
+                    format: double
+                reason:
+                    type: string
+                    description: 备注原因
+                createdAt:
+                    type: string
+                    description: 创建时间
+            description: VolunteerWorkHourItem 志愿者工时流水项（志愿者端）
+        volunteer.VolunteerWorkHourListRequest:
+            type: object
+            properties:
+                page:
+                    type: integer
+                    description: '页码 可选 @gotags: json:"page"'
+                    format: int32
+                pageSize:
+                    type: integer
+                    description: '页大小 可选 @gotags: json:"pageSize"'
+                    format: int32
+                activityId:
+                    type: string
+                    description: '活动ID 可选 @gotags: json:"activityId"'
+                operationType:
+                    type: integer
+                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"'
+                    format: int32
+            description: VolunteerWorkHourListRequest 志愿者工时流水请求（志愿者端）
+        volunteer.VolunteerWorkHourListResponse:
+            type: object
+            properties:
+                total:
+                    type: integer
+                    format: int32
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/volunteer.VolunteerWorkHourItem'
+            description: VolunteerWorkHourListResponse 志愿者工时流水响应（志愿者端）
         workhour.RecalculateWorkHourRequest:
             type: object
             properties:

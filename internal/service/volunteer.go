@@ -348,6 +348,70 @@ func (s *VolunteerService) VolunteerHomeSummary(_ *api.VolunteerHomeSummaryReque
 	}, nil
 }
 
+// VolunteerWorkHourList 志愿者工时流水（志愿者端）
+func (s *VolunteerService) VolunteerWorkHourList(req *api.VolunteerWorkHourListRequest) (*api.VolunteerWorkHourListResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = defaultWorkHourPageSize
+	}
+	if req.PageSize > maxWorkHourPageSize {
+		req.PageSize = maxWorkHourPageSize
+	}
+	if req.OperationType > 0 &&
+		req.OperationType != model.WorkHourOperationGrant &&
+		req.OperationType != model.WorkHourOperationVoid &&
+		req.OperationType != model.WorkHourOperationRegrant {
+		return nil, errors.New("工时操作类型无效")
+	}
+
+	volunteer, _, err := s.currentVolunteer()
+	if err != nil {
+		return nil, err
+	}
+
+	queryMap := map[string]any{
+		"volunteer_id = ?": volunteer.ID,
+	}
+	if req.ActivityId > 0 {
+		queryMap["activity_id = ?"] = req.ActivityId
+	}
+	if req.OperationType > 0 {
+		queryMap["operation_type = ?"] = req.OperationType
+	}
+
+	pageSize := int(req.PageSize)
+	offset := (int(req.Page) - 1) * pageSize
+	logs, total, err := s.repo.ListWorkHourLogs(s.repo.DB, queryMap, pageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &api.VolunteerWorkHourListResponse{
+		Total: int32(total),
+		List:  make([]*api.VolunteerWorkHourItem, 0, len(logs)),
+	}
+	for _, item := range logs {
+		resp.List = append(resp.List, &api.VolunteerWorkHourItem{
+			Id:               item.ID,
+			ActivityId:       item.ActivityID,
+			SignupId:         item.SignupID,
+			OperationType:    item.OperationType,
+			HoursDelta:       item.HoursDelta,
+			BeforeTotalHours: item.BeforeTotalHours,
+			AfterTotalHours:  item.AfterTotalHours,
+			Reason:           item.Reason,
+			CreatedAt:        util.FormatDateTimeOrEmpty(item.CreatedAt),
+		})
+	}
+	return resp, nil
+}
+
 func (s *VolunteerService) VolunteerUpdate(req *api.VolunteerUpdateRequest) (*api.VolunteerUpdateResponse, error) {
 	if req == nil {
 		return nil, errors.New("请求不能为空")

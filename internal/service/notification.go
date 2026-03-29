@@ -282,21 +282,6 @@ func validateNotificationEvent(evt NotificationEvent) error {
 
 func (s *NotificationService) resolveReceiverAccountIDs(evt NotificationEvent) ([]int64, error) {
 	switch evt.EventType {
-	case model.NotificationEventActivityCreated:
-		sourceOrgID := evt.SourceOrgID
-		// source_org_id 允许由事件端省略，这里基于 activity 反查做兜底。
-		if sourceOrgID <= 0 && evt.BizID > 0 {
-			activity, err := s.repo.GetActivityByID(s.repo.DB, evt.BizID)
-			if err == nil && activity != nil {
-				sourceOrgID = activity.OrgID
-			}
-		}
-		// 兜底后仍无组织ID则拒绝继续扇出，避免错误范围通知。
-		if sourceOrgID <= 0 {
-			return nil, errors.New("活动创建通知缺少组织ID")
-		}
-		return s.repo.ListActiveReceiverAccountIDsByOrgID(s.repo.DB, sourceOrgID)
-
 	case model.NotificationEventActivityUpdated:
 		return s.repo.ListActivitySignupReceiverAccountIDs(s.repo.DB, evt.BizID)
 
@@ -340,6 +325,42 @@ func (s *NotificationService) resolveReceiverAccountIDs(evt NotificationEvent) (
 		}
 		return []int64{volunteer.AccountID}, nil
 
+	case model.NotificationEventSignupApproved:
+		receiverID := payloadInt64(evt.Payload, "receiverAccountID")
+		if receiverID > 0 {
+			return []int64{receiverID}, nil
+		}
+		signup, err := s.repo.GetActivitySignupByID(s.repo.DB, evt.BizID)
+		if err != nil {
+			return nil, err
+		}
+		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, signup.VolunteerID)
+		if err != nil {
+			return nil, err
+		}
+		if volunteer.AccountID <= 0 {
+			return nil, errors.New("成员账号ID无效")
+		}
+		return []int64{volunteer.AccountID}, nil
+
+	case model.NotificationEventWorkHourGranted, model.NotificationEventWorkHourVoided, model.NotificationEventWorkHourRegranted:
+		receiverID := payloadInt64(evt.Payload, "receiverAccountID")
+		if receiverID > 0 {
+			return []int64{receiverID}, nil
+		}
+		signup, err := s.repo.GetActivitySignupByID(s.repo.DB, evt.BizID)
+		if err != nil {
+			return nil, err
+		}
+		volunteer, err := s.repo.FindVolunteerByID(s.repo.DB, signup.VolunteerID)
+		if err != nil {
+			return nil, err
+		}
+		if volunteer.AccountID <= 0 {
+			return nil, errors.New("成员账号ID无效")
+		}
+		return []int64{volunteer.AccountID}, nil
+
 	default:
 		return nil, fmt.Errorf("不支持的通知事件类型: %s", evt.EventType)
 	}
@@ -347,17 +368,6 @@ func (s *NotificationService) resolveReceiverAccountIDs(evt NotificationEvent) (
 
 func renderNotificationMessage(evt NotificationEvent) (string, string) {
 	switch evt.EventType {
-	case model.NotificationEventActivityCreated:
-		activityTitle := firstNonEmpty(
-			payloadString(evt.Payload, "activityTitle"),
-			payloadString(evt.Payload, "activityName"),
-			payloadString(evt.Payload, "title"),
-		)
-		if activityTitle == "" {
-			return "新活动发布", "您所在组织发布了新活动，请及时查看。"
-		}
-		return "新活动发布：" + activityTitle, "您所在组织发布了新活动《" + activityTitle + "》，请及时查看并报名。"
-
 	case model.NotificationEventActivityUpdated:
 		activityTitle := firstNonEmpty(
 			payloadString(evt.Payload, "activityTitle"),
@@ -404,6 +414,84 @@ func renderNotificationMessage(evt NotificationEvent) (string, string) {
 			return "活动报名未通过：" + activityTitle, "您提交的活动《" + activityTitle + "》报名申请未通过审核。"
 		}
 		return "活动报名未通过：" + activityTitle, "您提交的活动《" + activityTitle + "》报名申请未通过审核，原因：" + reason
+
+	case model.NotificationEventSignupApproved:
+		activityTitle := firstNonEmpty(
+			payloadString(evt.Payload, "activityTitle"),
+			payloadString(evt.Payload, "activityName"),
+			payloadString(evt.Payload, "title"),
+		)
+		if activityTitle == "" {
+			return "活动报名已通过", "您提交的活动报名申请已通过审核，请按时参加。"
+		}
+		return "活动报名已通过：" + activityTitle, "您提交的活动《" + activityTitle + "》报名申请已通过审核，请按时参加。"
+
+	case model.NotificationEventWorkHourGranted:
+		activityTitle := firstNonEmpty(
+			payloadString(evt.Payload, "activityTitle"),
+			payloadString(evt.Payload, "activityName"),
+			payloadString(evt.Payload, "title"),
+		)
+		hoursText := formatNotificationHours(payloadFloat64(evt.Payload, "grantedHours"))
+		if activityTitle == "" {
+			if hoursText == "" {
+				return "工时已发放", "您的志愿服务工时已发放，请及时查看。"
+			}
+			return "工时已发放", "您的志愿服务工时已发放，到账 " + hoursText + " 小时。"
+		}
+		if hoursText == "" {
+			return "工时已发放：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已发放，请及时查看。"
+		}
+		return "工时已发放：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已发放，到账 " + hoursText + " 小时。"
+
+	case model.NotificationEventWorkHourVoided:
+		activityTitle := firstNonEmpty(
+			payloadString(evt.Payload, "activityTitle"),
+			payloadString(evt.Payload, "activityName"),
+			payloadString(evt.Payload, "title"),
+		)
+		reason := payloadString(evt.Payload, "reason")
+		if activityTitle == "" {
+			if reason == "" {
+				return "工时已作废", "您的志愿服务工时已作废，请及时查看。"
+			}
+			return "工时已作废", "您的志愿服务工时已作废，原因：" + reason
+		}
+		if reason == "" {
+			return "工时已作废：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已作废，请及时查看。"
+		}
+		return "工时已作废：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已作废，原因：" + reason
+
+	case model.NotificationEventWorkHourRegranted:
+		activityTitle := firstNonEmpty(
+			payloadString(evt.Payload, "activityTitle"),
+			payloadString(evt.Payload, "activityName"),
+			payloadString(evt.Payload, "title"),
+		)
+		hoursText := formatNotificationHours(payloadFloat64(evt.Payload, "grantedHours"))
+		reason := payloadString(evt.Payload, "reason")
+		if activityTitle == "" {
+			switch {
+			case hoursText == "" && reason == "":
+				return "工时已重算", "您的志愿服务工时已重算，请及时查看。"
+			case hoursText == "":
+				return "工时已重算", "您的志愿服务工时已重算，原因：" + reason
+			case reason == "":
+				return "工时已重算", "您的志愿服务工时已重算，当前为 " + hoursText + " 小时。"
+			default:
+				return "工时已重算", "您的志愿服务工时已重算，当前为 " + hoursText + " 小时。原因：" + reason
+			}
+		}
+		switch {
+		case hoursText == "" && reason == "":
+			return "工时已重算：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已重算，请及时查看。"
+		case hoursText == "":
+			return "工时已重算：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已重算，原因：" + reason
+		case reason == "":
+			return "工时已重算：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已重算，当前为 " + hoursText + " 小时。"
+		default:
+			return "工时已重算：" + activityTitle, "您参与的活动《" + activityTitle + "》工时已重算，当前为 " + hoursText + " 小时。原因：" + reason
+		}
 
 	default:
 		return "系统通知", "您有一条新的通知，请及时查看。"
@@ -452,6 +540,30 @@ func payloadInt64(payload map[string]any, key string) int64 {
 	}
 }
 
+func payloadFloat64(payload map[string]any, key string) float64 {
+	if len(payload) == 0 {
+		return 0
+	}
+	raw, ok := payload[key]
+	if !ok || raw == nil {
+		return 0
+	}
+	switch v := raw.(type) {
+	case float64:
+		return v
+	case float32:
+		return float64(v)
+	case int64:
+		return float64(v)
+	case int:
+		return float64(v)
+	case int32:
+		return float64(v)
+	default:
+		return 0
+	}
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		trimmed := strings.TrimSpace(value)
@@ -480,9 +592,24 @@ func buildNotificationDedupeKey(evt NotificationEvent) string {
 		return fmt.Sprintf("activity.canceled:%d", evt.BizID)
 	case model.NotificationEventMemberJoinApproved:
 		return fmt.Sprintf("member.join.approved:%d", evt.BizID)
+	case model.NotificationEventSignupApproved:
+		return fmt.Sprintf("signup.approved:%d", evt.BizID)
 	case model.NotificationEventSignupRejected:
 		return fmt.Sprintf("signup.rejected:%d", evt.BizID)
+	case model.NotificationEventWorkHourGranted:
+		return fmt.Sprintf("work_hour.granted:%d", evt.BizID)
+	case model.NotificationEventWorkHourVoided:
+		return fmt.Sprintf("work_hour.voided:%d", evt.BizID)
+	case model.NotificationEventWorkHourRegranted:
+		return fmt.Sprintf("work_hour.regranted:%d", evt.BizID)
 	default:
 		return fmt.Sprintf("%s:%s:%d:%d", evt.EventType, evt.BizType, evt.BizID, evt.SourceOrgID)
 	}
+}
+
+func formatNotificationHours(hours float64) string {
+	if hours <= 0 {
+		return ""
+	}
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", hours), "0"), ".")
 }

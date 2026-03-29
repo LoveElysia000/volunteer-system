@@ -113,7 +113,11 @@ const (
 	NotificationEventActivityUpdated    = "activity_updated"
 	NotificationEventActivityCanceled   = "activity_canceled"
 	NotificationEventMemberJoinApproved = "member_join"
+	NotificationEventSignupApproved     = "signup_approved"
 	NotificationEventSignupRejected     = "signup_rejected"
+	NotificationEventWorkHourGranted    = "work_hour_granted"
+	NotificationEventWorkHourVoided     = "work_hour_voided"
+	NotificationEventWorkHourRegranted  = "work_hour_regranted"
 
 	// 通知业务类型
 	NotificationBizTypeActivity   = "activity"

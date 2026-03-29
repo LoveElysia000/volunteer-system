@@ -641,21 +641,6 @@ func (s *ActivityService) CreateActivity(req *api.CreateActivityRequest) (*api.C
 		return nil, err
 	}
 
-	PublishNotificationEvent(NotificationEvent{
-		EventType:   model.NotificationEventActivityCreated,
-		BizType:     model.NotificationBizTypeActivity,
-		BizID:       activity.ID,
-		SourceOrgID: activity.OrgID,
-		ActorID:     accountID,
-		CreatedAt:   time.Now(),
-		Payload: map[string]any{
-			"activityTitle": activity.Title,
-			"startTime":     util.FormatDateTimeOrEmpty(activity.StartTime),
-			"endTime":       util.FormatDateTimeOrEmpty(activity.EndTime),
-		},
-		DedupeKey: fmt.Sprintf("activity.created:%d", activity.ID),
-	})
-
 	log.Info("创建活动成功: activity_id=%d org_id=%d account_id=%d", activity.ID, req.OrgId, accountID)
 	return &api.CreateActivityResponse{
 		Id:      activity.ID,
@@ -1281,6 +1266,9 @@ func (s *ActivityService) ActivityCheckOut(req *api.ActivityCheckOutRequest) (*a
 		log.Error("活动签退失败: %v, activity_id=%d volunteer_id=%d account_id=%d", err, req.ActivityId, volunteerID, accountID)
 		return nil, err
 	}
+	if grantedHours > 0 {
+		s.publishWorkHourNotification(model.NotificationEventWorkHourGranted, preSignup.ID, accountID, grantedHours, "")
+	}
 
 	log.Info("活动签退成功: activity_id=%d volunteer_id=%d account_id=%d granted_hours=%.2f", req.ActivityId, volunteerID, accountID, grantedHours)
 	return &api.ActivityCheckOutResponse{
@@ -1412,6 +1400,12 @@ func (s *ActivityService) ActivitySupplementAttendance(req *api.ActivitySuppleme
 	if err != nil {
 		log.Error("活动补录失败: %v, activity_id=%d volunteer_id=%d account_id=%d", err, req.ActivityId, req.VolunteerId, accountID)
 		return nil, err
+	}
+	if grantedHours > 0 {
+		signup, signupErr := s.repo.GetSignup(s.repo.DB, req.ActivityId, req.VolunteerId)
+		if signupErr == nil && signup != nil {
+			s.publishWorkHourNotification(model.NotificationEventWorkHourGranted, signup.ID, accountID, grantedHours, reason)
+		}
 	}
 
 	log.Info("活动补录成功: activity_id=%d volunteer_id=%d account_id=%d granted_hours=%.2f", req.ActivityId, req.VolunteerId, accountID, grantedHours)
