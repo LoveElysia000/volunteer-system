@@ -26,13 +26,13 @@ const (
 type NotificationListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 页码 可选 @gotags: query:"page"
-	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page"`
+	Page int32 `protobuf:"varint,1,opt,name=page,proto3" json:"page" query:"page"`
 	// 页大小 可选 @gotags: query:"pageSize"
-	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize"`
+	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize" query:"pageSize"`
 	// 仅未读 可选 @gotags: query:"unreadOnly"
-	UnreadOnly bool `protobuf:"varint,3,opt,name=unreadOnly,proto3" json:"unreadOnly"`
+	UnreadOnly bool `protobuf:"varint,3,opt,name=unreadOnly,proto3" json:"unreadOnly" query:"unreadOnly"`
 	// 关键词（标题/内容/业务类型/事件类型） 可选 @gotags: query:"keyword"
-	Keyword       string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword"`
+	Keyword       string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword" query:"keyword"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -281,7 +281,7 @@ func (x *NotificationItem) GetCreatedAt() string {
 type NotificationReadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 收件箱ID列表 @gotags: json:"ids,required"
-	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids"`
+	Ids           []int64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -117,7 +117,7 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*mod
 
 	var startFrom *time.Time
 	if strings.TrimSpace(req.StartFrom) != "" {
-		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartFrom))
+		value, parseErr := util.ParseDateFilterBound(strings.TrimSpace(req.StartFrom), false)
 		if parseErr != nil {
 			return nil, errors.New("开始时间格式错误")
 		}
@@ -126,7 +126,7 @@ func (s *ExportService) ExportActivities(req *api.ExportActivitiesRequest) (*mod
 
 	var startTo *time.Time
 	if strings.TrimSpace(req.StartTo) != "" {
-		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartTo))
+		value, parseErr := util.ParseDateFilterBound(strings.TrimSpace(req.StartTo), true)
 		if parseErr != nil {
 			return nil, errors.New("结束时间格式错误")
 		}
@@ -257,7 +257,7 @@ func resolveOpsReportRange(periodType, rawStart, rawEnd string) (time.Time, time
 	var end time.Time
 
 	if strings.TrimSpace(rawStart) != "" {
-		value, err := util.ParseDateTime(strings.TrimSpace(rawStart))
+		value, err := util.ParseDateFilterBound(strings.TrimSpace(rawStart), false)
 		if err != nil {
 			return time.Time{}, time.Time{}, errors.New("开始时间格式错误")
 		}
@@ -269,7 +269,7 @@ func resolveOpsReportRange(periodType, rawStart, rawEnd string) (time.Time, time
 	}
 
 	if strings.TrimSpace(rawEnd) != "" {
-		value, err := util.ParseDateTime(strings.TrimSpace(rawEnd))
+		value, err := util.ParseDateFilterBound(strings.TrimSpace(rawEnd), true)
 		if err != nil {
 			return time.Time{}, time.Time{}, errors.New("结束时间格式错误")
 		}

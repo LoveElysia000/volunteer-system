@@ -84,14 +84,14 @@ func (s *AuditService) PendingAuditList(req *api.PendingAuditListRequest) (*api.
 		"status in (?)":    statuses,
 	}
 	if strings.TrimSpace(req.CreatedFrom) != "" {
-		from, parseErr := util.ParseDateTime(strings.TrimSpace(req.CreatedFrom))
+		from, parseErr := util.ParseDateFilterBound(strings.TrimSpace(req.CreatedFrom), false)
 		if parseErr != nil {
 			return nil, errors.New("createdFrom 时间格式错误")
 		}
 		queryMap["created_at >= ?"] = from
 	}
 	if strings.TrimSpace(req.CreatedTo) != "" {
-		to, parseErr := util.ParseDateTime(strings.TrimSpace(req.CreatedTo))
+		to, parseErr := util.ParseDateFilterBound(strings.TrimSpace(req.CreatedTo), true)
 		if parseErr != nil {
 			return nil, errors.New("createdTo 时间格式错误")
 		}

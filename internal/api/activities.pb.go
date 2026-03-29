@@ -32,9 +32,9 @@ type ActivityListRequest struct {
 	Status []int32 `protobuf:"varint,3,rep,packed,name=status,proto3" json:"status"`
 	// 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
 	Keyword string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword"`
-	// 开始时间起始 可选 @gotags: json:"startFrom"
+	// 开始时间起始 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"
 	StartFrom string `protobuf:"bytes,5,opt,name=startFrom,proto3" json:"startFrom"`
-	// 开始时间结束 可选 @gotags: json:"startTo"
+	// 开始时间结束 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"
 	StartTo string `protobuf:"bytes,6,opt,name=startTo,proto3" json:"startTo"`
 	// 排序字段：start_time/created_at 可选 @gotags: json:"sortBy"
 	SortBy string `protobuf:"bytes,7,opt,name=sortBy,proto3" json:"sortBy"`
@@ -201,9 +201,9 @@ type MyActivityListRequest struct {
 	Status []int32 `protobuf:"varint,3,rep,packed,name=status,proto3" json:"status"`
 	// 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
 	Keyword string `protobuf:"bytes,4,opt,name=keyword,proto3" json:"keyword"`
-	// 开始时间起始 可选 @gotags: json:"startFrom"
+	// 开始时间起始 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"
 	StartFrom string `protobuf:"bytes,5,opt,name=startFrom,proto3" json:"startFrom"`
-	// 开始时间结束 可选 @gotags: json:"startTo"
+	// 开始时间结束 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"
 	StartTo string `protobuf:"bytes,6,opt,name=startTo,proto3" json:"startTo"`
 	// 排序字段：start_time/created_at 可选 @gotags: json:"sortBy"
 	SortBy string `protobuf:"bytes,7,opt,name=sortBy,proto3" json:"sortBy"`

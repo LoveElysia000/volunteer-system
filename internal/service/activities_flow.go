@@ -87,7 +87,7 @@ func buildActivityListFilterMap(req *api.ActivityListRequest) (map[string]any, e
 
 	var startFrom *time.Time
 	if strings.TrimSpace(req.StartFrom) != "" {
-		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartFrom))
+		value, parseErr := util.ParseDateFilterBound(strings.TrimSpace(req.StartFrom), false)
 		if parseErr != nil {
 			return nil, errors.New("开始时间格式错误")
 		}
@@ -97,7 +97,7 @@ func buildActivityListFilterMap(req *api.ActivityListRequest) (map[string]any, e
 
 	var startTo *time.Time
 	if strings.TrimSpace(req.StartTo) != "" {
-		value, parseErr := util.ParseDateTime(strings.TrimSpace(req.StartTo))
+		value, parseErr := util.ParseDateFilterBound(strings.TrimSpace(req.StartTo), true)
 		if parseErr != nil {
 			return nil, errors.New("结束时间格式错误")
 		}

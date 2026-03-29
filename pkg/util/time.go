@@ -41,6 +41,30 @@ func ParseDateOrDateTime(raw string) (time.Time, error) {
 	return ParseDate(raw)
 }
 
+// ParseDateFilterBound 解析筛选边界时间。
+// 支持:
+// - YYYY-MM-DD
+// - YYYY-MM-DD HH:MM:SS
+// 当传入纯日期时：
+// - endOfDay=false -> 当天 00:00:00
+// - endOfDay=true -> 当天 23:59:59
+func ParseDateFilterBound(raw string, endOfDay bool) (time.Time, error) {
+	if raw == "" {
+		return time.Time{}, errors.New("日期时间字符串不能为空")
+	}
+	if value, err := ParseDateTime(raw); err == nil {
+		return value, nil
+	}
+	value, err := ParseDate(raw)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if endOfDay {
+		return value.Add(24*time.Hour - time.Second), nil
+	}
+	return value, nil
+}
+
 // ParsePastDate 解析日期字符串并校验是否为过去日期（不能是未来日期）
 func ParsePastDate(dateStr string) (time.Time, error) {
 	t, err := ParseDate(dateStr)

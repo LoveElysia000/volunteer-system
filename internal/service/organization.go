@@ -117,16 +117,9 @@ func parseOrganizationSearchDate(dateStr, fieldName string, endOfDay bool) (*tim
 		return nil, nil
 	}
 
-	if t, err := util.ParseDateTime(trimmed); err == nil {
-		return &t, nil
-	}
-
-	d, err := util.ParseDate(trimmed)
+	d, err := util.ParseDateFilterBound(trimmed, endOfDay)
 	if err != nil {
 		return nil, fmt.Errorf("%s 时间格式错误", fieldName)
-	}
-	if endOfDay {
-		d = d.Add(24*time.Hour - time.Second)
 	}
 	return &d, nil
 }

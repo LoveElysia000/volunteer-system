@@ -138,10 +138,10 @@ type ExportActivitiesRequest struct {
 	Keyword string `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword"` // activity title/description keyword
 	// 状态（0=不过滤） @gotags: json:"status"
 	Status int32 `protobuf:"varint,3,opt,name=status,proto3" json:"status"` // 0 means no filter
-	// 开始时间（可选） @gotags: json:"startFrom"
-	StartFrom string `protobuf:"bytes,4,opt,name=startFrom,proto3" json:"startFrom"` // format: 2006-01-02 15:04:05
-	// 结束时间（可选） @gotags: json:"startTo"
-	StartTo       string `protobuf:"bytes,5,opt,name=startTo,proto3" json:"startTo"` // format: 2006-01-02 15:04:05
+	// 开始时间（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"
+	StartFrom string `protobuf:"bytes,4,opt,name=startFrom,proto3" json:"startFrom"` // format: 2006-01-02 or 2006-01-02 15:04:05
+	// 结束时间（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"
+	StartTo       string `protobuf:"bytes,5,opt,name=startTo,proto3" json:"startTo"` // format: 2006-01-02 or 2006-01-02 15:04:05
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -253,10 +253,10 @@ type ExportOpsReportRequest struct {
 	PeriodType string `protobuf:"bytes,1,opt,name=periodType,proto3" json:"periodType,required"` // weekly/monthly
 	// 组织ID 必填 @gotags: json:"orgId,required"
 	OrgId int64 `protobuf:"varint,2,opt,name=orgId,proto3" json:"orgId,required"`
-	// 开始时间 可选 @gotags: json:"start"
-	Start string `protobuf:"bytes,3,opt,name=start,proto3" json:"start"` // format: 2006-01-02 15:04:05
-	// 结束时间 可选 @gotags: json:"end"
-	End           string `protobuf:"bytes,4,opt,name=end,proto3" json:"end"` // format: 2006-01-02 15:04:05
+	// 开始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"start"
+	Start string `protobuf:"bytes,3,opt,name=start,proto3" json:"start"` // format: 2006-01-02 or 2006-01-02 15:04:05
+	// 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"end"
+	End           string `protobuf:"bytes,4,opt,name=end,proto3" json:"end"` // format: 2006-01-02 or 2006-01-02 15:04:05
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

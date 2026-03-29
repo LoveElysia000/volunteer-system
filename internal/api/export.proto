@@ -56,10 +56,10 @@ message ExportActivitiesRequest {
   string keyword = 2; // activity title/description keyword
   // 状态（0=不过滤） @gotags: json:"status"
   int32 status = 3; // 0 means no filter
-  // 开始时间（可选） @gotags: json:"startFrom"
-  string startFrom = 4; // format: 2006-01-02 15:04:05
-  // 结束时间（可选） @gotags: json:"startTo"
-  string startTo = 5; // format: 2006-01-02 15:04:05
+  // 开始时间（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"
+  string startFrom = 4; // format: 2006-01-02 or 2006-01-02 15:04:05
+  // 结束时间（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"
+  string startTo = 5; // format: 2006-01-02 or 2006-01-02 15:04:05
 }
 
 message ExportActivitiesResponse {}
@@ -69,10 +69,10 @@ message ExportOpsReportRequest {
   string periodType = 1; // weekly/monthly
   // 组织ID 必填 @gotags: json:"orgId,required"
   int64 orgId = 2;
-  // 开始时间 可选 @gotags: json:"start"
-  string start = 3; // format: 2006-01-02 15:04:05
-  // 结束时间 可选 @gotags: json:"end"
-  string end = 4; // format: 2006-01-02 15:04:05
+  // 开始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"start"
+  string start = 3; // format: 2006-01-02 or 2006-01-02 15:04:05
+  // 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"end"
+  string end = 4; // format: 2006-01-02 or 2006-01-02 15:04:05
 }
 
 message ExportOpsReportResponse {}

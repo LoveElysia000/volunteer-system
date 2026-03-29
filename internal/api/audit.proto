@@ -63,9 +63,9 @@ message PendingAuditListRequest {
   int32 page = 4;
   // 每页条数 @gotags: json:"pageSize"
   int32 pageSize = 5;
-  // 创建时间起始（可选） @gotags: json:"createdFrom"
+  // 创建时间起始（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"createdFrom"
   string createdFrom = 6;
-  // 创建时间结束（可选） @gotags: json:"createdTo"
+  // 创建时间结束（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"createdTo"
   string createdTo = 7;
   // 超时阈值小时（可选，默认24） @gotags: json:"slaHours"
   int32 slaHours = 8;

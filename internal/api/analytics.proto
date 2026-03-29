@@ -29,9 +29,9 @@ service AnalyticsService {
 message OrgFunnelSummaryRequest {
   // 组织ID 必填 @gotags: query:"orgId,required"
   int64 orgId = 1;
-  // 起始时间 可选 @gotags: query:"start"
+  // 起始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"start"
   string start = 2;
-  // 结束时间 可选 @gotags: query:"end"
+  // 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"end"
   string end = 3;
 }
 
@@ -54,9 +54,9 @@ message OrgFunnelSummaryResponse {
 message OpsDashboardSummaryRequest {
   // 组织ID 必填 @gotags: query:"orgId,required"
   int64 orgId = 1;
-  // 起始时间 可选 @gotags: query:"start"
+  // 起始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"start"
   string start = 2;
-  // 结束时间 可选 @gotags: query:"end"
+  // 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"end"
   string end = 3;
 }
 

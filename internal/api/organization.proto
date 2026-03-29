@@ -342,9 +342,9 @@ message OrganizationSearchRequest {
   // 地区筛选 可选 @gotags: json:"region"
   string region = 4;
   reserved 5;
-  // 创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"
+  // 创建时间范围筛选 开始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startDate"
   string startDate = 6;
-  // 创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"
+  // 创建时间范围筛选 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"endDate"
   string endDate = 7;
   // 页码 必填 @gotags: json:"page,required"
   int32 page = 8;

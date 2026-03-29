@@ -150,9 +150,9 @@ message ActivityListRequest {
   repeated int32 status = 3;
   // 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
   string keyword = 4;
-  // 开始时间起始 可选 @gotags: json:"startFrom"
+  // 开始时间起始 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"
   string startFrom = 5;
-  // 开始时间结束 可选 @gotags: json:"startTo"
+  // 开始时间结束 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"
   string startTo = 6;
   // 排序字段：start_time/created_at 可选 @gotags: json:"sortBy"
   string sortBy = 7;
@@ -176,9 +176,9 @@ message MyActivityListRequest {
   repeated int32 status = 3;
   // 关键词（标题/描述/地点） 可选 @gotags: json:"keyword"
   string keyword = 4;
-  // 开始时间起始 可选 @gotags: json:"startFrom"
+  // 开始时间起始 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"
   string startFrom = 5;
-  // 开始时间结束 可选 @gotags: json:"startTo"
+  // 开始时间结束 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"
   string startTo = 6;
   // 排序字段：start_time/created_at 可选 @gotags: json:"sortBy"
   string sortBy = 7;

@@ -1378,9 +1378,9 @@ type OrganizationSearchRequest struct {
 	OrganizationType string `protobuf:"bytes,3,opt,name=organizationType,proto3" json:"organizationType"`
 	// 地区筛选 可选 @gotags: json:"region"
 	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region"`
-	// 创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"
+	// 创建时间范围筛选 开始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startDate"
 	StartDate string `protobuf:"bytes,6,opt,name=startDate,proto3" json:"startDate"`
-	// 创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"
+	// 创建时间范围筛选 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"endDate"
 	EndDate string `protobuf:"bytes,7,opt,name=endDate,proto3" json:"endDate"`
 	// 页码 必填 @gotags: json:"page,required"
 	Page int32 `protobuf:"varint,8,opt,name=page,proto3" json:"page,required"`

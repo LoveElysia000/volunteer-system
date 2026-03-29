@@ -453,12 +453,12 @@ paths:
                     type: string
                 - name: start
                   in: query
-                  description: '起始时间 可选 @gotags: query:"start"'
+                  description: '起始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"start"'
                   schema:
                     type: string
                 - name: end
                   in: query
-                  description: '结束时间 可选 @gotags: query:"end"'
+                  description: '结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"end"'
                   schema:
                     type: string
             responses:
@@ -482,12 +482,12 @@ paths:
                     type: string
                 - name: start
                   in: query
-                  description: '起始时间 可选 @gotags: query:"start"'
+                  description: '起始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"start"'
                   schema:
                     type: string
                 - name: end
                   in: query
-                  description: '结束时间 可选 @gotags: query:"end"'
+                  description: '结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: query:"end"'
                   schema:
                     type: string
             responses:
@@ -1917,10 +1917,10 @@ components:
                     description: '关键词（标题/描述/地点） 可选 @gotags: json:"keyword"'
                 startFrom:
                     type: string
-                    description: '开始时间起始 可选 @gotags: json:"startFrom"'
+                    description: '开始时间起始 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"'
                 startTo:
                     type: string
-                    description: '开始时间结束 可选 @gotags: json:"startTo"'
+                    description: '开始时间结束 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"'
                 sortBy:
                     type: string
                     description: '排序字段：start_time/created_at 可选 @gotags: json:"sortBy"'
@@ -2157,10 +2157,10 @@ components:
                     description: '关键词（标题/描述/地点） 可选 @gotags: json:"keyword"'
                 startFrom:
                     type: string
-                    description: '开始时间起始 可选 @gotags: json:"startFrom"'
+                    description: '开始时间起始 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"'
                 startTo:
                     type: string
-                    description: '开始时间结束 可选 @gotags: json:"startTo"'
+                    description: '开始时间结束 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"'
                 sortBy:
                     type: string
                     description: '排序字段：start_time/created_at 可选 @gotags: json:"sortBy"'
@@ -2746,10 +2746,10 @@ components:
                     format: int32
                 createdFrom:
                     type: string
-                    description: '创建时间起始（可选） @gotags: json:"createdFrom"'
+                    description: '创建时间起始（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"createdFrom"'
                 createdTo:
                     type: string
-                    description: '创建时间结束（可选） @gotags: json:"createdTo"'
+                    description: '创建时间结束（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"createdTo"'
                 slaHours:
                     type: integer
                     description: '超时阈值小时（可选，默认24） @gotags: json:"slaHours"'
@@ -3021,10 +3021,10 @@ components:
                     format: int32
                 startFrom:
                     type: string
-                    description: '开始时间（可选） @gotags: json:"startFrom"'
+                    description: '开始时间（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startFrom"'
                 startTo:
                     type: string
-                    description: '结束时间（可选） @gotags: json:"startTo"'
+                    description: '结束时间（可选），支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startTo"'
         exportapi.ExportActivitiesResponse:
             type: object
             properties: {}
@@ -3039,10 +3039,10 @@ components:
                     description: '组织ID 必填 @gotags: json:"orgId,required"'
                 start:
                     type: string
-                    description: '开始时间 可选 @gotags: json:"start"'
+                    description: '开始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"start"'
                 end:
                     type: string
-                    description: '结束时间 可选 @gotags: json:"end"'
+                    description: '结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"end"'
         exportapi.ExportOpsReportResponse:
             type: object
             properties: {}
@@ -3768,10 +3768,10 @@ components:
                     description: '地区筛选 可选 @gotags: json:"region"'
                 startDate:
                     type: string
-                    description: '创建时间范围筛选 开始时间 可选 @gotags: json:"startDate"'
+                    description: '创建时间范围筛选 开始时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"startDate"'
                 endDate:
                     type: string
-                    description: '创建时间范围筛选 结束时间 可选 @gotags: json:"endDate"'
+                    description: '创建时间范围筛选 结束时间 可选，支持 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS @gotags: json:"endDate"'
                 page:
                     type: integer
                     description: '页码 必填 @gotags: json:"page,required"'
