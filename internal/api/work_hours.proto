@@ -45,8 +45,8 @@ message WorkHourLogListRequest {
   int64 activityId = 3;
   // 报名ID 可选 @gotags: json:"signupId"
   int64 signupId = 4;
-  // 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
-  int32 operationType = 5;
+  // 操作类型列表: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationTypes"
+  repeated int32 operationTypes = 5;
 }
 
 message WorkHourLogListResponse {

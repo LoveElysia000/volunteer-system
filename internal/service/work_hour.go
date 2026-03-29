@@ -262,11 +262,12 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 		req.PageSize = maxWorkHourPageSize
 	}
 
-	if req.OperationType > 0 &&
-		req.OperationType != model.WorkHourOperationGrant &&
-		req.OperationType != model.WorkHourOperationVoid &&
-		req.OperationType != model.WorkHourOperationRegrant {
-		return nil, errors.New("工时操作类型无效")
+	for _, operationType := range req.OperationTypes {
+		if operationType != model.WorkHourOperationGrant &&
+			operationType != model.WorkHourOperationVoid &&
+			operationType != model.WorkHourOperationRegrant {
+			return nil, errors.New("工时操作类型无效")
+		}
 	}
 
 	accountID, err := s.currentAccountID()
@@ -343,8 +344,8 @@ func (s *WorkHourService) WorkHourLogList(req *api.WorkHourLogListRequest) (*api
 	if req.SignupId > 0 {
 		queryMap["signup_id = ?"] = req.SignupId
 	}
-	if req.OperationType > 0 {
-		queryMap["operation_type = ?"] = req.OperationType
+	if len(req.OperationTypes) > 0 {
+		queryMap["operation_type IN ?"] = req.OperationTypes
 	}
 
 	pageSize := int(req.PageSize)

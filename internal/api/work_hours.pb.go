@@ -32,10 +32,10 @@ type WorkHourLogListRequest struct {
 	ActivityId int64 `protobuf:"varint,3,opt,name=activityId,proto3" json:"activityId"`
 	// 报名ID 可选 @gotags: json:"signupId"
 	SignupId int64 `protobuf:"varint,4,opt,name=signupId,proto3" json:"signupId"`
-	// 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
-	OperationType int32 `protobuf:"varint,5,opt,name=operationType,proto3" json:"operationType"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// 操作类型列表: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationTypes"
+	OperationTypes []int32 `protobuf:"varint,5,rep,packed,name=operationTypes,proto3" json:"operationTypes"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *WorkHourLogListRequest) Reset() {
@@ -96,11 +96,11 @@ func (x *WorkHourLogListRequest) GetSignupId() int64 {
 	return 0
 }
 
-func (x *WorkHourLogListRequest) GetOperationType() int32 {
+func (x *WorkHourLogListRequest) GetOperationTypes() []int32 {
 	if x != nil {
-		return x.OperationType
+		return x.OperationTypes
 	}
-	return 0
+	return nil
 }
 
 type WorkHourLogListResponse struct {
@@ -598,15 +598,15 @@ var File_internal_api_work_hours_proto protoreflect.FileDescriptor
 
 const file_internal_api_work_hours_proto_rawDesc = "" +
 	"\n" +
-	"\x1dinternal/api/work_hours.proto\x12\bworkhour\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\xaa\x01\n" +
+	"\x1dinternal/api/work_hours.proto\x12\bworkhour\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\xac\x01\n" +
 	"\x16WorkHourLogListRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1a\n" +
 	"\bpageSize\x18\x02 \x01(\x05R\bpageSize\x12\x1e\n" +
 	"\n" +
 	"activityId\x18\x03 \x01(\x03R\n" +
 	"activityId\x12\x1a\n" +
-	"\bsignupId\x18\x04 \x01(\x03R\bsignupId\x12$\n" +
-	"\roperationType\x18\x05 \x01(\x05R\roperationType\"^\n" +
+	"\bsignupId\x18\x04 \x01(\x03R\bsignupId\x12&\n" +
+	"\x0eoperationTypes\x18\x05 \x03(\x05R\x0eoperationTypes\"^\n" +
 	"\x17WorkHourLogListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12-\n" +
 	"\x04list\x18\x02 \x03(\v2\x19.workhour.WorkHourLogItemR\x04list\"\xeb\x04\n" +

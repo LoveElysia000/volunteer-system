@@ -126,8 +126,8 @@
 
 | 页面 | 页面路由 | 用户动作 | 接口用途 | 方法 | 路径 | 请求参数 | 响应结构 | 权限 | 枚举/字典 | 前端状态 | 差异说明 | 负责人 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 志愿者工时页 | `/volunteer/work-hours` | 加载流水 | 查询当前志愿者工时流水 | `POST` | `/api/volunteers/work-hours` | `page` `pageSize` `activityId?` `operationType?` | `data.total` `data.list[]` | 志愿者登录 | `operationType` | 已承接 | 志愿者专用响应，不暴露后台审计字段 | 待定 | - |
-| 工时流水页 | `/organization/statistics/financial` | 加载流水 | 查询工时流水列表 | `POST` | `/api/work-hours/list` | `page` `pageSize` `activityId?` `signupId?` `operationType?` | `data.total` `data.list[]` | 组织管理者登录 | `operationType` | 已承接 | - | 待定 | - |
+| 志愿者工时页 | `/volunteer/work-hours` | 加载流水 | 查询当前志愿者工时流水 | `POST` | `/api/volunteers/work-hours` | `page` `pageSize` `activityId?` `operationTypes?[]` | `data.total` `data.list[]` | 志愿者登录 | `operationType` | 已承接 | 志愿者专用响应，不暴露后台审计字段 | 待定 | - |
+| 工时流水页 | `/organization/statistics/financial` | 加载流水 | 查询工时流水列表 | `POST` | `/api/work-hours/list` | `page` `pageSize` `activityId?` `signupId?` `operationTypes?[]` | `data.total` `data.list[]` | 组织管理者登录 | `operationType` | 已承接 | - | 待定 | - |
 | 工时流水页 | `/organization/statistics/financial` | 作废工时 | 冲销已发放工时 | `POST` | `/api/work-hours/void` | `signupId` `reason` `idempotencyKey` | `data.success` `data.workHourLogId` | 组织管理者登录 | `operationType` | 已承接 | - | 待定 | 建议前端保证幂等键唯一 |
 | 工时流水页 | `/organization/statistics/financial` | 重算工时 | 重算并重新发放工时 | `POST` | `/api/work-hours/recalculate` | `signupId` `hours` `reason` `idempotencyKey` | `data.success` `data.workHourLogId` `data.grantedHours` | 组织管理者登录 | `operationType` | 已承接 | - | 待定 | 建议前端保证幂等键唯一 |
 

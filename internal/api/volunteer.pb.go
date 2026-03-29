@@ -677,10 +677,10 @@ type VolunteerWorkHourListRequest struct {
 	PageSize int32 `protobuf:"varint,2,opt,name=pageSize,proto3" json:"pageSize"`
 	// 活动ID 可选 @gotags: json:"activityId"
 	ActivityId int64 `protobuf:"varint,3,opt,name=activityId,proto3" json:"activityId"`
-	// 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
-	OperationType int32 `protobuf:"varint,4,opt,name=operationType,proto3" json:"operationType"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// 操作类型列表: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationTypes"
+	OperationTypes []int32 `protobuf:"varint,4,rep,packed,name=operationTypes,proto3" json:"operationTypes"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *VolunteerWorkHourListRequest) Reset() {
@@ -734,11 +734,11 @@ func (x *VolunteerWorkHourListRequest) GetActivityId() int64 {
 	return 0
 }
 
-func (x *VolunteerWorkHourListRequest) GetOperationType() int32 {
+func (x *VolunteerWorkHourListRequest) GetOperationTypes() []int32 {
 	if x != nil {
-		return x.OperationType
+		return x.OperationTypes
 	}
-	return 0
+	return nil
 }
 
 // VolunteerWorkHourListResponse 志愿者工时流水响应（志愿者端）
@@ -1771,14 +1771,14 @@ const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\x19VolunteerHomeSummaryStats\x12\x16\n" +
 	"\x06points\x18\x01 \x01(\x05R\x06points\x12\x14\n" +
 	"\x05hours\x18\x02 \x01(\x01R\x05hours\x12$\n" +
-	"\ractivityCount\x18\x03 \x01(\x05R\ractivityCount\"\x94\x01\n" +
+	"\ractivityCount\x18\x03 \x01(\x05R\ractivityCount\"\x96\x01\n" +
 	"\x1cVolunteerWorkHourListRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1a\n" +
 	"\bpageSize\x18\x02 \x01(\x05R\bpageSize\x12\x1e\n" +
 	"\n" +
 	"activityId\x18\x03 \x01(\x03R\n" +
-	"activityId\x12$\n" +
-	"\roperationType\x18\x04 \x01(\x05R\roperationType\"k\n" +
+	"activityId\x12&\n" +
+	"\x0eoperationTypes\x18\x04 \x03(\x05R\x0eoperationTypes\"k\n" +
 	"\x1dVolunteerWorkHourListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x124\n" +
 	"\x04list\x18\x02 \x03(\v2 .volunteer.VolunteerWorkHourItemR\x04list\"\xb5\x02\n" +

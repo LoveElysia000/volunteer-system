@@ -178,8 +178,8 @@ message VolunteerWorkHourListRequest {
   int32 pageSize = 2;
   // 活动ID 可选 @gotags: json:"activityId"
   int64 activityId = 3;
-  // 操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"
-  int32 operationType = 4;
+  // 操作类型列表: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationTypes"
+  repeated int32 operationTypes = 4;
 }
 
 // VolunteerWorkHourListResponse 志愿者工时流水响应（志愿者端）

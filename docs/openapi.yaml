@@ -4235,10 +4235,12 @@ components:
                 activityId:
                     type: string
                     description: '活动ID 可选 @gotags: json:"activityId"'
-                operationType:
-                    type: integer
-                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"'
-                    format: int32
+                operationTypes:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '操作类型列表: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationTypes"'
             description: VolunteerWorkHourListRequest 志愿者工时流水请求（志愿者端）
         volunteer.VolunteerWorkHourListResponse:
             type: object
@@ -4374,10 +4376,12 @@ components:
                 signupId:
                     type: string
                     description: '报名ID 可选 @gotags: json:"signupId"'
-                operationType:
-                    type: integer
-                    description: '操作类型: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationType"'
-                    format: int32
+                operationTypes:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '操作类型列表: 1-发放,2-作废,3-重发 可选 @gotags: json:"operationTypes"'
         workhour.WorkHourLogListResponse:
             type: object
             properties:
