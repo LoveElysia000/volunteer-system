@@ -307,8 +307,8 @@ func (x *UserInfo) GetUpdatedAt() int64 {
 // LogoutRequest 登出请求
 type LogoutRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 要注销的令牌 必填 @gotags: json:"token,required"
-	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,required"`
+	// 刷新令牌 必填 @gotags: json:"refreshToken,required"
+	RefreshToken  string `protobuf:"bytes,1,opt,name=refreshToken,proto3" json:"refreshToken,required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -343,9 +343,9 @@ func (*LogoutRequest) Descriptor() ([]byte, []int) {
 	return file_internal_api_login_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *LogoutRequest) GetToken() string {
+func (x *LogoutRequest) GetRefreshToken() string {
 	if x != nil {
-		return x.Token
+		return x.RefreshToken
 	}
 	return ""
 }
@@ -570,9 +570,9 @@ const file_internal_api_login_proto_rawDesc = "" +
 	"\tavatarUrl\x18\x06 \x01(\tR\tavatarUrl\x12\x1a\n" +
 	"\bidentity\x18\a \x01(\tR\bidentity\x12\x1c\n" +
 	"\tcreatedAt\x18\b \x01(\x03R\tcreatedAt\x12\x1c\n" +
-	"\tupdatedAt\x18\t \x01(\x03R\tupdatedAt\"%\n" +
-	"\rLogoutRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"D\n" +
+	"\tupdatedAt\x18\t \x01(\x03R\tupdatedAt\"3\n" +
+	"\rLogoutRequest\x12\"\n" +
+	"\frefreshToken\x18\x01 \x01(\tR\frefreshToken\"D\n" +
 	"\x0eLogoutResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"9\n" +

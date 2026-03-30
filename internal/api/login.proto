@@ -91,8 +91,8 @@ message UserInfo {
 
 // LogoutRequest 登出请求
 message LogoutRequest {
-  // 要注销的令牌 必填 @gotags: json:"token,required"
-  string token = 1;
+  // 刷新令牌 必填 @gotags: json:"refreshToken,required"
+  string refreshToken = 1;
 }
 
 // LogoutResponse 登出响应

@@ -2338,9 +2338,9 @@ components:
         api.LogoutRequest:
             type: object
             properties:
-                token:
+                refreshToken:
                     type: string
-                    description: '要注销的令牌 必填 @gotags: json:"token,required"'
+                    description: '刷新令牌 必填 @gotags: json:"refreshToken,required"'
             description: LogoutRequest 登出请求
         api.LogoutResponse:
             type: object

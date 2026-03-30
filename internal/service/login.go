@@ -186,16 +186,16 @@ func (s *LoginService) Logout(req *api.LogoutRequest) (*api.LogoutResponse, erro
 	var resp api.LogoutResponse
 
 	// 1. 验证请求参数
-	if req.Token == "" {
-		log.Warn("登出失败: 令牌不能为空")
+	if req.RefreshToken == "" {
+		log.Warn("登出失败: 刷新令牌不能为空")
 		resp.Success = false
-		resp.Message = "令牌不能为空"
-		return &resp, errors.New("令牌不能为空")
+		resp.Message = "刷新令牌不能为空"
+		return &resp, errors.New("刷新令牌不能为空")
 	}
 
 	// 2. 验证 Refresh Token 并获取用户信息
 	jwtManager := util.GetJWTManager()
-	claims, err := jwtManager.ValidateRefreshToken(req.Token)
+	claims, err := jwtManager.ValidateRefreshToken(req.RefreshToken)
 	if err != nil {
 		log.Warn("令牌验证失败: %v", err)
 		resp.Success = false
