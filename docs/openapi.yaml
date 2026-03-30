@@ -1365,7 +1365,7 @@ paths:
         get:
             tags:
                 - OrganizationService
-            description: 组织详情
+            description: 组织详情（管理端）
             operationId: OrganizationService_OrganizationDetail
             parameters:
                 - name: organizationId
@@ -1526,6 +1526,26 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/membership.OrganizationMembersResponse'
+    /api/organizations/{organizationId}/public:
+        get:
+            tags:
+                - OrganizationService
+            description: 公开组织详情（志愿者端浏览）
+            operationId: OrganizationService_PublicOrganizationDetail
+            parameters:
+                - name: organizationId
+                  in: path
+                  description: '组织ID 必填 @gotags: path:"organizationId,required"'
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/organization.PublicOrganizationDetailResponse'
     /api/refresh:
         post:
             tags:
@@ -3836,6 +3856,68 @@ components:
                     type: string
                     description: 消息
             description: OrganizationUpdateResponse 更新组织响应
+        organization.PublicOrganizationDetailResponse:
+            type: object
+            properties:
+                organization:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.PublicOrganizationInfo'
+                    description: 组织信息
+                organizationProfile:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.OrganizationProfileInfo'
+                    description: 组织主体资料
+                organizationCertification:
+                    allOf:
+                        - $ref: '#/components/schemas/organization.OrganizationCertificationInfo'
+                    description: 组织资质信息
+            description: PublicOrganizationDetailResponse 公开组织详情响应
+        organization.PublicOrganizationInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                    description: 组织名称
+                organizationCode:
+                    type: string
+                    description: 组织代码
+                contactPerson:
+                    type: string
+                    description: 联系人
+                contactPhone:
+                    type: string
+                    description: 联系电话
+                address:
+                    type: string
+                    description: 地址
+                status:
+                    type: integer
+                    description: 状态 0-停用 1-正常
+                    format: int32
+                organizationType:
+                    type: string
+                    description: 组织类型
+                region:
+                    type: string
+                    description: 地区
+                description:
+                    type: string
+                    description: 描述
+                websiteUrl:
+                    type: string
+                    description: 网站地址
+                logoUrl:
+                    type: string
+                    description: Logo地址
+                createdAt:
+                    type: string
+                    description: 创建时间
+                updatedAt:
+                    type: string
+                    description: 更新时间
+            description: PublicOrganizationInfo 公开组织信息
         register.OrganizationRegisterRequest:
             type: object
             properties:

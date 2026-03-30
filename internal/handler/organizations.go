@@ -52,6 +52,20 @@ func OrganizationDetail(ctx context.Context, c *app.RequestContext) {
 	response.Success(c, data)
 }
 
+func PublicOrganizationDetail(ctx context.Context, c *app.RequestContext) {
+	var req api.PublicOrganizationDetailRequest
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Fail(c, err)
+		return
+	}
+	data, err := service.NewOrganizationService(ctx, c).PublicOrganizationDetail(&req)
+	if err != nil {
+		response.FailWithCode(c, consts.StatusInternalServerError, err)
+		return
+	}
+	response.Success(c, data)
+}
+
 func CreateOrganization(ctx context.Context, c *app.RequestContext) {
 	var req api.OrganizationCreateRequest
 	if err := c.BindAndValidate(&req); err != nil {

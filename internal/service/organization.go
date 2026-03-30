@@ -316,6 +316,41 @@ func (s *OrganizationService) OrganizationDetail(req *api.OrganizationDetailRequ
 	return resp, nil
 }
 
+func (s *OrganizationService) PublicOrganizationDetail(req *api.PublicOrganizationDetailRequest) (*api.PublicOrganizationDetailResponse, error) {
+	if req == nil {
+		return nil, errors.New("请求不能为空")
+	}
+	if req.OrganizationId <= 0 {
+		return nil, errors.New("组织ID无效")
+	}
+
+	accountID, err := s.currentAccountID()
+	if err != nil {
+		log.Error("查询公开组织详情失败: 获取当前账户ID异常: %v, org_id=%d", err, req.OrganizationId)
+		return nil, err
+	}
+	if _, err := s.repo.FindByID(s.repo.DB, accountID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn("查询公开组织详情失败: 账号不存在, account_id=%d", accountID)
+			return nil, errors.New("账号不存在")
+		}
+		log.Error("查询公开组织详情失败: 查询账号异常: %v, account_id=%d", err, accountID)
+		return nil, err
+	}
+
+	organization, err := s.getOrganizationByID(req.OrganizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := buildPublicOrganizationDetailResponse(organization)
+	if err != nil {
+		log.Error("查询公开组织详情失败: 组装响应异常: %v, org_id=%d, account_id=%d", err, organization.ID, accountID)
+		return nil, err
+	}
+	return resp, nil
+}
+
 // ===== 组织端：单组织变更能力 =====
 
 func (s *OrganizationService) CreateOrganization(req *api.OrganizationCreateRequest) (*api.OrganizationCreateResponse, error) {

@@ -112,6 +112,47 @@ func buildOrganizationDetailResponse(org *model.Organization, account *model.Sys
 	}, nil
 }
 
+func buildPublicOrganizationDetailResponse(org *model.Organization) (*api.PublicOrganizationDetailResponse, error) {
+	if org == nil {
+		return nil, errors.New("组织信息不存在")
+	}
+
+	contactPhone, err := decryptOptionalSensitiveValue(org.ContactPhone)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.PublicOrganizationDetailResponse{
+		Organization: &api.PublicOrganizationInfo{
+			Id:               org.ID,
+			Name:             org.OrgName,
+			OrganizationCode: org.LicenseCode,
+			ContactPerson:    org.ContactPerson,
+			ContactPhone:     contactPhone,
+			Address:          org.Address,
+			Status:           org.Status,
+			OrganizationType: "",
+			Region:           "",
+			Description:      org.Introduction,
+			WebsiteUrl:       "",
+			LogoUrl:          org.LogoURL,
+			CreatedAt:        org.CreatedAt.Format(util.DateTimeLayout),
+			UpdatedAt:        org.UpdatedAt.Format(util.DateTimeLayout),
+		},
+		OrganizationProfile: &api.OrganizationProfileInfo{
+			Name:          org.OrgName,
+			ContactPerson: org.ContactPerson,
+			ContactPhone:  contactPhone,
+			Address:       org.Address,
+			Description:   org.Introduction,
+			LogoUrl:       org.LogoURL,
+		},
+		OrganizationCertification: &api.OrganizationCertificationInfo{
+			OrganizationCode: org.LicenseCode,
+		},
+	}, nil
+}
+
 func buildOrganizationAccountUpdateMutations(req *api.OrganizationAccountUpdateRequest) (map[string]any, error) {
 	if req == nil {
 		return nil, errors.New("请求不能为空")
