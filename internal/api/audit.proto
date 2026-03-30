@@ -97,6 +97,8 @@ message PendingAuditItem {
   string createdAt = 7;
   // 是否超时
   bool isOverdue = 8;
+  // 审核状态
+  int32 status = 9;
 }
 
 // 执行审核请求参数

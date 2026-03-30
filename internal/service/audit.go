@@ -242,6 +242,7 @@ func (s *AuditService) buildPendingAuditItems(records []*model.AuditRecord, slaH
 			CreatorId:  record.CreatorID,
 			CreatedAt:  record.CreatedAt.Format(util.DateTimeLayout),
 			IsOverdue:  isOverdue,
+			Status:     record.Status,
 		})
 	}
 	return items

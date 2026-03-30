@@ -2737,6 +2737,10 @@ components:
                 isOverdue:
                     type: boolean
                     description: 是否超时
+                status:
+                    type: integer
+                    description: 审核状态
+                    format: int32
             description: 统一待审核项
         audit.PendingAuditListRequest:
             type: object
