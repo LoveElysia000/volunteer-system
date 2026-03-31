@@ -385,20 +385,41 @@ func (s *ActivityService) ActivitySignup(req *api.ActivitySignupRequest) (*api.A
 			return canErr
 		}
 
-		signupSnapshot := &model.ActivitySignup{
-			ActivityID:  req.ActivityId,
-			VolunteerID: volunteerID,
-			Status:      model.ActivitySignupStatusPending,
+		signupTime := time.Now()
+		pendingSignup, createSignup := buildPendingSignupForAudit(existing, req.ActivityId, volunteerID, signupTime)
+		if createSignup {
+			if err := s.repo.CreateSignup(tx, pendingSignup); err != nil {
+				return err
+			}
+		} else {
+			updates := map[string]any{
+				"signup_time":           pendingSignup.SignupTime,
+				"status":                pendingSignup.Status,
+				"check_in_status":       pendingSignup.CheckInStatus,
+				"check_in_time":         pendingSignup.CheckInTime,
+				"check_out_status":      pendingSignup.CheckOutStatus,
+				"check_out_time":        pendingSignup.CheckOutTime,
+				"work_hour_status":      pendingSignup.WorkHourStatus,
+				"work_hour_version":     pendingSignup.WorkHourVersion,
+				"last_work_hour_log_id": pendingSignup.LastWorkHourLogID,
+				"granted_hours":         pendingSignup.GrantedHours,
+				"granted_at":            pendingSignup.GrantedAt,
+			}
+			if err := s.repo.UpdateActivitySignupByID(tx, pendingSignup.ID, updates); err != nil {
+				return err
+			}
 		}
+
 		record, buildErr := buildPendingCreateAuditRecordByModel(
 			model.AuditTargetSignup,
 			accountID,
-			signupSnapshot,
-			time.Now(),
+			pendingSignup,
+			signupTime,
 		)
 		if buildErr != nil {
 			return buildErr
 		}
+		record.TargetID = pendingSignup.ID
 		if createErr := s.repo.CreateAuditRecord(tx, record); createErr != nil {
 			return createErr
 		}
@@ -447,6 +468,12 @@ func (s *ActivityService) ActivityCancel(req *api.ActivityCancelRequest) (*api.A
 		if err := s.repo.UpdateActivitySignupStatusByID(tx, signup.ID, decision.toStatus); err != nil {
 			log.Error("取消报名失败: 更新报名状态异常: %v, activity_id=%d account_id=%d volunteer_id=%d signup_id=%d", err, req.ActivityId, accountID, volunteerID, signup.ID)
 			return err
+		}
+		if signup.Status == model.ActivitySignupStatusPending {
+			if err := s.rejectPendingSignupCreateAudits(tx, req.ActivityId, volunteerID, accountID, "志愿者已取消报名"); err != nil {
+				log.Error("取消报名失败: 关闭待审核记录异常: %v, activity_id=%d account_id=%d volunteer_id=%d signup_id=%d", err, req.ActivityId, accountID, volunteerID, signup.ID)
+				return err
+			}
 		}
 
 		if decision.peopleDelta < 0 {

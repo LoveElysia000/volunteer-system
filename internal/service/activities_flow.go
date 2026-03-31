@@ -111,6 +111,41 @@ func buildActivityListFilterMap(req *api.ActivityListRequest) (map[string]any, e
 	return filters, nil
 }
 
+func buildPendingSignupForAudit(
+	existing *model.ActivitySignup,
+	activityID, volunteerID int64,
+	signupTime time.Time,
+) (*model.ActivitySignup, bool) {
+	if existing == nil {
+		return &model.ActivitySignup{
+			ActivityID:     activityID,
+			VolunteerID:    volunteerID,
+			SignupTime:     signupTime,
+			Status:         model.ActivitySignupStatusPending,
+			CheckInStatus:  model.ActivityCheckInPending,
+			CheckOutStatus: model.ActivityCheckOutPending,
+			WorkHourStatus: model.WorkHourStatusPending,
+		}, true
+	}
+
+	signup := *existing
+	signup.ActivityID = activityID
+	signup.VolunteerID = volunteerID
+	signup.SignupTime = signupTime
+	signup.Status = model.ActivitySignupStatusPending
+	signup.CheckInStatus = model.ActivityCheckInPending
+	signup.CheckInTime = nil
+	signup.CheckOutStatus = model.ActivityCheckOutPending
+	signup.CheckOutTime = nil
+	signup.WorkHourStatus = model.WorkHourStatusPending
+	signup.WorkHourVersion = 0
+	signup.LastWorkHourLogID = 0
+	signup.GrantedHours = 0
+	signup.GrantedAt = nil
+
+	return &signup, false
+}
+
 func normalizeActivityStatuses(input []int32) ([]int32, error) {
 	if len(input) == 0 {
 		return nil, nil
@@ -147,12 +182,14 @@ func (s *ActivityService) hasPendingSignupCreateAudit(db *gorm.DB, activityID, v
 	}
 
 	for _, record := range records {
-		if record == nil || record.TargetID > 0 {
+		if record == nil {
 			continue
 		}
-
-		var signup model.ActivitySignup
-		if err := json.Unmarshal([]byte(record.NewContent), &signup); err != nil {
+		signup, err := s.resolveSignupAuditSnapshot(db, record)
+		if err != nil {
+			return false, err
+		}
+		if signup == nil {
 			continue
 		}
 		if signup.ActivityID == activityID && signup.VolunteerID == volunteerID {
@@ -161,6 +198,75 @@ func (s *ActivityService) hasPendingSignupCreateAudit(db *gorm.DB, activityID, v
 	}
 
 	return false, nil
+}
+
+func (s *ActivityService) resolveSignupAuditSnapshot(db *gorm.DB, record *model.AuditRecord) (*model.ActivitySignup, error) {
+	if record == nil {
+		return nil, nil
+	}
+
+	var signup model.ActivitySignup
+	if strings.TrimSpace(record.NewContent) != "" && json.Unmarshal([]byte(record.NewContent), &signup) == nil {
+		if signup.ActivityID > 0 && signup.VolunteerID > 0 {
+			return &signup, nil
+		}
+	}
+
+	if record.TargetID <= 0 {
+		return nil, nil
+	}
+
+	signupEntity, err := s.repo.GetActivitySignupByID(db, record.TargetID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return signupEntity, nil
+}
+
+func (s *ActivityService) rejectPendingSignupCreateAudits(
+	tx *gorm.DB,
+	activityID, volunteerID, userID int64,
+	reason string,
+) error {
+	queryMap := map[string]any{
+		"target_type = ?":    model.AuditTargetSignup,
+		"operation_type = ?": model.OperationTypeCreate,
+		"status = ?":         model.AuditStatusPending,
+		"creator_id = ?":     userID,
+	}
+	records, _, err := s.repo.GetAuditRecordsList(tx, queryMap, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	for _, record := range records {
+		signup, err := s.resolveSignupAuditSnapshot(tx, record)
+		if err != nil {
+			return err
+		}
+		if signup == nil || signup.ActivityID != activityID || signup.VolunteerID != volunteerID {
+			continue
+		}
+
+		updates := map[string]any{
+			"audit_result":  model.AuditResultByStatus[model.AuditStatusRejected],
+			"reject_reason": reason,
+			"audit_time":    now,
+			"status":        model.AuditStatusRejected,
+		}
+		if record.TargetID > 0 {
+			updates["target_id"] = record.TargetID
+		}
+		if err := s.repo.UpdateAuditRecordByID(tx, record.ID, updates); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // getVolunteerIDByAccountID 根据账号ID查询并返回对应志愿者ID。
