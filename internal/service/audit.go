@@ -1,10 +1,12 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"volunteer-system/internal/api"
@@ -13,6 +15,7 @@ import (
 	"volunteer-system/pkg/util"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"google.golang.org/protobuf/types/known/structpb"
 	"gorm.io/gorm"
 )
 
@@ -737,30 +740,130 @@ func (s *AuditService) AuditRecordDetail(req *api.AuditRecordDetailRequest) (*ap
 		return nil, err
 	}
 
-	auditTime := ""
-	if !record.AuditTime.IsZero() {
-		auditTime = record.AuditTime.Format(util.DateTimeLayout)
-	}
-	createdAt := ""
-	if !record.CreatedAt.IsZero() {
-		createdAt = record.CreatedAt.Format(util.DateTimeLayout)
+	detail, err := buildAuditRecordDetail(record)
+	if err != nil {
+		return nil, err
 	}
 
 	return &api.AuditRecordDetailResponse{
-		Record: &api.AuditRecordDetail{
-			Id:           record.ID,
-			TargetType:   record.TargetType,
-			TargetId:     record.TargetID,
-			AuditorId:    record.AuditorID,
-			Status:       record.Status,
-			OldContent:   record.OldContent,
-			NewContent:   record.NewContent,
-			AuditResult:  record.AuditResult,
-			RejectReason: record.RejectReason,
-			AuditTime:    auditTime,
-			CreatedAt:    createdAt,
-		},
+		Record: detail,
 	}, nil
+}
+
+func buildAuditRecordDetail(record *model.AuditRecord) (*api.AuditRecordDetail, error) {
+	if record == nil {
+		return nil, errors.New("审核记录不能为空")
+	}
+
+	oldContentObj := parseAuditContentStruct(record.OldContent)
+	newContentObj := parseAuditContentStruct(record.NewContent)
+
+	return &api.AuditRecordDetail{
+		Id:            record.ID,
+		TargetType:    record.TargetType,
+		TargetId:      record.TargetID,
+		AuditorId:     record.AuditorID,
+		Status:        record.Status,
+		OldContent:    record.OldContent,
+		NewContent:    record.NewContent,
+		AuditResult:   record.AuditResult,
+		RejectReason:  record.RejectReason,
+		AuditTime:     formatAuditRecordTime(record.AuditTime),
+		CreatedAt:     formatAuditRecordTime(record.CreatedAt),
+		OldContentObj: oldContentObj,
+		NewContentObj: newContentObj,
+	}, nil
+}
+
+func parseAuditContentStruct(raw string) *structpb.Struct {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return &structpb.Struct{}
+	}
+
+	_, data, _, err := parseAuditSnapshotEnvelope(trimmed)
+	if err != nil {
+		log.Warn("解析审核快照失败，返回原始内容: %v", err)
+		return nil
+	}
+
+	payload := make(map[string]any)
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&payload); err != nil {
+		log.Warn("反序列化审核快照失败，返回原始内容: %v", err)
+		return nil
+	}
+
+	normalizedPayload, err := normalizeStructPBValue(payload)
+	if err != nil {
+		log.Warn("规范化审核快照失败，返回原始内容: %v", err)
+		return nil
+	}
+
+	normalizedMap, ok := normalizedPayload.(map[string]any)
+	if !ok {
+		log.Warn("审核快照根节点不是对象，返回原始内容")
+		return nil
+	}
+
+	result, err := structpb.NewStruct(normalizedMap)
+	if err != nil {
+		log.Warn("构造审核快照结构化对象失败，返回原始内容: %v", err)
+		return nil
+	}
+	return result
+}
+
+func normalizeStructPBValue(value any) (any, error) {
+	switch v := value.(type) {
+	case map[string]any:
+		normalized := make(map[string]any, len(v))
+		for key, item := range v {
+			next, err := normalizeStructPBValue(item)
+			if err != nil {
+				return nil, err
+			}
+			normalized[key] = next
+		}
+		return normalized, nil
+	case []any:
+		normalized := make([]any, 0, len(v))
+		for _, item := range v {
+			next, err := normalizeStructPBValue(item)
+			if err != nil {
+				return nil, err
+			}
+			normalized = append(normalized, next)
+		}
+		return normalized, nil
+	case json.Number:
+		return normalizeStructPBNumber(v)
+	default:
+		return value, nil
+	}
+}
+
+func normalizeStructPBNumber(value json.Number) (any, error) {
+	raw := value.String()
+	if !strings.ContainsAny(raw, ".eE") {
+		if _, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			return raw, nil
+		}
+	}
+
+	parsedFloat, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return nil, err
+	}
+	return parsedFloat, nil
+}
+
+func formatAuditRecordTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format(util.DateTimeLayout)
 }
 
 // ----- 审核端私有能力：鉴权与作用域解析 -----
@@ -848,6 +951,16 @@ func (s *AuditService) resolveAuditRecordOrgID(record *model.AuditRecord) (int64
 	switch record.TargetType {
 	case model.AuditTargetOrg:
 		return record.TargetID, nil
+
+	case model.AuditTargetVolunteer:
+		payload, err := unmarshalVolunteerRealNameVerifyAuditPayload(record.NewContent)
+		if err != nil {
+			return 0, err
+		}
+		if payload == nil || payload.OrgID <= 0 {
+			return 0, nil
+		}
+		return payload.OrgID, nil
 
 	case model.AuditTargetMember:
 		if record.TargetID > 0 {

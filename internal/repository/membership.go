@@ -155,6 +155,24 @@ func (r *Repository) GetVolunteerOrganizations(db *gorm.DB, volunteerID int64, s
 	return members, total, nil
 }
 
+// GetVolunteerActiveMemberships returns active memberships for a volunteer ordered by creation time.
+func (r *Repository) GetVolunteerActiveMemberships(db *gorm.DB, volunteerID int64) ([]*model.OrgMember, error) {
+	members := make([]*model.OrgMember, 0)
+	if volunteerID <= 0 {
+		return members, nil
+	}
+
+	err := db.WithContext(r.ctx).
+		Model(&model.OrgMember{}).
+		Where("volunteer_id = ? AND status = ?", volunteerID, model.MemberStatusActive).
+		Order("created_at ASC, id ASC").
+		Find(&members).Error
+	if err != nil {
+		return nil, err
+	}
+	return members, nil
+}
+
 // GetMembershipStatusCounts returns counts by status for an organization.
 func (r *Repository) GetMembershipStatusCounts(db *gorm.DB, orgID int64) (map[int32]int64, int64, error) {
 	type statusCount struct {

@@ -11,6 +11,7 @@ import (
 type VolunteerRealNameVerifyAuditPayload struct {
 	RealName string `json:"real_name"`
 	IDCard   string `json:"id_card"`
+	OrgID    int64  `json:"org_id"`
 }
 
 // resolveVolunteerUpdateAuditScene 解析实名认证审核快照所属场景。
@@ -29,7 +30,7 @@ func resolveVolunteerUpdateAuditScene(raw string) (string, error) {
 }
 
 // buildVolunteerRealNameVerifyAuditPayloads 对比请求与当前志愿者信息，构建实名审核前后快照。
-func buildVolunteerRealNameVerifyAuditPayloads(req *api.VolunteerRealNameSubmitRequest, volunteer *model.Volunteer) (*VolunteerRealNameVerifyAuditPayload, *VolunteerRealNameVerifyAuditPayload, error) {
+func buildVolunteerRealNameVerifyAuditPayloads(req *api.VolunteerRealNameSubmitRequest, volunteer *model.Volunteer, orgID int64) (*VolunteerRealNameVerifyAuditPayload, *VolunteerRealNameVerifyAuditPayload, error) {
 	if req == nil {
 		return nil, nil, errors.New("请求不能为空")
 	}
@@ -49,10 +50,12 @@ func buildVolunteerRealNameVerifyAuditPayloads(req *api.VolunteerRealNameSubmitR
 	oldPayload := &VolunteerRealNameVerifyAuditPayload{
 		RealName: strings.TrimSpace(volunteer.RealName),
 		IDCard:   strings.TrimSpace(volunteer.IDCard),
+		OrgID:    orgID,
 	}
 	newPayload := &VolunteerRealNameVerifyAuditPayload{
 		RealName: realName,
 		IDCard:   idCard,
+		OrgID:    orgID,
 	}
 
 	if oldPayload.RealName == newPayload.RealName &&
@@ -88,6 +91,9 @@ func unmarshalVolunteerRealNameVerifyAuditPayload(raw string) (*VolunteerRealNam
 	}
 	payload.RealName = realName
 	payload.IDCard = idCard
+	if payload.OrgID < 0 {
+		return nil, errors.New("组织ID不合法")
+	}
 	return &payload, nil
 }
 

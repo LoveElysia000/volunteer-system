@@ -561,7 +561,12 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 			return errors.New("您有正在审核中的实名认证申请，请耐心等待")
 		}
 
-		oldPayload, newPayload, payloadErr := buildVolunteerRealNameVerifyAuditPayloads(req, lockedVolunteer)
+		orgID, orgErr := s.resolveVolunteerRealNameAuditOrgID(tx, lockedVolunteer.ID)
+		if orgErr != nil {
+			return orgErr
+		}
+
+		oldPayload, newPayload, payloadErr := buildVolunteerRealNameVerifyAuditPayloads(req, lockedVolunteer, orgID)
 		if payloadErr != nil {
 			return payloadErr
 		}
@@ -597,6 +602,17 @@ func (s *VolunteerService) VolunteerRealNameSubmit(req *api.VolunteerRealNameSub
 		return nil, err
 	}
 	return resp, nil
+}
+
+func (s *VolunteerService) resolveVolunteerRealNameAuditOrgID(tx *gorm.DB, volunteerID int64) (int64, error) {
+	members, err := s.repo.GetVolunteerActiveMemberships(tx, volunteerID)
+	if err != nil {
+		return 0, err
+	}
+	if len(members) == 0 || members[0] == nil || members[0].OrgID <= 0 {
+		return 0, errors.New("请先加入组织后再提交实名认证")
+	}
+	return members[0].OrgID, nil
 }
 
 func (s *VolunteerService) hasPendingVolunteerUpdateAuditByScene(db *gorm.DB, volunteerID, creatorID int64, scene string) (bool, error) {

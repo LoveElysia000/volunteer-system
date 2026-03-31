@@ -2686,6 +2686,12 @@ components:
                 createdAt:
                     type: string
                     description: 记录创建时间
+                oldContentObj:
+                    type: object
+                    description: 审核前内容快照（结构化）
+                newContentObj:
+                    type: object
+                    description: 审核后内容快照（结构化）
             description: 审核记录详情
         audit.AuditRecordDetailResponse:
             type: object

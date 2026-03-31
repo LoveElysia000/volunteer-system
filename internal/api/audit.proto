@@ -4,6 +4,7 @@ package audit;
 
 import "google/api/annotations.proto";
 import "google/api/client.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "volunteer-system/internal/api;api";
 
@@ -177,4 +178,8 @@ message AuditRecordDetail {
   string auditTime = 10;
   // 记录创建时间
   string createdAt = 11;
+  // 审核前内容快照（结构化）
+  google.protobuf.Struct oldContentObj = 12;
+  // 审核后内容快照（结构化）
+  google.protobuf.Struct newContentObj = 13;
 }
