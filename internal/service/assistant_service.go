@@ -649,9 +649,8 @@ func normalizeAssistantScene(scene string) (string, error) {
 	switch v {
 	case assistantSceneGeneral, assistantSceneActivityDraft, assistantSceneOpsAdvisor:
 		return v, nil
-	default:
-		return "", errors.New("不支持的会话场景")
 	}
+	return "", fmt.Errorf("不支持的会话场景: %s，可选值: %s/%s/%s", v, assistantSceneGeneral, assistantSceneActivityDraft, assistantSceneOpsAdvisor)
 }
 
 func defaultSessionTitle(scene string) string {
