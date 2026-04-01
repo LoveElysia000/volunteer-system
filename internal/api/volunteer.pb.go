@@ -30,7 +30,11 @@ type VolunteerListRequest struct {
 	// 页码 必填 @gotags: json:"page"
 	Page int32 `protobuf:"varint,2,opt,name=page,proto3" json:"page"`
 	// 页大小 必填 @gotags: json:"pageSize"
-	PageSize      int32 `protobuf:"varint,3,opt,name=pageSize,proto3" json:"pageSize"`
+	PageSize int32 `protobuf:"varint,3,opt,name=pageSize,proto3" json:"pageSize"`
+	// 实名认证状态列表: 0-未认证, 1-审核中, 2-已通过, 3-驳回 可选 @gotags: json:"auditStatuses"
+	AuditStatuses []int32 `protobuf:"varint,4,rep,packed,name=auditStatuses,proto3" json:"auditStatuses"`
+	// 志愿者状态列表: 1-活跃, 2-非活跃 3-其他 可选 @gotags: json:"status"
+	Status        []int32 `protobuf:"varint,5,rep,packed,name=status,proto3" json:"status"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -84,6 +88,20 @@ func (x *VolunteerListRequest) GetPageSize() int32 {
 		return x.PageSize
 	}
 	return 0
+}
+
+func (x *VolunteerListRequest) GetAuditStatuses() []int32 {
+	if x != nil {
+		return x.AuditStatuses
+	}
+	return nil
+}
+
+func (x *VolunteerListRequest) GetStatus() []int32 {
+	if x != nil {
+		return x.Status
+	}
+	return nil
 }
 
 // VolunteerListResponse 志愿者列表响应
@@ -1727,11 +1745,13 @@ var File_internal_api_volunteer_proto protoreflect.FileDescriptor
 
 const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\n" +
-	"\x1cinternal/api/volunteer.proto\x12\tvolunteer\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"`\n" +
+	"\x1cinternal/api/volunteer.proto\x12\tvolunteer\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\x9e\x01\n" +
 	"\x14VolunteerListRequest\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1a\n" +
-	"\bpageSize\x18\x03 \x01(\x05R\bpageSize\"_\n" +
+	"\bpageSize\x18\x03 \x01(\x05R\bpageSize\x12$\n" +
+	"\rauditStatuses\x18\x04 \x03(\x05R\rauditStatuses\x12\x16\n" +
+	"\x06status\x18\x05 \x03(\x05R\x06status\"_\n" +
 	"\x15VolunteerListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x120\n" +
 	"\x04list\x18\x02 \x03(\v2\x1c.volunteer.VolunteerListItemR\x04list\"\xef\x02\n" +
