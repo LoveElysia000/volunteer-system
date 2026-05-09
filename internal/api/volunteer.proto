@@ -81,6 +81,10 @@ message VolunteerListRequest {
   int32 page = 2;
   // 页大小 必填 @gotags: json:"pageSize"
   int32 pageSize = 3;
+  // 审核状态列表 可选 @gotags: json:"auditStatuses"
+  repeated int32 auditStatuses = 4;
+  // 志愿者状态列表 可选 @gotags: json:"statuses"
+  repeated int32 statuses = 5;
 }
 
 // VolunteerListResponse 志愿者列表响应

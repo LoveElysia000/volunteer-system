@@ -183,3 +183,23 @@ func IsValidActivityStatus(status int32) bool {
 		return false
 	}
 }
+
+// IsValidVolunteerStatus returns whether volunteer status is valid.
+func IsValidVolunteerStatus(status int32) bool {
+	switch status {
+	case VolunteerActiveStatus, VolunteerInactiveStatus, VolunteerEtcStatus:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsValidVolunteerAuditStatus returns whether volunteer audit status is valid.
+func IsValidVolunteerAuditStatus(status int32) bool {
+	switch status {
+	case VolunteerAuditStatusUnverified, VolunteerAuditStatusPending, VolunteerAuditStatusApproved, VolunteerAuditStatusRejected:
+		return true
+	default:
+		return false
+	}
+}

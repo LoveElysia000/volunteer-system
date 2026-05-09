@@ -4193,6 +4193,18 @@ components:
                     type: integer
                     description: '页大小 必填 @gotags: json:"pageSize"'
                     format: int32
+                auditStatuses:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '审核状态列表 可选 @gotags: json:"auditStatuses"'
+                statuses:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '志愿者状态列表 可选 @gotags: json:"statuses"'
             description: VolunteerListRequest 志愿者列表请求（管理员端）
         volunteer.VolunteerListResponse:
             type: object

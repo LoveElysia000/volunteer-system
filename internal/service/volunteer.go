@@ -30,6 +30,33 @@ func NewVolunteerService(ctx context.Context, c *app.RequestContext) *VolunteerS
 	}
 }
 
+func buildVolunteerListFilters(req *api.VolunteerListRequest, keywordIDs []int64) (map[string]any, error) {
+	queryMap := make(map[string]any)
+	if len(keywordIDs) > 0 {
+		queryMap["v.id IN ?"] = keywordIDs
+	}
+
+	if len(req.AuditStatuses) > 0 {
+		for _, status := range req.AuditStatuses {
+			if !model.IsValidVolunteerAuditStatus(status) {
+				return nil, errors.New("审核状态无效")
+			}
+		}
+		queryMap["v.audit_status IN ?"] = req.AuditStatuses
+	}
+
+	if len(req.Statuses) > 0 {
+		for _, status := range req.Statuses {
+			if !model.IsValidVolunteerStatus(status) {
+				return nil, errors.New("志愿者状态无效")
+			}
+		}
+		queryMap["v.status IN ?"] = req.Statuses
+	}
+
+	return queryMap, nil
+}
+
 func (s *VolunteerService) hasVolunteerAccess(operatorID int64, volunteer *model.Volunteer) (bool, error) {
 	if operatorID <= 0 || volunteer == nil {
 		return false, nil
@@ -146,9 +173,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		return nil, errors.New("当前用户无组织管理权限")
 	}
 
-	// 构建查询参数map
-	queryMap := make(map[string]any)
-
+	keywordIDs := []int64(nil)
 	// 如果有关键字，先通过模糊查询获取志愿者ID列表
 	if req.Keyword != "" {
 		ids, err := s.repo.FindVolunteerIDsByKeyword(s.repo.DB, req.Keyword)
@@ -163,7 +188,12 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 				List:  []*api.VolunteerListItem{},
 			}, nil
 		}
-		queryMap["v.id IN ?"] = ids
+		keywordIDs = ids
+	}
+
+	queryMap, err := buildVolunteerListFilters(req, keywordIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	// 根据查询参数查询志愿者列表
