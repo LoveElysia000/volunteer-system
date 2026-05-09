@@ -41,10 +41,10 @@ message ExportVolunteersRequest {
   repeated int64 idList = 1; // optional selected volunteer ids
   // 志愿者姓名关键字 @gotags: json:"keyword"
   string keyword = 2; // volunteer real_name keyword
-  // 审核状态（0=不过滤） @gotags: json:"auditStatus"
-  int32 auditStatus = 3; // 0 means no filter
-  // 状态（0=不过滤） @gotags: json:"status"
-  int32 status = 4; // 0 means no filter
+  // 审核状态 0-未认证 1-审核中 2-已通过 3-已驳回 @gotags: json:"auditStatus"
+  repeated int32 auditStatus = 3;
+  // 状态 1-活跃 2-非活跃 3-其他 @gotags: json:"status"
+  repeated int32 status = 4;
 }
 
 message ExportVolunteersResponse {}

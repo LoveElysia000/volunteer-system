@@ -28,10 +28,10 @@ type ExportVolunteersRequest struct {
 	IdList []int64 `protobuf:"varint,1,rep,packed,name=idList,proto3" json:"idList"` // optional selected volunteer ids
 	// 志愿者姓名关键字 @gotags: json:"keyword"
 	Keyword string `protobuf:"bytes,2,opt,name=keyword,proto3" json:"keyword"` // volunteer real_name keyword
-	// 审核状态（0=不过滤） @gotags: json:"auditStatus"
-	AuditStatus int32 `protobuf:"varint,3,opt,name=auditStatus,proto3" json:"auditStatus"` // 0 means no filter
-	// 状态（0=不过滤） @gotags: json:"status"
-	Status        int32 `protobuf:"varint,4,opt,name=status,proto3" json:"status"` // 0 means no filter
+	// 审核状态 0-未认证 1-审核中 2-已通过 3-已驳回 @gotags: json:"auditStatus"
+	AuditStatus []int32 `protobuf:"varint,3,rep,packed,name=auditStatus,proto3" json:"auditStatus"`
+	// 状态 1-活跃 2-非活跃 3-其他 @gotags: json:"status"
+	Status        []int32 `protobuf:"varint,4,rep,packed,name=status,proto3" json:"status"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,18 +80,18 @@ func (x *ExportVolunteersRequest) GetKeyword() string {
 	return ""
 }
 
-func (x *ExportVolunteersRequest) GetAuditStatus() int32 {
+func (x *ExportVolunteersRequest) GetAuditStatus() []int32 {
 	if x != nil {
 		return x.AuditStatus
 	}
-	return 0
+	return nil
 }
 
-func (x *ExportVolunteersRequest) GetStatus() int32 {
+func (x *ExportVolunteersRequest) GetStatus() []int32 {
 	if x != nil {
 		return x.Status
 	}
-	return 0
+	return nil
 }
 
 type ExportVolunteersResponse struct {
@@ -363,8 +363,8 @@ const file_internal_api_export_proto_rawDesc = "" +
 	"\x17ExportVolunteersRequest\x12\x16\n" +
 	"\x06idList\x18\x01 \x03(\x03R\x06idList\x12\x18\n" +
 	"\akeyword\x18\x02 \x01(\tR\akeyword\x12 \n" +
-	"\vauditStatus\x18\x03 \x01(\x05R\vauditStatus\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\x05R\x06status\"\x1a\n" +
+	"\vauditStatus\x18\x03 \x03(\x05R\vauditStatus\x12\x16\n" +
+	"\x06status\x18\x04 \x03(\x05R\x06status\"\x1a\n" +
 	"\x18ExportVolunteersResponse\"\x9b\x01\n" +
 	"\x17ExportActivitiesRequest\x12\x16\n" +
 	"\x06idList\x18\x01 \x03(\x03R\x06idList\x12\x18\n" +

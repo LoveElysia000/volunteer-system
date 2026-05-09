@@ -81,10 +81,10 @@ message VolunteerListRequest {
   int32 page = 2;
   // 页大小 必填 @gotags: json:"pageSize"
   int32 pageSize = 3;
-  // 审核状态列表 可选 @gotags: json:"auditStatuses"
+  // 实名认证状态列表: 0-未认证, 1-审核中, 2-已通过, 3-驳回 可选 @gotags: json:"auditStatuses"
   repeated int32 auditStatuses = 4;
-  // 志愿者状态列表 可选 @gotags: json:"statuses"
-  repeated int32 statuses = 5;
+  // 志愿者状态列表: 1-活跃, 2-非活跃 3-其他 可选 @gotags: json:"status"
+  repeated int32 status = 5;
 }
 
 // VolunteerListResponse 志愿者列表响应

@@ -151,11 +151,11 @@ func (r *Repository) ListVolunteerExportRecords(
 		if keyword != "" {
 			query = query.Where("v.real_name LIKE ?", "%"+keyword+"%")
 		}
-		if req.Status > 0 {
-			query = query.Where("v.status = ?", req.Status)
+		if len(req.Status) > 0 {
+			query = query.Where("v.status IN ?", req.Status)
 		}
-		if req.AuditStatus > 0 {
-			query = query.Where("v.audit_status = ?", req.AuditStatus)
+		if len(req.AuditStatus) > 0 {
+			query = query.Where("v.audit_status IN ?", req.AuditStatus)
 		}
 	}
 

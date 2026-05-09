@@ -30,31 +30,81 @@ func NewVolunteerService(ctx context.Context, c *app.RequestContext) *VolunteerS
 	}
 }
 
-func buildVolunteerListFilters(req *api.VolunteerListRequest, keywordIDs []int64) (map[string]any, error) {
+func normalizeVolunteerAuditStatuses(input []int32) ([]int32, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
+	result := make([]int32, 0, len(input))
+	seen := make(map[int32]struct{}, len(input))
+	for _, status := range input {
+		if status != model.VolunteerAuditStatusUnverified &&
+			status != model.VolunteerAuditStatusPending &&
+			status != model.VolunteerAuditStatusApproved &&
+			status != model.VolunteerAuditStatusRejected {
+			return nil, errors.New("实名认证状态不合法")
+		}
+		if _, ok := seen[status]; ok {
+			continue
+		}
+		seen[status] = struct{}{}
+		result = append(result, status)
+	}
+	return result, nil
+}
+
+func normalizeVolunteerStatuses(input []int32) ([]int32, error) {
+	if len(input) == 0 {
+		return nil, nil
+	}
+
+	result := make([]int32, 0, len(input))
+	seen := make(map[int32]struct{}, len(input))
+	for _, status := range input {
+		if status != model.VolunteerActiveStatus &&
+			status != model.VolunteerInactiveStatus &&
+			status != model.VolunteerEtcStatus {
+			return nil, errors.New("志愿者状态不合法")
+		}
+		if _, ok := seen[status]; ok {
+			continue
+		}
+		seen[status] = struct{}{}
+		result = append(result, status)
+	}
+	return result, nil
+}
+
+func buildVolunteerListFilterMap(req *api.VolunteerListRequest, keywordVolunteerIDs []int64) (map[string]any, bool, error) {
 	queryMap := make(map[string]any)
-	if len(keywordIDs) > 0 {
-		queryMap["v.id IN ?"] = keywordIDs
+	if req == nil {
+		return queryMap, false, nil
 	}
 
-	if len(req.AuditStatuses) > 0 {
-		for _, status := range req.AuditStatuses {
-			if !model.IsValidVolunteerAuditStatus(status) {
-				return nil, errors.New("审核状态无效")
-			}
+	if req.Keyword != "" {
+		if len(keywordVolunteerIDs) == 0 {
+			return queryMap, true, nil
 		}
-		queryMap["v.audit_status IN ?"] = req.AuditStatuses
+		queryMap["v.id IN ?"] = keywordVolunteerIDs
 	}
 
-	if len(req.Statuses) > 0 {
-		for _, status := range req.Statuses {
-			if !model.IsValidVolunteerStatus(status) {
-				return nil, errors.New("志愿者状态无效")
-			}
-		}
-		queryMap["v.status IN ?"] = req.Statuses
+	auditStatuses, err := normalizeVolunteerAuditStatuses(req.AuditStatuses)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(auditStatuses) > 0 {
+		queryMap["v.audit_status IN ?"] = auditStatuses
 	}
 
-	return queryMap, nil
+	statuses, err := normalizeVolunteerStatuses(req.Status)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(statuses) > 0 {
+		queryMap["v.status IN ?"] = statuses
+	}
+
+	return queryMap, false, nil
 }
 
 func (s *VolunteerService) hasVolunteerAccess(operatorID int64, volunteer *model.Volunteer) (bool, error) {
@@ -173,7 +223,11 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		return nil, errors.New("当前用户无组织管理权限")
 	}
 
+<<<<<<< HEAD
 	keywordIDs := []int64(nil)
+=======
+	keywordVolunteerIDs := []int64(nil)
+>>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	// 如果有关键字，先通过模糊查询获取志愿者ID列表
 	if req.Keyword != "" {
 		ids, err := s.repo.FindVolunteerIDsByKeyword(s.repo.DB, req.Keyword)
@@ -181,6 +235,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 			log.Error("关键字查询志愿者ID失败: %v", err)
 			return nil, err
 		}
+<<<<<<< HEAD
 		if len(ids) == 0 {
 			// 没有匹配的志愿者
 			return &api.VolunteerListResponse{
@@ -194,6 +249,20 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 	queryMap, err := buildVolunteerListFilters(req, keywordIDs)
 	if err != nil {
 		return nil, err
+=======
+		keywordVolunteerIDs = ids
+	}
+
+	queryMap, emptyResult, err := buildVolunteerListFilterMap(req, keywordVolunteerIDs)
+	if err != nil {
+		return nil, err
+	}
+	if emptyResult {
+		return &api.VolunteerListResponse{
+			Total: 0,
+			List:  []*api.VolunteerListItem{},
+		}, nil
+>>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	}
 
 	// 根据查询参数查询志愿者列表

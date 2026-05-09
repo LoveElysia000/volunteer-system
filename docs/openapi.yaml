@@ -3088,13 +3088,17 @@ components:
                     type: string
                     description: '志愿者姓名关键字 @gotags: json:"keyword"'
                 auditStatus:
-                    type: integer
-                    description: '审核状态（0=不过滤） @gotags: json:"auditStatus"'
-                    format: int32
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '审核状态 0-未认证 1-审核中 2-已通过 3-已驳回 @gotags: json:"auditStatus"'
                 status:
-                    type: integer
-                    description: '状态（0=不过滤） @gotags: json:"status"'
-                    format: int32
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                    description: '状态 1-活跃 2-非活跃 3-其他 @gotags: json:"status"'
         exportapi.ExportVolunteersResponse:
             type: object
             properties: {}
@@ -4198,13 +4202,13 @@ components:
                     items:
                         type: integer
                         format: int32
-                    description: '审核状态列表 可选 @gotags: json:"auditStatuses"'
-                statuses:
+                    description: '实名认证状态列表: 0-未认证, 1-审核中, 2-已通过, 3-驳回 可选 @gotags: json:"auditStatuses"'
+                status:
                     type: array
                     items:
                         type: integer
                         format: int32
-                    description: '志愿者状态列表 可选 @gotags: json:"statuses"'
+                    description: '志愿者状态列表: 1-活跃, 2-非活跃 3-其他 可选 @gotags: json:"status"'
             description: VolunteerListRequest 志愿者列表请求（管理员端）
         volunteer.VolunteerListResponse:
             type: object
