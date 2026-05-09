@@ -223,11 +223,7 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 		return nil, errors.New("当前用户无组织管理权限")
 	}
 
-<<<<<<< HEAD
-	keywordIDs := []int64(nil)
-=======
 	keywordVolunteerIDs := []int64(nil)
->>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	// 如果有关键字，先通过模糊查询获取志愿者ID列表
 	if req.Keyword != "" {
 		ids, err := s.repo.FindVolunteerIDsByKeyword(s.repo.DB, req.Keyword)
@@ -235,21 +231,6 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 			log.Error("关键字查询志愿者ID失败: %v", err)
 			return nil, err
 		}
-<<<<<<< HEAD
-		if len(ids) == 0 {
-			// 没有匹配的志愿者
-			return &api.VolunteerListResponse{
-				Total: 0,
-				List:  []*api.VolunteerListItem{},
-			}, nil
-		}
-		keywordIDs = ids
-	}
-
-	queryMap, err := buildVolunteerListFilters(req, keywordIDs)
-	if err != nil {
-		return nil, err
-=======
 		keywordVolunteerIDs = ids
 	}
 
@@ -262,7 +243,6 @@ func (s *VolunteerService) VolunteerList(req *api.VolunteerListRequest) (*api.Vo
 			Total: 0,
 			List:  []*api.VolunteerListItem{},
 		}, nil
->>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	}
 
 	// 根据查询参数查询志愿者列表

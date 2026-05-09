@@ -97,15 +97,9 @@ func (x *VolunteerListRequest) GetAuditStatuses() []int32 {
 	return nil
 }
 
-<<<<<<< HEAD
-func (x *VolunteerListRequest) GetStatuses() []int32 {
-	if x != nil {
-		return x.Statuses
-=======
 func (x *VolunteerListRequest) GetStatus() []int32 {
 	if x != nil {
 		return x.Status
->>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	}
 	return nil
 }
@@ -1751,22 +1745,13 @@ var File_internal_api_volunteer_proto protoreflect.FileDescriptor
 
 const file_internal_api_volunteer_proto_rawDesc = "" +
 	"\n" +
-<<<<<<< HEAD
-	"\x1cinternal/api/volunteer.proto\x12\tvolunteer\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\xa2\x01\n" +
-=======
 	"\x1cinternal/api/volunteer.proto\x12\tvolunteer\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\"\x9e\x01\n" +
->>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	"\x14VolunteerListRequest\x12\x18\n" +
 	"\akeyword\x18\x01 \x01(\tR\akeyword\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1a\n" +
 	"\bpageSize\x18\x03 \x01(\x05R\bpageSize\x12$\n" +
-<<<<<<< HEAD
-	"\rauditStatuses\x18\x04 \x03(\x05R\rauditStatuses\x12\x1a\n" +
-	"\bstatuses\x18\x05 \x03(\x05R\bstatuses\"_\n" +
-=======
 	"\rauditStatuses\x18\x04 \x03(\x05R\rauditStatuses\x12\x16\n" +
 	"\x06status\x18\x05 \x03(\x05R\x06status\"_\n" +
->>>>>>> b24b60de6eec54b6283a1e17062855b9f10a876c
 	"\x15VolunteerListResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x120\n" +
 	"\x04list\x18\x02 \x03(\v2\x1c.volunteer.VolunteerListItemR\x04list\"\xef\x02\n" +
