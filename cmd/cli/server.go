@@ -112,6 +112,7 @@ func initHttpServer(cfg *config.Config) {
 		hz.WithReadTimeout(10*time.Second),
 		hz.WithWriteTimeout(2*time.Minute),
 		hz.WithIdleTimeout(60*time.Second),
+		hz.WithMaxRequestBodySize(20*1024*1024),
 	)
 
 	appLog.Info("Hertz服务器启动在 %s:%d", cfg.App.Host, cfg.App.Port)
