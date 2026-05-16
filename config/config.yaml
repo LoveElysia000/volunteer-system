@@ -89,9 +89,9 @@ auth:
 ai:
   enabled: true
   provider: "deepseek"      # openai / deepseek / compatible
-  api_key: "${AI_API_KEY:}"
+  api_key: sk-313d6b237c8542f08f90dd4a093612ce
   base_url: "https://api.deepseek.com/v1"
-  chat_model: "deepseek-chat"
+  chat_model: "deepseek-v4-flash"
   request_timeout_ms: 15000
   max_retries: 2
   max_context_messages: 20

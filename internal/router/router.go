@@ -40,5 +40,6 @@ func RegisterRouter(r *server.Hertz) {
 	RegisterAuthzRouter(authApi)
 	RegisterNotificationRouter(authApi)
 	RegisterAssistantRouter(authApi)
+	RegisterUploadRouter(authApi)
 
 }

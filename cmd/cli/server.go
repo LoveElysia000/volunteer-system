@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 	"time"
 
 	"volunteer-system/config"
@@ -12,7 +13,9 @@ import (
 	"volunteer-system/pkg/database/mysql"
 	"volunteer-system/pkg/database/redis"
 	"volunteer-system/pkg/logger"
+	"volunteer-system/pkg/storage"
 
+	"github.com/cloudwego/hertz/pkg/app"
 	hz "github.com/cloudwego/hertz/pkg/app/server"
 )
 
@@ -41,6 +44,17 @@ func StartServer() {
 		log.Fatalf("无法启动应用")
 	}
 	defer closeDatabases()
+
+	// 初始化文件存储
+	if cfg.Upload != nil {
+		storage.Init(storage.Config{
+			Dir:               cfg.Upload.Dir,
+			BaseURL:           "/uploads",
+			MaxFileSizeMB:     cfg.Upload.MaxFileSizeMB,
+			AllowedExtensions: cfg.Upload.AllowedExtensions,
+		})
+		appLog.Info("文件存储初始化成功: dir=%s", cfg.Upload.Dir)
+	}
 
 	// 启动通知分发器（异步 best-effort，不影响主链路返回）
 	service.InitNotificationDispatcher(context.Background())
@@ -105,6 +119,16 @@ func initHttpServer(cfg *config.Config) {
 	if cfg.App.Env == "development" {
 		router.RegisterSwaggerUI(h)
 		appLog.Info("Swagger UI 已启用: /swagger/")
+	}
+
+	// 静态文件服务（头像、活动图片等）
+	if cfg.Upload != nil {
+		absDir, _ := filepath.Abs(cfg.Upload.Dir)
+		appLog.Info("静态文件目录: %s", absDir)
+		h.GET("/uploads/*filepath", func(ctx context.Context, c *app.RequestContext) {
+			filePath := filepath.Join(absDir, c.Param("filepath"))
+			c.File(filePath)
+		})
 	}
 
 	router.RegisterRouter(h)
