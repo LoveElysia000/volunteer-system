@@ -1,6 +1,7 @@
 package router
 
 import (
+	"volunteer-system/internal/handler"
 	"volunteer-system/internal/middleware"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -15,6 +16,10 @@ func RegisterRouter(r *server.Hertz) {
 
 	//分组
 	api := r.Group("/api")
+
+	// 健康检查（无需认证，供 Kubernetes 探针与负载均衡使用）
+	r.GET("/livez", handler.Livez)
+	r.GET("/healthz", handler.Healthz)
 
 	// 注册登录路由（无需认证)
 	RegisterLoginRouter(api)
