@@ -1,11 +1,15 @@
 # Headlamp — Kubernetes 可视化管理界面
 #
-# 部署：kubectl apply -f deploy/headlamp.yaml
+# 部署：kubectl apply -f deploy/headlamp.yaml（由 CD 自动执行）
 # 访问：http://<服务器IP>:30080
-# 登录：kubectl -n headlamp create token headlamp-admin  （复制输出的 token 粘贴到登录页）
+# 登录：永久 token 用下面命令获取（kubernetes.io/service-account-token 类型的
+#       Secret 由控制器自动填充，token 不过期）：
+#       kubectl -n headlamp get secret headlamp-admin-token \
+#         -o jsonpath='{.data.token}' | base64 -d; echo
+#       临时 token 也可以：kubectl -n headlamp create token headlamp-admin
 #
 # 注意：headlamp-admin 绑定的是 cluster-admin（管理员），
-#       端口 30080 必须在安全组放行，且不要暴露给不可信网络。
+#       端口 30080 必须在安全组放行（建议限制来源 IP），不要暴露给不可信网络。
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -16,6 +20,17 @@ kind: ServiceAccount
 metadata:
   name: headlamp-admin
   namespace: headlamp
+---
+# 永久登录 token：Secret 由 token 控制器自动填充，内容不会过期
+# （与 kubectl create token 生成的 1 小时有效期 token 不同）
+apiVersion: v1
+kind: Secret
+metadata:
+  name: headlamp-admin-token
+  namespace: headlamp
+  annotations:
+    kubernetes.io/service-account.name: "headlamp-admin"
+type: kubernetes.io/service-account-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
