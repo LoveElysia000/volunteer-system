@@ -52,26 +52,35 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # 集群 kubeconfig 内容（Settings → Secrets → KUBE_CONFIG）
-      # 未配置时本 job 自动跳过；首次手动部署见 deploy/k8s/README.md
+      # 未配置时本 job 自动跳过
       KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       IMAGE: ghcr.io/loveelysia000/volunteer-system
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure kubectl
         run: |
           if [ -z "$KUBE_CONFIG" ]; then
-            echo "::warning::KUBE_CONFIG secret 未配置，跳过部署。首次部署请在集群上手动 kubectl apply（见 deploy/k8s/README.md）"
+            echo "::warning::KUBE_CONFIG secret 未配置，跳过部署"
             exit 0
           fi
           mkdir -p ~/.kube
           printf '%s' "$KUBE_CONFIG" > ~/.kube/config
           chmod 600 ~/.kube/config
-          kubectl version --client
+
+      - name: Apply manifests
+        run: |
+          [ -z "$KUBE_CONFIG" ] && exit 0
+          kubectl apply -f deploy/headlamp.yaml
+          kubectl apply -k deploy/k8s/
 
       - name: Roll out new image
         run: |
           [ -z "$KUBE_CONFIG" ] && exit 0
-          if ! kubectl -n volunteer-system get deployment volunteer-app >/dev/null 2>&1; then
-            echo "::warning::deployment/volunteer-app 尚不存在，跳过更新（首次部署请在集群上 kubectl apply -k deploy/k8s/）"
+          if ! kubectl -n volunteer-system get secret volunteer-secrets >/dev/null 2>&1 \
+             || ! kubectl -n volunteer-system get secret ghcr-creds >/dev/null 2>&1; then
+            echo "::warning::集群内 Secret（volunteer-secrets / ghcr-creds）尚未创建，应用暂时起不来。创建命令见 deploy/k8s/README.md，创建后 Pod 会自动恢复"
             exit 0
           fi
           kubectl -n volunteer-system set image deployment/volunteer-app \

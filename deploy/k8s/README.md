@@ -2,9 +2,9 @@
 
 ## 前提
 
-- 服务器已安装 k3s（`curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -`）
-- 本机 kubeconfig 已指向该集群（`KUBECONFIG=~/.kube/volunteer-config`）
-- 阶段 1 的健康探针代码（`/livez`、`/healthz`）已推送，CI 已构建出最新镜像
+- 服务器已安装 k3s（`curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn INSTALL_K3S_VERSION=v1.36.4+k3s1 sh -`）
+- GitHub 仓库已配置 `KUBE_CONFIG` secret（k3s 的 kubeconfig 全文，server 地址为公网 IP）
+- 安全组/防火墙放行：**6443**（CI 部署）、**30109**（应用）、**30080**（Headlamp 界面）
 
 ## 文件说明
 
@@ -15,50 +15,65 @@
 | `02-mysql.yaml` | MySQL 8 StatefulSet + Service（10Gi 数据卷，首次启动自动执行 ddl.sql） |
 | `03-redis.yaml` | Redis 7 StatefulSet + Service（2Gi 数据卷） |
 | `04-app.yaml` | 应用 Deployment（2 副本滚动更新）+ uploads PVC + NodePort Service(30109) |
+| `kustomization.yaml` | 一键 apply 全部：`kubectl apply -k deploy/k8s/` |
+| `../headlamp.yaml` | Headlamp 可视化界面（独立于应用，NodePort 30080） |
+
+## 部署方式（GitOps：服务器上无需克隆仓库）
+
+清单由 GitHub Actions（`.github/workflows/cd.yml` 的 deploy job）自动 apply，
+触发方式：**push 到 main**，或在 **Actions 页面手动 Run workflow**。
+
+服务器上唯一需要手动做的：创建两个集群内 Secret（真实密码不进 git）。
 
 ## 首次部署步骤
 
-### 1. 创建 Secret（敏感信息不入库）
+### 1. 触发一次 CD（GitHub 网页上点 Actions → CD → Run workflow）
+
+这会构建镜像并 apply 全部清单（含命名空间和 Headlamp）。
+此时应用 Pod 起不来是正常的——Secret 还没创建，CD 日志会给出黄色 warning 提示。
+
+### 2. 在服务器上创建 Secret
+
+> 需要各密钥的真实值（与 `.env` 一致）。若 `.env` 在本机：`scp .env root@<服务器IP>:~/`
 
 ```bash
-export KUBECONFIG=~/.kube/volunteer-config
+set -a; source ~/.env; set +a
 
-# 应用密钥（值从 .env 取）
+# 应用密钥
 kubectl -n volunteer-system create secret generic volunteer-secrets \
-  --from-literal=APP_SECRET_KEY='<值>' \
-  --from-literal=JWT_SECRET='<值>' \
-  --from-literal=MYSQL_DATABASE='volunteer_system' \
-  --from-literal=MYSQL_USER='volunteer' \
-  --from-literal=MYSQL_PASSWORD='<值>' \
-  --from-literal=MYSQL_ROOT_PASSWORD='<值>' \
-  --from-literal=AI_API_KEY=''
+  --from-literal=APP_SECRET_KEY="$APP_SECRET_KEY" \
+  --from-literal=JWT_SECRET="$JWT_SECRET" \
+  --from-literal=MYSQL_DATABASE="$MYSQL_DATABASE" \
+  --from-literal=MYSQL_USER="$MYSQL_USER" \
+  --from-literal=MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+  --from-literal=MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
+  --from-literal=AI_API_KEY="${AI_API_KEY:-}"
 
-# GHCR 镜像拉取凭据（PAT 需有 read:packages 权限）
+# GHCR 镜像拉取凭据（PAT 生成：github.com/settings/tokens → classic → read:packages）
 kubectl -n volunteer-system create secret docker-registry ghcr-creds \
   --docker-server=ghcr.io \
   --docker-username='<GitHub 用户名>' \
   --docker-password='<PAT>'
 ```
 
-### 2. 部署（一条命令）
-
-```bash
-kubectl apply -k deploy/k8s/
-```
-
-等效于按顺序 apply 目录下全部清单（00-namespace → 01-config → 02-mysql → 03-redis → 04-app）。
+Secret 创建后，起不来的 Pod 会自动恢复（也可再去 Actions 跑一次 CD 加速收敛）。
 
 ### 3. 验证
 
 ```bash
-kubectl -n volunteer-system get pods -w          # 全部 Running/Ready
-curl http://<服务器IP>:30109/healthz             # {"checks":{"mysql":"ok","redis":"ok"},...}
+# 服务器上（或任何能访问 30109 的地方）
+curl http://<服务器IP>:30109/healthz     # {"checks":{"mysql":"ok","redis":"ok"},...}
+
+# 浏览器：Headlamp 可视化界面
+# http://<服务器IP>:30080  → Token 登录
+# 登录 token：kubectl -n headlamp create token headlamp-admin
 ```
 
 ## 日常操作
 
 ```bash
-# 更新镜像（CD 改造后的动作）
+# 更新应用：push 代码即可（CI 自动构建镜像 + 滚动更新）
+# 手动改镜像（在服务器或任何有 kubeconfig 的机器上）：
 kubectl -n volunteer-system set image deployment/volunteer-app \
   app=ghcr.io/loveelysia000/volunteer-system:<新tag>
 
