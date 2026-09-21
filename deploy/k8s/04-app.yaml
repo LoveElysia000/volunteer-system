@@ -106,13 +106,15 @@ spec:
             claimName: uploads
 ---
 # uploads 持久卷：用户上传文件，Pod 重建后仍在
+# RWO（单节点读写）即可：单机集群所有 Pod 都在同一节点，可共享挂载
+# 注意：不要用 ReadWriteMany——k3s local-path 对 RWX 的 PVC 会卡在 Pending
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: uploads
   namespace: volunteer-system
 spec:
-  accessModes: ["ReadWriteMany"]   # 2 副本共享同一目录；k3s local-path 支持 RWM
+  accessModes: ["ReadWriteOnce"]
   resources:
     requests:
       storage: 5Gi

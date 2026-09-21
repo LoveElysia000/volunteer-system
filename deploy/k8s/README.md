@@ -90,5 +90,7 @@ kubectl -n volunteer-system logs -f deploy/volunteer-app
 - **MySQL 建表脚本只在数据卷为空时执行**；变更表结构需手动 `kubectl exec` 进 MySQL 执行增量 SQL
 - **镜像拉取失败**（国内网络拉 docker.io/mysql/redis 超时）时，给 k3s 配置镜像加速：
   写 `/etc/rancher/k3s/registries.yaml` 配 mirror 后 `sudo systemctl restart k3s`
-- 2 个应用副本共享 uploads PVC（ReadWriteMany，k3s local-path 支持）；若未来换 RWO 存储类需回到单副本或改对象存储
+- uploads PVC 用 RWO（ReadWriteOnce）：单机集群所有 Pod 同节点可共享挂载；
+  **不要改成 RWX**——k3s local-path 对 RWX 的 PVC 会一直卡 Pending；
+  未来若扩展到多节点，需换支持 RWX 的存储（Longhorn/NFS）或对象存储
 - 数据库备份未包含在本清单内，需要时用 `kubectl exec` 跑 mysqldump 定时任务
