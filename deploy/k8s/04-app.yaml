@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volunteer-app
+  namespace: volunteer-system
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # 滚动更新时保证至少 2 个可用副本
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: volunteer-app
+  template:
+    metadata:
+      labels:
+        app: volunteer-app
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds   # GHCR 私有镜像凭据，创建方式见 README.md
+      containers:
+        - name: app
+          image: ghcr.io/loveelysia000/volunteer-system:latest
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            # 以下变量由 Secret 注入，entrypoint 的 envsubst 会渲染进 config.yaml
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: volunteer-secrets
+                  key: APP_SECRET_KEY
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: volunteer-secrets
+                  key: MYSQL_USER
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: volunteer-secrets
+                  key: MYSQL_DATABASE
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: volunteer-secrets
+                  key: MYSQL_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: volunteer-secrets
+                  key: JWT_SECRET
+            - name: AI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: volunteer-secrets
+                  key: AI_API_KEY
+          ports:
+            - containerPort: 1109
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/config.prod.yaml
+              subPath: config.prod.yaml
+              readOnly: true
+            - name: uploads
+              mountPath: /app/uploads
+          # 启动探针：等待应用与依赖就绪，最长 2 分钟（覆盖 MySQL 首次初始化）
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 1109
+            periodSeconds: 5
+            failureThreshold: 24
+          # 就绪探针：MySQL/Redis 任一不可达时摘除流量
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 1109
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # 存活探针：只确认进程存活，不依赖外部服务
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 1109
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: app-config
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploads
+---
+# uploads 持久卷：用户上传文件，Pod 重建后仍在
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads
+  namespace: volunteer-system
+spec:
+  accessModes: ["ReadWriteMany"]   # 2 副本共享同一目录；k3s local-path 支持 RWM
+  resources:
+    requests:
+      storage: 5Gi
+---
+# 对外暴露：NodePort 30109，访问 http://<服务器IP>:30109
+# 后续如需域名/TLS，可改用 k3s 自带的 Traefik Ingress
+apiVersion: v1
+kind: Service
+metadata:
+  name: volunteer-app
+  namespace: volunteer-system
+spec:
+  type: NodePort
+  selector:
+    app: volunteer-app
+  ports:
+    - port: 1109
+      targetPort: 1109
+      nodePort: 30109

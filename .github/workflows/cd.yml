@@ -11,7 +11,7 @@ permissions:
   packages: write
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,18 +46,34 @@ jobs:
             ${{ steps.prep.outputs.image }}:${{ steps.prep.outputs.tag }}
             ${{ steps.prep.outputs.image }}:latest
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: ${{ secrets.SERVER_PORT }}
-          script_stop: true
-          script: |
-            set -eu
-            cd "${{ secrets.SERVER_APP_DIR }}"
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
-            export APP_IMAGE="${{ steps.prep.outputs.image }}"
-            export IMAGE_TAG="${{ steps.prep.outputs.tag }}"
-            ./scripts/deploy.sh
+  deploy:
+    name: Deploy to k3s
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    env:
+      # 集群 kubeconfig 内容（Settings → Secrets → KUBE_CONFIG）
+      # 未配置时本 job 自动跳过；首次手动部署见 deploy/k8s/README.md
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      IMAGE: ghcr.io/loveelysia000/volunteer-system
+    steps:
+      - name: Configure kubectl
+        run: |
+          if [ -z "$KUBE_CONFIG" ]; then
+            echo "::warning::KUBE_CONFIG secret 未配置，跳过部署。首次部署请在集群上手动 kubectl apply（见 deploy/k8s/README.md）"
+            exit 0
+          fi
+          mkdir -p ~/.kube
+          printf '%s' "$KUBE_CONFIG" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl version --client
+
+      - name: Roll out new image
+        run: |
+          [ -z "$KUBE_CONFIG" ] && exit 0
+          if ! kubectl -n volunteer-system get deployment volunteer-app >/dev/null 2>&1; then
+            echo "::warning::deployment/volunteer-app 尚不存在，跳过更新（首次部署请在集群上 kubectl apply -k deploy/k8s/）"
+            exit 0
+          fi
+          kubectl -n volunteer-system set image deployment/volunteer-app \
+            app=${IMAGE}:${GITHUB_SHA}
+          kubectl -n volunteer-system rollout status deployment/volunteer-app --timeout=180s

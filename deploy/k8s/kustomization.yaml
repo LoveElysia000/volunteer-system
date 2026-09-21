@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 一键部署/更新全部资源：kubectl apply -k deploy/k8s/
+# kubectl 会按资源类型自动排序（Namespace → ConfigMap → StatefulSet → Deployment）
+resources:
+  - 00-namespace.yaml
+  - 01-config.yaml
+  - 02-mysql.yaml
+  - 03-redis.yaml
+  - 04-app.yaml
+
+# 集群内 Secret（volunteer-secrets / ghcr-creds）不在代码库里维护，
+# 创建命令见 README.md「首次部署步骤」
