@@ -5,6 +5,7 @@ metadata:
   namespace: volunteer-system
 spec:
   replicas: 1
+  minReadySeconds: 30   # 新 Pod 就绪后观察 30s 再替换旧 Pod（防"假就绪"坏版本上线）
   strategy:
     type: RollingUpdate
     rollingUpdate:
