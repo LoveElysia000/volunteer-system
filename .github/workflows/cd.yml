@@ -73,7 +73,6 @@ jobs:
         run: |
           [ -z "$KUBE_CONFIG" ] && exit 0
           kubectl apply -f deploy/headlamp.yaml
-          kubectl apply -f deploy/dashboard.yaml
           kubectl apply -k deploy/k8s/
 
       - name: Roll out new image
